@@ -2,11 +2,8 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { PortalLayout } from './components/layout/PortalLayout.tsx'
 import { Dashboard } from './pages/portal/Dashboard.tsx'
 import { Appointments } from './pages/portal/appointments/Appointments.tsx'
-import {
-  Administration,
-  Inventory,
-  PatientRecords,
-} from './pages/portal/stubs.tsx'
+import { Inventory } from './pages/portal/inventory/Inventory.tsx'
+import { Administration, PatientRecords } from './pages/portal/stubs.tsx'
 import { Login } from './pages/auth/Login.tsx'
 import { ForgotPassword } from './pages/auth/ForgotPassword.tsx'
 import { VerifyCode } from './pages/auth/VerifyCode.tsx'

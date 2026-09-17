@@ -99,6 +99,38 @@ describe('stock movements', () => {
     expect((await inventory.listMovements()).length).toBe(logBefore + 1)
   })
 
+  it('moves a medicine into Low Stock when dispensing crosses its reorder level', async () => {
+    const medicine = medicines.find((m) => m.genericName === 'Amoxicillin')!
+    const batch = batches.find((b) => b.medicineId === medicine.id)!
+
+    const before = await inventory.listMedicines()
+    expect(
+      before.find((r) => r.id === medicine.id)?.stockStatus,
+      'fixture should start healthy for this to mean anything',
+    ).toBe('good')
+
+    // Drop it just under the threshold, not to zero — 'low' and 'out' are
+    // different states and this asserts the boundary, not the extreme.
+    const target = medicine.reorderLevel - 10
+    await inventory.recordStockOut({
+      batchId: batch.id,
+      quantity: batch.quantity - target,
+      note: 'Dispensed to patient',
+    })
+
+    const after = await inventory.listMedicines()
+    const row = after.find((r) => r.id === medicine.id)!
+
+    expect(row.qtyOnHand).toBe(target)
+    expect(row.stockStatus).toBe('low')
+
+    const lowStock = await inventory.listLowStock()
+    expect(lowStock.map((r) => r.genericName)).toContain('Amoxicillin')
+
+    const stats = await inventory.getInventoryStats()
+    expect(stats.lowStock).toBeGreaterThanOrEqual(3)
+  })
+
   it('refuses to dispense more than the batch holds', async () => {
     const batch = batches.find((b) => b.batchNo === 'B-1720')!
 
