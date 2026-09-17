@@ -8,6 +8,10 @@ import {
   PatientRecords,
 } from './pages/portal/stubs.tsx'
 import { Login } from './pages/auth/Login.tsx'
+import { ForgotPassword } from './pages/auth/ForgotPassword.tsx'
+import { VerifyCode } from './pages/auth/VerifyCode.tsx'
+import { ResetPassword } from './pages/auth/ResetPassword.tsx'
+import { ResetSuccess } from './pages/auth/ResetSuccess.tsx'
 import { NotFound } from './pages/NotFound.tsx'
 
 /**
@@ -19,10 +23,19 @@ import { NotFound } from './pages/NotFound.tsx'
  *
  * No route guard yet — auth is Part B. When it lands, `/admin` gets wrapped in
  * a `<RequireRole>` and nothing else here changes.
+ *
+ * The reset screens carry the email forward in router state, so they are a
+ * sequence rather than four independently reachable pages: each redirects back
+ * to `/forgot-password` if that state is missing.
  */
 export const router = createBrowserRouter([
   { path: '/', element: <Navigate to="/admin" replace /> },
+
   { path: '/login', element: <Login /> },
+  { path: '/forgot-password', element: <ForgotPassword /> },
+  { path: '/verify-code', element: <VerifyCode /> },
+  { path: '/reset-password', element: <ResetPassword /> },
+  { path: '/reset-success', element: <ResetSuccess /> },
 
   {
     path: '/admin',

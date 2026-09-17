@@ -1,12 +1,14 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import * as api from '../../api'
 import { useAsync } from '../../hooks/useAsync'
+import { ConfirmModal } from '../ui/Modal'
 import {
   BellIcon,
   CalendarIcon,
   DashboardIcon,
   InventoryIcon,
+  LogoutIcon,
   PatientsIcon,
   SettingsIcon,
 } from './icons'
@@ -28,8 +30,23 @@ const NAV = [
  * patient-facing surface and shouldn't be optimised for phones.
  */
 export function PortalLayout() {
+  const navigate = useNavigate()
   const clinic = useAsync(() => api.clinic.getClinicInfo())
   const profile = useAsync(() => api.account.getProfile())
+
+  const [confirmLogout, setConfirmLogout] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
+
+  async function handleLogout() {
+    setLoggingOut(true)
+    try {
+      await api.account.logout()
+      navigate('/login', { replace: true })
+    } finally {
+      setLoggingOut(false)
+      setConfirmLogout(false)
+    }
+  }
 
   return (
     <div className="flex min-h-full">
@@ -70,7 +87,7 @@ export function PortalLayout() {
         <div className="border-t border-border p-3">
           <div className="flex items-center gap-2.5">
             <Avatar name={profile.data?.fullName ?? ''} />
-            <div className="hidden min-w-0 lg:block">
+            <div className="hidden min-w-0 flex-1 lg:block">
               <p className="truncate text-[13px] font-semibold text-brand-700">
                 {profile.data?.fullName ?? '—'}
               </p>
@@ -78,9 +95,28 @@ export function PortalLayout() {
                 {profile.data?.role ?? ''}
               </p>
             </div>
+            <button
+              type="button"
+              onClick={() => setConfirmLogout(true)}
+              aria-label="Log out"
+              title="Log out"
+              className="hidden size-7 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 lg:flex"
+            >
+              <LogoutIcon className="size-4" />
+            </button>
           </div>
         </div>
       </aside>
+
+      <ConfirmModal
+        open={confirmLogout}
+        onClose={() => setConfirmLogout(false)}
+        onConfirm={() => void handleLogout()}
+        loading={loggingOut}
+        title="Log out"
+        message="Just be sure you need to end your current session? Any unsaved changes in active forms or patient records will be lost."
+        confirmLabel="Log out"
+      />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Header />

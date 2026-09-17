@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import * as api from '../../api'
 import { Button } from '../../components/ui/Button'
-import { AuthShell, Field } from './AuthShell'
+import { TextField } from '../../components/ui/fields'
+import { AuthShell } from './AuthShell'
 
 export function Login() {
   const navigate = useNavigate()
@@ -34,7 +35,7 @@ export function Login() {
           email-only — wiring this needs either a `profiles.username` lookup or
           an email-only field. Flagged in types/account.ts; unresolved.
         */}
-        <Field
+        <TextField
           label="Username"
           type="text"
           value={identifier}
@@ -44,7 +45,7 @@ export function Login() {
         />
 
         <div>
-          <Field
+          <TextField
             label="Password"
             type="password"
             value={password}
