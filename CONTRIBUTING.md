@@ -8,14 +8,12 @@ This document defines how we branch, commit, and merge code in this repo. Read i
 main                              # production — PM + QA approval required
 ├── frontend-main                 # frontend integration branch
 │   └── frontend-main/feat/...    # frontend feature branches
-├── backend-main                  # backend integration branch
-│   └── backend-main/feat/...     # backend feature branches
-└── firmware-main                 # firmware integration branch
-    └── firmware-main/feat/...    # firmware feature branches
+└── backend-main                  # backend integration branch
+    └── backend-main/feat/...     # backend feature branches
 ```
 
 - **`main`** — always deployable. Nobody pushes here directly; only merges via PR from a team-main branch.
-- **`frontend-main` / `backend-main` / `firmware-main`** — each team's integration branch. Feature branches merge here first.
+- **`frontend-main` / `backend-main`** — each team's integration branch. Feature branches merge here first.
 - **Feature branches** — where actual work happens. Always branched off the relevant team-main branch, never off `main`.
 
 ## Branch naming convention
@@ -26,7 +24,7 @@ main                              # production — PM + QA approval required
 
 | Part | Options |
 |---|---|
-| `<team>` | `frontend`, `backend`, `firmware` |
+| `<team>` | `frontend`, `backend` |
 | `<type>` | `feat`, `fix`, `chore`, `docs`, `hotfix` |
 | `<short-description>` | lowercase, hyphen-separated, no ticket numbers needed |
 
@@ -36,8 +34,6 @@ frontend-main/feat/homepage
 frontend-main/fix/navbar-overlap
 backend-main/feat/user-auth
 backend-main/fix/login-timeout
-firmware-main/feat/sensor-calibration
-firmware-main/chore/update-drivers
 ```
 
 Don't reuse a branch name after it's been merged and deleted — create a fresh one for follow-up work.
@@ -93,11 +89,7 @@ Before requesting review, confirm:
 
 ## Local setup
 
-```
-git clone <repo-url>
-cd <repo-name>
-[ install steps go here ]
-```
+See **[README.md](README.md)** — clone, env vars, and how to run both dev servers.
 
 ## Reporting bugs / requesting features
 

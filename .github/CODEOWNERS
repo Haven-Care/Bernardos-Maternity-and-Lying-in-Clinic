@@ -1,7 +1,14 @@
 # CODEOWNERS
+#
+# ⚠️ These teams must actually exist under the Haven-Care org, and each must have
+# write access to this repo. GitHub silently ignores unresolvable owners — the
+# PM/QA approval rule in CONTRIBUTING.md then does nothing at all.
+#
+# Verify: Settings > Collaborators and teams, then Settings > Branches and
+# confirm "Require review from Code Owners" is enabled on main.
 
 # Global rule — PM and QA must approve any PR touching anything in the repo
-*   @OctaCore-Technologies/pm @OctaCore-Technologies/qa
+*   @Haven-Care/pm @Haven-Care/qa
 
-/frontend/   @OctaCore-Technologies/pm @OctaCore-Technologies/qa @OctaCore-Technologies/frontend
-/backend/    @OctaCore-Technologies/pm @OctaCore-Technologies/qa @OctaCore-Technologies/backend
+/frontend/   @Haven-Care/pm @Haven-Care/qa @Haven-Care/frontend
+/backend/    @Haven-Care/pm @Haven-Care/qa @Haven-Care/backend
