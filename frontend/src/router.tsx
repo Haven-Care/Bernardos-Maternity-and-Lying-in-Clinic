@@ -1,9 +1,9 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { PortalLayout } from './components/layout/PortalLayout.tsx'
 import { Dashboard } from './pages/portal/Dashboard.tsx'
+import { Appointments } from './pages/portal/appointments/Appointments.tsx'
 import {
   Administration,
-  Appointments,
   Inventory,
   PatientRecords,
 } from './pages/portal/stubs.tsx'

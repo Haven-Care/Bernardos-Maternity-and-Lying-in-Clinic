@@ -132,7 +132,11 @@ interface SelectProps
   label: string
   value: string
   onChange: (value: string) => void
-  options: Array<{ value: string; label: string }>
+  /**
+   * `disabled` keeps an option visible but unselectable — better than omitting
+   * it, because the user can see *why* a choice isn't available.
+   */
+  options: Array<{ value: string; label: string; disabled?: boolean }>
   placeholder?: string
   required?: boolean
   error?: string
@@ -165,7 +169,11 @@ export function SelectField({
       >
         {placeholder && <option value="">{placeholder}</option>}
         {options.map((option) => (
-          <option key={option.value} value={option.value}>
+          <option
+            key={option.value}
+            value={option.value}
+            disabled={option.disabled}
+          >
             {option.label}
           </option>
         ))}

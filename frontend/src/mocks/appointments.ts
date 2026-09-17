@@ -1,4 +1,7 @@
 import type { AppointmentStatus, BookingRequest } from '../types/appointment'
+import type { Weekday } from '../types/common'
+import { WEEKDAYS } from '../types/common'
+import { slots } from './slots'
 import { addDays, daysFromToday, isoDate, timestampFromToday, today } from './util'
 
 /**
@@ -37,9 +40,6 @@ const REASONS = [
   'Post-delivery check-up',
 ]
 
-const WEEKDAY_TIMES = ['08:00', '09:00', '10:00', '11:00', '13:00']
-const SATURDAY_TIMES = ['08:00', '09:00', '10:00']
-
 /** Nudge off Sunday — the clinic is closed and has no slots. */
 function bookableDate(dayOffset: number): string {
   let date = addDays(today(), dayOffset)
@@ -47,10 +47,27 @@ function bookableDate(dayOffset: number): string {
   return isoDate(date)
 }
 
-function timesFor(date: string): string[] {
-  return new Date(`${date}T00:00:00`).getDay() === 6
-    ? SATURDAY_TIMES
-    : WEEKDAY_TIMES
+function weekdayOf(date: string): Weekday {
+  // getDay() is 0-indexed from Sunday; WEEKDAYS starts at Monday.
+  return WEEKDAYS[(new Date(`${date}T00:00:00`).getDay() + 6) % 7]
+}
+
+/**
+ * Slots for a date that still have room, given what's already been placed.
+ *
+ * The fixtures have to respect capacity for the same reason the app does: the
+ * product promises no double-booking, and a seeded calendar showing two
+ * patients in a one-patient slot contradicts that on the first screen anyone
+ * looks at.
+ */
+function openTimesFor(date: string, taken: Map<string, number>): string[] {
+  return slots
+    .filter((slot) => slot.weekday === weekdayOf(date) && slot.isOpen)
+    .filter(
+      (slot) => (taken.get(`${date}|${slot.time}`) ?? 0) < slot.capacity,
+    )
+    .map((slot) => slot.time)
+    .sort()
 }
 
 interface Spec {
@@ -98,16 +115,27 @@ const SPECS: Spec[] = [
 ]
 
 function build(): BookingRequest[] {
-  return SPECS.map((spec, i) => {
+  // (date|time) → bookings already placed there, so capacity is never exceeded.
+  const taken = new Map<string, number>()
+  const rows: BookingRequest[] = []
+
+  SPECS.forEach((spec, i) => {
     const [patientName, contactNumber, email, patientId] =
       NAMES[i % NAMES.length]
     const [serviceId, serviceName] = SERVICES[i % SERVICES.length]
     const scheduledDate = bookableDate(spec.dayOffset)
-    const times = timesFor(scheduledDate)
 
-    return {
-      id: `apt-${i + 1}`,
-      referenceNo: `BR-${(812 + i).toString()}`,
+    const open = openTimesFor(scheduledDate, taken)
+    // Every slot that day is full — drop this one rather than overbook.
+    if (open.length === 0) return
+
+    const slotTime = open[i % open.length]
+    const key = `${scheduledDate}|${slotTime}`
+    taken.set(key, (taken.get(key) ?? 0) + 1)
+
+    rows.push({
+      id: `apt-${rows.length + 1}`,
+      referenceNo: `BR-${(812 + rows.length).toString()}`,
       patientName,
       contactNumber,
       email,
@@ -115,13 +143,15 @@ function build(): BookingRequest[] {
       serviceId,
       serviceName,
       scheduledDate,
-      slotTime: times[i % times.length],
+      slotTime,
       status: spec.status,
       reasonForVisit: REASONS[i % REASONS.length],
       // Requests are submitted a few days before the requested date.
       submittedAt: timestampFromToday(spec.dayOffset - 3, '14:20'),
-    } satisfies BookingRequest
+    })
   })
+
+  return rows
 }
 
 export const appointments: BookingRequest[] = build()

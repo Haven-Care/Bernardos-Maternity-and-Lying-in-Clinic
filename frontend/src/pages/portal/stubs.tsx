@@ -1,20 +1,5 @@
 import { Placeholder } from './Placeholder'
 
-export function Appointments() {
-  return (
-    <Placeholder
-      title="Appointment Management"
-      description="View and manage patient appointments"
-      phase="Phase 3"
-      screens={[
-        'Booking Requests table — reference no, patient, service, date, time, status',
-        'Request detail panel — Confirm / Reschedule / Cancel',
-        'Reschedule modal and the three result toasts',
-        'Calendar week grid with patient chips',
-      ]}
-    />
-  )
-}
 
 export function Inventory() {
   return (
