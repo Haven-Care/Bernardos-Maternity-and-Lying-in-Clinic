@@ -2,11 +2,10 @@ name: Backend CI
 
 # Runs on every PR, and again on the branch after a merge.
 #
-# No `paths:` filter, deliberately. This job is a *required* status check, and a
-# filtered job simply never reports on a PR it doesn't match — GitHub then waits
-# forever for a check that will never arrive, so a frontend-only PR could never
-# merge. Removing the filter costs a few seconds of CI per PR and removes the
-# deadlock entirely.
+# No `paths:` filter, deliberately. This job is meant to be a *required* status
+# check, and a filtered job doesn't report a neutral result — it never reports
+# at all, so GitHub waits forever for a check that will never arrive and a
+# frontend-only PR could never merge.
 #
 # The push trigger exists because `pull_request` alone verifies nothing after
 # the merge button: a PR that was green against an older base can still break
@@ -25,14 +24,30 @@ jobs:
   backend-ci:
     name: Lint, Build & Test (Backend)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # `backend/` does not exist on `main` yet — it was scaffolded on a feature
+      # branch and has never reached the default branch. Without this guard,
+      # setup-node fails outright on the missing cache-dependency-path, so the
+      # required check would sit red on main until the backend lands.
+      #
+      # Skipped steps still report the job as successful, which is what makes
+      # this safe to require. Drop the guard once backend/ is on every branch
+      # this workflow runs against.
+      - name: Detect backend package
+        id: detect
+        run: |
+          if [ -f backend/package-lock.json ]; then
+            echo 'present=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'present=false' >> "$GITHUB_OUTPUT"
+            echo '::notice::No backend/ on this ref — nothing to lint, build or test.'
+          fi
+
       - name: Set up Node.js
+        if: steps.detect.outputs.present == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -40,13 +55,23 @@ jobs:
           cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
+        if: steps.detect.outputs.present == 'true'
+        working-directory: backend
         run: npm ci
 
       - name: Lint
+        if: steps.detect.outputs.present == 'true'
+        working-directory: backend
         run: npm run lint
 
       - name: Build
+        if: steps.detect.outputs.present == 'true'
+        working-directory: backend
         run: npm run build
 
+      # There is no `test` script in backend/package.json, so this is currently
+      # a silent no-op. Green backend CI proves lint and build only.
       - name: Test
+        if: steps.detect.outputs.present == 'true'
+        working-directory: backend
         run: npm test --if-present
