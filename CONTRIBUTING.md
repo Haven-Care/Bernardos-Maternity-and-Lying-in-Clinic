@@ -64,7 +64,7 @@ chore: bump dependency versions
    - Requires **1 teammate approval**
    - Requires CI checks to pass
 4. **Once merged into team-main**, and when your team-main branch is ready for release, open a PR from **team-main into `main`**.
-   - Requires **PM and QA approval** (enforced via CODEOWNERS)
+   - Requires **2 approvals** — any two reviewers, not specific people
    - Requires CI checks to pass
    - Requires all review conversations resolved
 5. **QA tests before approving** the merge into `main`. Don't approve your own team's PR into main.
