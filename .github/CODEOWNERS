@@ -1,7 +1,30 @@
 # CODEOWNERS
+#
+# These were `@OctaCore-Technologies/*` — teams from a different org, carried in
+# with the rest of the scaffold. That org exists, so nothing looked wrong, but
+# its teams have no access to this repo and GitHub silently ignores an owner it
+# can't resolve. `require_code_owner_review` is set on both rulesets and was
+# matching nobody: PRs opened with zero reviewers auto-requested.
+#
+# Verified 2026-09-19 (UTC+8, so 2026-09-18 UTC): pm, qa, frontend and backend
+# all exist under Haven-Care with write access. Re-check after any org or team
+# rename — the failure mode is silent, and the symptom is a PR that requests no
+# reviewers.
+#
+# These owners do not single out PM and QA, and that is deliberate. Code-owner
+# review is satisfied by any ONE matching owner, so two @Haven-Care/frontend
+# approvals clear both that rule and the 2-approval count on main. Any two
+# reviews are fine — the count is the control, not who casts it.
+#
+# If that ever needs to change, the lever is the ruleset's `required_reviewers`
+# (one entry per team, each with minimum_approvals), not this file. Listing
+# fewer owners here would only narrow who *can* review, not require anyone.
+#
+#   gh api repos/Haven-Care/Bernardos-Maternity-and-Lying-in-Clinic/teams \
+#     -q '.[] | "\(.slug) \(.permission)"'
 
-# Global rule — PM and QA must approve any PR touching anything in the repo
-*   @OctaCore-Technologies/pm @OctaCore-Technologies/qa
+# Global fallback — anything not matched by a rule below is owned by PM and QA
+*   @Haven-Care/pm @Haven-Care/qa
 
-/frontend/   @OctaCore-Technologies/pm @OctaCore-Technologies/qa @OctaCore-Technologies/frontend
-/backend/    @OctaCore-Technologies/pm @OctaCore-Technologies/qa @OctaCore-Technologies/backend
+/frontend/   @Haven-Care/pm @Haven-Care/qa @Haven-Care/frontend
+/backend/    @Haven-Care/pm @Haven-Care/qa @Haven-Care/backend
