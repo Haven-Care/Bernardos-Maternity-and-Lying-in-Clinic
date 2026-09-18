@@ -1,19 +1,25 @@
 name: Frontend CI
 
+# Runs on every PR, and again on the branch after a merge.
+#
+# No `paths:` filter, deliberately. This job is a *required* status check, and a
+# filtered job simply never reports on a PR it doesn't match — GitHub then waits
+# forever for a check that will never arrive, so a backend-only PR could never
+# merge. Removing the filter costs half a minute of CI per PR and removes the
+# deadlock entirely.
+#
+# The push trigger exists because `pull_request` alone verifies nothing after
+# the merge button: a PR that was green against an older base can still break
+# the branch it lands on.
 on:
   pull_request:
     branches:
       - main
       - frontend-main
-    paths:
-      - 'frontend/src/**'
-      - 'frontend/public/**'
-      - 'frontend/index.html'
-      - 'frontend/package.json'
-      - 'frontend/package-lock.json'
-      - 'frontend/vite.config.ts'
-      - 'frontend/eslint.config.js'
-      - 'frontend/tsconfig*.json'
+  push:
+    branches:
+      - main
+      - frontend-main
 
 jobs:
   frontend-ci:
