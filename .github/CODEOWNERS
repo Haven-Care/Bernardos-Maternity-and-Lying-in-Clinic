@@ -6,14 +6,22 @@
 # can't resolve. `require_code_owner_review` is set on both rulesets and was
 # matching nobody: PRs opened with zero reviewers auto-requested.
 #
-# Verified 2026-09-19: pm, qa, frontend and backend all exist under Haven-Care
-# with write access. Re-check after any org or team rename — the failure mode is
-# silent, and the symptom is a PR that requests no reviewers.
+# Verified 2026-09-19 (UTC+8, so 2026-09-18 UTC): pm, qa, frontend and backend
+# all exist under Haven-Care with write access. Re-check after any org or team
+# rename — the failure mode is silent, and the symptom is a PR that requests no
+# reviewers.
+#
+# Note that these owners do NOT by themselves deliver CONTRIBUTING's "PM and QA
+# approval". Code-owner review is satisfied by any ONE matching owner, so two
+# @Haven-Care/frontend approvals clear both that rule and the 2-approval count
+# with neither PM nor QA involved. Enforcing one-from-each needs the ruleset's
+# `required_reviewers`, which is a repo setting rather than anything in this
+# file. Tracked separately; do not assume this file closes that gap.
 #
 #   gh api repos/Haven-Care/Bernardos-Maternity-and-Lying-in-Clinic/teams \
 #     -q '.[] | "\(.slug) \(.permission)"'
 
-# Global rule — PM and QA must approve any PR touching anything in the repo
+# Global fallback — anything not matched by a rule below is owned by PM and QA
 *   @Haven-Care/pm @Haven-Care/qa
 
 /frontend/   @Haven-Care/pm @Haven-Care/qa @Haven-Care/frontend
