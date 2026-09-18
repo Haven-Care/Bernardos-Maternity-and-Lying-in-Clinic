@@ -1,3 +1,6 @@
+import type { Weekday } from '../types/common'
+import { WEEKDAYS } from '../types/common'
+
 /**
  * Calendar-day arithmetic.
  *
@@ -37,6 +40,19 @@ export function daysUntil(date: string): number {
   const target = new Date(`${date}T00:00:00`)
   const diff = target.getTime() - today().getTime()
   return Math.round(diff / 86_400_000)
+}
+
+/**
+ * The weekday name for a `YYYY-MM-DD` string.
+ *
+ * Slots are configured per weekday, so almost every date-to-slot lookup in the
+ * app goes through this. Parsing with an explicit `T00:00:00` keeps it local —
+ * `new Date('2026-09-20')` is parsed as UTC midnight and lands on the previous
+ * weekday in Manila.
+ */
+export function weekdayOf(date: string): Weekday {
+  // getDay() is 0-indexed from Sunday; WEEKDAYS starts at Monday.
+  return WEEKDAYS[(new Date(`${date}T00:00:00`).getDay() + 6) % 7]
 }
 
 /** Monday of the week containing `date`. */

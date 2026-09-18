@@ -1,6 +1,5 @@
 import type { AppointmentStatus, BookingRequest } from '../types/appointment'
-import type { Weekday } from '../types/common'
-import { WEEKDAYS } from '../types/common'
+import { weekdayOf } from '../lib/dates'
 import { slots } from './slots'
 import { addDays, daysFromToday, isoDate, timestampFromToday, today } from './util'
 
@@ -45,11 +44,6 @@ function bookableDate(dayOffset: number): string {
   let date = addDays(today(), dayOffset)
   if (date.getDay() === 0) date = addDays(date, dayOffset >= 0 ? 1 : -1)
   return isoDate(date)
-}
-
-function weekdayOf(date: string): Weekday {
-  // getDay() is 0-indexed from Sunday; WEEKDAYS starts at Monday.
-  return WEEKDAYS[(new Date(`${date}T00:00:00`).getDay() + 6) % 7]
 }
 
 /**

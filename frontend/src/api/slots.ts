@@ -1,16 +1,10 @@
 import type { Weekday } from '../types/common'
 import type { AppointmentSlot, SlotAvailability, SlotInput } from '../types/slot'
-import { WEEKDAYS } from '../types/common'
+import { weekdayOf } from '../lib/dates'
 import { appointments } from '../mocks/appointments'
 import { slots } from '../mocks/slots'
 import { mockDelay, mockReject, uid } from '../mocks/util'
 // import { apiFetch } from './client'
-
-function weekdayOf(date: string): Weekday {
-  // getDay() is 0-indexed from Sunday; WEEKDAYS starts at Monday.
-  const index = new Date(`${date}T00:00:00`).getDay()
-  return WEEKDAYS[(index + 6) % 7]
-}
 
 export async function listSlots(weekday?: Weekday): Promise<AppointmentSlot[]> {
   // BACKEND: return apiFetch<AppointmentSlot[]>(`/slots${weekday ? `?weekday=${weekday}` : ''}`)

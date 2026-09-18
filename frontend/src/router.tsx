@@ -5,6 +5,7 @@ import { Appointments } from './pages/portal/appointments/Appointments.tsx'
 import { Inventory } from './pages/portal/inventory/Inventory.tsx'
 import { PatientRecords } from './pages/portal/patients/PatientRecords.tsx'
 import { Administration } from './pages/portal/administration/Administration.tsx'
+import { BookingPage } from './pages/public/BookingPage.tsx'
 import { Login } from './pages/auth/Login.tsx'
 import { ForgotPassword } from './pages/auth/ForgotPassword.tsx'
 import { VerifyCode } from './pages/auth/VerifyCode.tsx'
@@ -16,8 +17,12 @@ import { NotFound } from './pages/NotFound.tsx'
  * Two surfaces, one app.
  *
  * `/admin/*` is the staff command center, inside the portal shell. Everything
- * else is public: the auth screens now, and the patient booking form once it's
- * designed.
+ * else is public: `/book` is the patient booking form, and the auth screens are
+ * the way into the portal.
+ *
+ * `/` still lands on the portal rather than `/book`. Staff are the ones who open
+ * this app by habit; patients arrive on a link the clinic sends them. Flip it if
+ * the clinic ever points a public domain here.
  *
  * No route guard yet — auth is Part B. When it lands, `/admin` gets wrapped in
  * a `<RequireRole>` and nothing else here changes.
@@ -28,6 +33,8 @@ import { NotFound } from './pages/NotFound.tsx'
  */
 export const router = createBrowserRouter([
   { path: '/', element: <Navigate to="/admin" replace /> },
+
+  { path: '/book', element: <BookingPage /> },
 
   { path: '/login', element: <Login /> },
   { path: '/forgot-password', element: <ForgotPassword /> },
