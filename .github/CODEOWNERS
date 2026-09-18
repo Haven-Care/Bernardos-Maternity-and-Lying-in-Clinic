@@ -11,12 +11,14 @@
 # rename — the failure mode is silent, and the symptom is a PR that requests no
 # reviewers.
 #
-# Note that these owners do NOT by themselves deliver CONTRIBUTING's "PM and QA
-# approval". Code-owner review is satisfied by any ONE matching owner, so two
-# @Haven-Care/frontend approvals clear both that rule and the 2-approval count
-# with neither PM nor QA involved. Enforcing one-from-each needs the ruleset's
-# `required_reviewers`, which is a repo setting rather than anything in this
-# file. Tracked separately; do not assume this file closes that gap.
+# These owners do not single out PM and QA, and that is deliberate. Code-owner
+# review is satisfied by any ONE matching owner, so two @Haven-Care/frontend
+# approvals clear both that rule and the 2-approval count on main. Any two
+# reviews are fine — the count is the control, not who casts it.
+#
+# If that ever needs to change, the lever is the ruleset's `required_reviewers`
+# (one entry per team, each with minimum_approvals), not this file. Listing
+# fewer owners here would only narrow who *can* review, not require anyone.
 #
 #   gh api repos/Haven-Care/Bernardos-Maternity-and-Lying-in-Clinic/teams \
 #     -q '.[] | "\(.slug) \(.permission)"'
