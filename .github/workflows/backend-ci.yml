@@ -1,12 +1,25 @@
 name: Backend CI
 
+# Runs on every PR, and again on the branch after a merge.
+#
+# No `paths:` filter, deliberately. This job is a *required* status check, and a
+# filtered job simply never reports on a PR it doesn't match — GitHub then waits
+# forever for a check that will never arrive, so a frontend-only PR could never
+# merge. Removing the filter costs a few seconds of CI per PR and removes the
+# deadlock entirely.
+#
+# The push trigger exists because `pull_request` alone verifies nothing after
+# the merge button: a PR that was green against an older base can still break
+# the branch it lands on.
 on:
   pull_request:
     branches:
       - main
       - backend-main
-    paths:
-      - 'backend/**'
+  push:
+    branches:
+      - main
+      - backend-main
 
 jobs:
   backend-ci:
