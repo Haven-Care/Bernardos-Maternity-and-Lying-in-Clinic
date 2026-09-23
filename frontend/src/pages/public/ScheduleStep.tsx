@@ -41,10 +41,16 @@ export function ScheduleStep({
 
   // Which weekdays the clinic opens at all — Sunday has no slots, so its chip is
   // disabled rather than leading to an empty list the patient has to interpret.
-  const slots = useAsync(() => api.slots.listSlots())
+  //
+  // `listOpenWeekdays`, not `listSlots`: the latter is staff-only because it
+  // carries capacities and blocked slots, so asking for it here 403'd for every
+  // patient and disabled the entire date strip. It went unnoticed for two
+  // phases because anyone testing this form had a staff session in the same
+  // browser.
+  const weekdays = useAsync(() => api.slots.listOpenWeekdays())
   const openWeekdays = useMemo(
-    () => new Set((slots.data ?? []).filter((s) => s.isOpen).map((s) => s.weekday)),
-    [slots.data],
+    () => new Set(weekdays.data ?? []),
+    [weekdays.data],
   )
 
   const bookable = useMemo(

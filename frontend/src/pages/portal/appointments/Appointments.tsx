@@ -1,15 +1,29 @@
+import * as api from '../../../api'
+import { useAsync } from '../../../hooks/useAsync'
 import { Tabs, type Tab } from '../../../components/ui/Tabs'
 import { useActiveTab } from '../../../hooks/useActiveTab'
 import { BookingRequests } from './BookingRequests'
 import { CalendarWeek } from './CalendarWeek'
-
-const TABS: Tab[] = [
-  { id: 'requests', label: 'Booking Requests' },
-  { id: 'calendar', label: 'Calendar' },
-]
+import { RescheduleQueue } from './RescheduleQueue'
 
 export function Appointments() {
-  const active = useActiveTab(TABS)
+  /**
+   * Counted here rather than inside the queue, because the number has to be
+   * visible from the tab a staff member is already looking at. A queue nobody
+   * opens is a queue nobody works — patients would sit waiting on a decision
+   * that was never seen.
+   */
+  const pending = useAsync(() =>
+    api.rescheduleRequests.listRescheduleRequests('pending'),
+  )
+
+  const tabs: Tab[] = [
+    { id: 'requests', label: 'Booking Requests' },
+    { id: 'reschedules', label: 'Reschedules', badge: pending.data?.length },
+    { id: 'calendar', label: 'Calendar' },
+  ]
+
+  const active = useActiveTab(tabs)
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-4">
@@ -22,9 +36,15 @@ export function Appointments() {
         </p>
       </div>
 
-      <Tabs tabs={TABS} />
+      <Tabs tabs={tabs} />
 
-      {active === 'requests' ? <BookingRequests /> : <CalendarWeek />}
+      {active === 'requests' && <BookingRequests />}
+      {active === 'reschedules' && (
+        // Approving moves a booking, so the badge beside this tab is stale the
+        // moment a decision lands.
+        <RescheduleQueue onDecided={pending.reload} />
+      )}
+      {active === 'calendar' && <CalendarWeek />}
     </div>
   )
 }

@@ -4,6 +4,7 @@ import * as api from '../../api'
 import { Button } from '../../components/ui/Button'
 import { TextField } from '../../components/ui/fields'
 import { AuthShell, BackToLogin } from './AuthShell'
+import { useAuthRealm } from './realm'
 
 /**
  * The rules the prototype lists under the password fields.
@@ -33,6 +34,7 @@ const RULES: Array<{ label: string; test: (value: string) => boolean }> = [
 export function ResetPassword() {
   const navigate = useNavigate()
   const location = useLocation()
+  const realm = useAuthRealm()
   const email = (location.state as { email?: string } | null)?.email
 
   const [password, setPassword] = useState('')
@@ -42,7 +44,7 @@ export function ResetPassword() {
 
   // Landing here without a verified code — restart rather than let someone set
   // a password on an unverified address.
-  if (!email) return <Navigate to="/forgot-password" replace />
+  if (!email) return <Navigate to={realm.forgotPath} replace />
 
   const results = RULES.map((rule) => ({
     ...rule,
@@ -64,7 +66,7 @@ export function ResetPassword() {
 
     try {
       await api.account.resetPassword(password)
-      navigate('/reset-success', { replace: true })
+      navigate(realm.successPath, { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not reset password')
     } finally {
@@ -76,7 +78,7 @@ export function ResetPassword() {
     <AuthShell
       title="Create new password"
       subtitle="Your code has been confirmed. Choose a new password to finish resetting your account."
-      before={<BackToLogin />}
+      before={<BackToLogin to={realm.loginPath} />}
     >
       <form className="flex flex-col gap-4" onSubmit={onSubmit}>
         <TextField

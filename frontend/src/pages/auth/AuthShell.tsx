@@ -62,10 +62,15 @@ export function AuthShell({
   )
 }
 
-export function BackToLogin() {
+/**
+ * `to` rather than a hardcoded `/login`: the reset sequence is mounted twice,
+ * once per realm, and a patient resetting their password must not be sent back
+ * to the staff portal's sign-in screen. See `useAuthRealm`.
+ */
+export function BackToLogin({ to = '/login' }: { to?: string }) {
   return (
     <Link
-      to="/login"
+      to={to}
       className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 transition-colors hover:text-gray-800"
     >
       <svg
