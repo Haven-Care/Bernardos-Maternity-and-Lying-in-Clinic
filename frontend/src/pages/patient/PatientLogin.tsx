@@ -1,13 +1,28 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import * as api from '../../api'
 import { Button } from '../../components/ui/Button'
 import { TextField } from '../../components/ui/fields'
-import { AuthShell } from './AuthShell'
+import { AuthShell } from '../auth/AuthShell'
 
-export function Login() {
+/**
+ * Patient sign-in.
+ *
+ * A separate screen from the staff login rather than one form that branches:
+ * the two say different things. This one offers a way to register, which the
+ * staff screen must never do — staff accounts are provisioned, and a sign-up
+ * link there would be an invitation to try.
+ *
+ * `from` comes from whichever guard redirected here, so a patient sent away
+ * mid-booking returns to `/book` with their draft intact rather than landing on
+ * a bookings list they did not ask for.
+ */
+export function PatientLogin() {
   const navigate = useNavigate()
-  const [identifier, setIdentifier] = useState('')
+  const location = useLocation()
+  const from = (location.state as { from?: string } | null)?.from
+
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string>()
   const [submitting, setSubmitting] = useState(false)
@@ -18,8 +33,8 @@ export function Login() {
     setError(undefined)
 
     try {
-      await api.account.login({ identifier, password })
-      navigate('/admin')
+      await api.patientAuth.login(email, password)
+      navigate(from ?? '/patient/bookings', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign in failed')
     } finally {
@@ -28,25 +43,29 @@ export function Login() {
   }
 
   return (
-    <AuthShell title="Welcome Back!" subtitle="Please sign in to access your account.">
+    <AuthShell
+      title="Sign in"
+      subtitle="Sign in to book an appointment and see your bookings."
+      footer={
+        <p className="text-center text-xs text-gray-500">
+          New here?{' '}
+          <Link
+            to="/patient/signup"
+            state={from ? { from } : undefined}
+            className="font-semibold text-brand-600 hover:underline"
+          >
+            Create an account
+          </Link>
+        </p>
+      }
+    >
       <form className="flex flex-col gap-4" onSubmit={onSubmit}>
-        {/*
-          The prototype labels this "username or email". It is email only.
-
-          GoTrue authenticates on email, and accepting a username would mean an
-          unauthenticated endpoint that turns a guessed username into an email —
-          an oracle for enumerating the clinic's staff. Accounts here are
-          provisioned and few, so a username earns nothing to pay for that.
-
-          A field that accepts something it cannot use is worse than a renamed
-          one, so the label matches the behaviour.
-        */}
         <TextField
           label="Email"
           type="email"
-          value={identifier}
-          onChange={setIdentifier}
-          placeholder="you@havencare.ph"
+          value={email}
+          onChange={setEmail}
+          placeholder="juana@gmail.com"
           autoComplete="username"
         />
 
@@ -61,7 +80,7 @@ export function Login() {
           />
           <div className="mt-1.5 text-right">
             <Link
-              to="/forgot-password"
+              to="/patient/forgot-password"
               className="text-xs text-brand-600 hover:text-brand-700 hover:underline"
             >
               Forgot Password?
@@ -76,7 +95,7 @@ export function Login() {
         )}
 
         <Button type="submit" loading={submitting} className="mt-1 w-full">
-          Log In
+          Sign In
         </Button>
       </form>
     </AuthShell>

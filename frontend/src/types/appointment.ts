@@ -59,19 +59,76 @@ export interface BookingRequest {
   submittedAt: DateTimeString
 }
 
-/** Payload for the public booking form. No account required. */
+/**
+ * Payload for the booking form.
+ *
+ * **Identity comes from the signed-in account, not from this payload.** The
+ * email is the account's and is not accepted here at all — otherwise a patient
+ * could book under someone else's address, and the confirmation would go to a
+ * stranger.
+ *
+ * Name and contact number are optional *overrides*: the account already knows
+ * both, and the form prefills them, but a patient may want a different number
+ * called on the day. Omitted means "use what the account says".
+ */
 export interface CreateBookingInput {
-  patientName: string
-  contactNumber: string
-  email: string
   serviceId: string
   scheduledDate: DateString
   slotTime: TimeString
   reasonForVisit: string
+
+  patientName?: string
+  contactNumber?: string
 }
 
 /** Payload for the Reschedule Appointment modal — New Date, New Time. */
 export interface RescheduleBookingInput {
   scheduledDate: DateString
   slotTime: TimeString
+}
+
+// ---------------------------------------------------------------------------
+// Patient-initiated reschedule
+// ---------------------------------------------------------------------------
+
+export type RescheduleRequestStatus = 'pending' | 'approved' | 'declined'
+
+/**
+ * A patient asking to move an appointment.
+ *
+ * **A separate record, not a status on the booking.** The pitch's line is that
+ * the app collects requests and does not book appointments, so a patient must
+ * not be able to rewrite a confirmed date by themselves. Keeping the proposal
+ * here leaves the original booking intact and its slot held until staff decide.
+ *
+ * It also keeps `AppointmentStatus` at five values. A sixth would add a wedge
+ * to the Dashboard pie chart and an option to the status filter, both of which
+ * were designed around five.
+ *
+ * Staff rescheduling from their own modal does not create one of these — they
+ * act directly, because it is their schedule.
+ */
+export interface RescheduleRequest {
+  id: string
+  bookingId: string
+
+  proposedDate: DateString
+  proposedTime: TimeString
+
+  status: RescheduleRequestStatus
+  requestedAt: DateTimeString
+  decidedAt: DateTimeString | null
+
+  /** Denormalized so the staff queue renders without a join. */
+  referenceNo: string
+  patientName: string
+  serviceName: string
+  /** What the booking currently says, for the "from → to" the queue shows. */
+  currentDate: DateString
+  currentTime: TimeString
+}
+
+export interface RescheduleRequestInput {
+  proposedDate: DateString
+  proposedTime: TimeString
 }

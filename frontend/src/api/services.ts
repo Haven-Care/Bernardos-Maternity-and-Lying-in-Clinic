@@ -1,44 +1,44 @@
 import type { Service, ServiceInput } from '../types/service'
-import { services } from '../mocks/services'
-import { mockDelay, mockReject, uid } from '../mocks/util'
-// import { apiFetch } from './client'
+import { apiFetch } from './client'
 
 export async function listServices(): Promise<Service[]> {
-  // BACKEND: return apiFetch<Service[]>('/services')
-  return mockDelay(services)
+  return apiFetch<Service[]>('/services')
 }
 
-/** Only active services appear in the public booking form. */
+/**
+ * Only active services appear in the public booking form.
+ *
+ * The `active=true` is belt and braces: the server already hides deactivated
+ * services from anyone who is not signed-in staff, so an anonymous caller could
+ * not see them even by asking for everything.
+ */
 export async function listActiveServices(): Promise<Service[]> {
-  // BACKEND: return apiFetch<Service[]>('/services?active=true')
-  return mockDelay(services.filter((s) => s.active))
+  return apiFetch<Service[]>('/services?active=true')
 }
 
 export async function createService(input: ServiceInput): Promise<Service> {
-  // BACKEND: return apiFetch<Service>('/services', { method: 'POST', body: JSON.stringify(input) })
-  const created: Service = { ...input, id: uid('svc'), active: true }
-  services.push(created)
-  return mockDelay(created)
+  return apiFetch<Service>('/services', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
 }
 
 export async function updateService(
   id: string,
   input: ServiceInput,
 ): Promise<Service> {
-  // BACKEND: return apiFetch<Service>(`/services/${id}`, { method: 'PATCH', body: JSON.stringify(input) })
-  const s = services.find((x) => x.id === id)
-  if (!s) return mockReject(`Service not found: ${id}`)
-  Object.assign(s, input)
-  return mockDelay(s)
+  return apiFetch<Service>(`/services/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
 }
 
 export async function setServiceActive(
   id: string,
   active: boolean,
 ): Promise<Service> {
-  // BACKEND: return apiFetch<Service>(`/services/${id}`, { method: 'PATCH', body: JSON.stringify({ active }) })
-  const s = services.find((x) => x.id === id)
-  if (!s) return mockReject(`Service not found: ${id}`)
-  s.active = active
-  return mockDelay(s)
+  return apiFetch<Service>(`/services/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ active }),
+  })
 }
