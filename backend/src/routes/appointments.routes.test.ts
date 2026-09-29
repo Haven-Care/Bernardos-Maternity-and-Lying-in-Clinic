@@ -115,8 +115,11 @@ describe.skipIf(!up)('bookings', () => {
         })
         .expect(201)
 
+      // `confirmed`, not `pending` — this is the assertion that says bookings
+      // are accepted on submission. Every rule the clinic has was checked
+      // inside book_appointment, under the lock, before the row existed.
       expect(first.body).toMatchObject({
-        status: 'pending',
+        status: 'confirmed',
         serviceName: 'Consultation',
         patientName: 'Alice A',
       })
@@ -143,6 +146,58 @@ describe.skipIf(!up)('bookings', () => {
         .eq('account_id', alice.userId)
 
       expect(count).toBe(1)
+    })
+
+    /**
+     * The notify trigger, with nothing pending.
+     *
+     * It used to fire `when (… and new.status = 'pending')`. Bookings arrive
+     * confirmed now, so that clause would never match again — and a trigger
+     * that silently stops firing is the worst possible failure for the one
+     * mechanism that tells the clinic a patient is coming. Nothing else would
+     * have caught it: the endpoint still returns 201 either way.
+     */
+    it('tells the desk about a booking even though nothing is pending', async () => {
+      const db = getSupabaseClient()
+      const date = await clinicDate(9)
+
+      const before = await db
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+
+      const booking = await request(app)
+        .post('/api/bookings')
+        .set(asBob())
+        .send({
+          serviceId,
+          scheduledDate: date,
+          slotTime: '08:00',
+          reasonForVisit: 'Notification trigger',
+        })
+        .expect(201)
+
+      expect(booking.body.status).toBe('confirmed')
+
+      const after = await db
+        .from('notifications')
+        .select('message')
+        .order('occurred_at', { ascending: false })
+        .limit(10)
+
+      expect(after.data?.length).toBeGreaterThan(0)
+
+      const mine = (after.data ?? []).filter((n) =>
+        n.message.includes('Bob B'),
+      )
+      expect(mine.length).toBeGreaterThan(0)
+      // "booked", not "requested" — the wording follows the behaviour.
+      expect(mine[0].message).toMatch(/^Bob B booked /)
+
+      const afterCount = await db
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+
+      expect(afterCount.count ?? 0).toBeGreaterThan(before.count ?? 0)
     })
 
     it('refuses a booking without an account', async () => {
@@ -442,6 +497,27 @@ describe.skipIf(!up)('bookings', () => {
       expect(booking.body.status).toBe('rescheduled')
     })
 
+    /**
+     * The one live use left for POST /confirm.
+     *
+     * Bookings arrive confirmed, so the endpoint is no longer part of that
+     * flow — but a rescheduled appointment is one the clinic and the patient
+     * have since agreed on, and settling it back to `confirmed` is a real
+     * transition. Without this the endpoint would have no coverage at all and
+     * would rot unnoticed.
+     */
+    it('settles a rescheduled booking back to confirmed', async () => {
+      const settled = await request(app)
+        .post(`/api/bookings/${bookingId}/confirm`)
+        .set(asStaff())
+        .expect(200)
+
+      expect(settled.body.status).toBe('confirmed')
+      // The agreed time survives the transition; confirming is not a revert.
+      expect(settled.body.scheduledDate).toBe(proposedDate)
+      expect(settled.body.slotTime).toBe('11:00')
+    })
+
     it('refuses to decide the same request twice', async () => {
       const queue = await request(app)
         .get('/api/reschedule-requests?status=approved')
@@ -481,14 +557,25 @@ describe.skipIf(!up)('bookings', () => {
       bookingId = res.body.id
     })
 
-    it('confirms, then completes', async () => {
-      const confirmed = await request(app)
+    /**
+     * Confirming is not part of the booking flow any more.
+     *
+     * The booking arrives `confirmed`, so `POST /confirm` is a no-op the
+     * transition guard rejects — `allowedFrom` is `['pending','rescheduled']`
+     * and `confirmed` is neither. Asserting the 409 is what pins the behaviour:
+     * without it, a future change reintroducing a confirmation step would pass
+     * this file silently.
+     */
+    it('refuses to confirm a booking that arrived confirmed', async () => {
+      const res = await request(app)
         .post(`/api/bookings/${bookingId}/confirm`)
         .set(asStaff())
-        .expect(200)
+        .expect(409)
 
-      expect(confirmed.body.status).toBe('confirmed')
+      expect(res.body.error).toMatch(/confirmed appointment cannot be marked/i)
+    })
 
+    it('completes straight from confirmed', async () => {
       const completed = await request(app)
         .post(`/api/bookings/${bookingId}/complete`)
         .set(asStaff())

@@ -8,8 +8,18 @@
 import type { DateString, DateTimeString, TimeString } from './common.js'
 
 /**
- * The five statuses in the Booking Requests table and the dashboard's
- * Appointments Overview pie chart.
+ * The five statuses in the Bookings table and the dashboard's Appointments
+ * Overview pie chart.
+ *
+ * **`pending` is retired, not removed.** Bookings are accepted on submission,
+ * so nothing produces it — but rows created before that change still carry it,
+ * and every screen that renders a status has to keep handling it. Dropping it
+ * from the union would mean recreating a Postgres enum, rewriting a column, and
+ * breaking the exhaustive `Record<AppointmentStatus, …>` maps in `Badge.tsx`
+ * and `AppointmentsPie.tsx`, all to delete a value that costs nothing to keep.
+ *
+ * The pie simply stops drawing a pending wedge: the backing view omits
+ * zero-count statuses by design.
  *
  * `no_show` is deliberately absent — it appears nowhere in the prototype. Add it
  * only if the clinic asks for it, since it changes the pie chart too.
@@ -30,12 +40,13 @@ export const APPOINTMENT_STATUSES: AppointmentStatus[] = [
 ]
 
 /**
- * A patient's booking, from submitted request through to completed visit.
+ * A patient's booking, from submission through to completed visit.
  *
- * One row of the Booking Requests table and one chip on the Calendar. For a
- * `pending` request, `scheduledDate` / `slotTime` are the patient's *preferred*
- * time (the detail panel labels them "Preferred Date & Time"); once staff
- * confirm, they are the actual booking.
+ * One row of the Bookings table and one chip on the Calendar. `scheduledDate`
+ * and `slotTime` are the appointment, not a preference: the seat is held the
+ * moment the row exists. They were the patient's *preferred* time back when a
+ * booking waited on staff confirmation, which is why the detail panel used to
+ * label them that way.
  */
 export interface BookingRequest {
   id: string
@@ -103,10 +114,14 @@ export type RescheduleRequestStatus = 'pending' | 'approved' | 'declined'
 /**
  * A patient asking to move an appointment.
  *
- * **A separate record, not a status on the booking.** The pitch's line is that
- * the app collects requests and does not book appointments, so a patient must
- * not be able to rewrite a confirmed date by themselves. Keeping the proposal
- * here leaves the original booking intact and its slot held until staff decide.
+ * **A separate record, not a status on the booking.** Taking a free slot is
+ * automatic; vacating one the clinic has already planned staffing around is
+ * not. Keeping the proposal here leaves the original booking intact and its
+ * slot held until staff decide, so a patient cannot rewrite a date the clinic
+ * is working to.
+ *
+ * Note `pending` below is this table's own status and is very much alive —
+ * unlike the appointment status of the same name.
  *
  * It also keeps `AppointmentStatus` at five values. A sixth would add a wedge
  * to the Dashboard pie chart and an option to the status filter, both of which

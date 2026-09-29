@@ -855,7 +855,7 @@ export type Database = {
       dashboard_stats: {
         Args: never
         Returns: {
-          booking_requests: number
+          booked_today: number
           completed_appointments: number
           inventory_alerts: number
           todays_schedule: number

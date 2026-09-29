@@ -181,7 +181,11 @@ select setval('patient_code_seq', 112, true);
 -- the slot grid the moment either changed.
 --
 -- The spread mirrors the prototype: a history of completed visits, today's
--- schedule, confirmed bookings ahead, and a queue of pending requests.
+-- schedule, and confirmed bookings ahead.
+--
+-- No `pending` rows. Bookings are accepted on submission, so seeding a queue of
+-- unreviewed requests would demo a screen that no longer exists and leave the
+-- status filter showing a value nothing can produce.
 -- ---------------------------------------------------------------------------
 
 with spec(day_offset, status) as (
@@ -192,8 +196,8 @@ with spec(day_offset, status) as (
     (  0, 'confirmed'), (  0, 'confirmed'),  ( 0, 'confirmed'),  ( 0, 'completed'),
     (  0, 'confirmed'), (  1, 'confirmed'),  ( 1, 'confirmed'),  ( 2, 'confirmed'),
     (  2, 'rescheduled'), (3, 'confirmed'),  ( 4, 'confirmed'),
-    (  2, 'pending'),   (  3, 'pending'),    ( 5, 'pending'),    ( 6, 'pending'),
-    (  8, 'pending')
+    (  2, 'confirmed'), (  3, 'confirmed'),  ( 5, 'confirmed'),  ( 6, 'confirmed'),
+    (  8, 'confirmed')
 ),
 -- Sunday has no slots, so a booking that lands there moves to Monday rather
 -- than being silently dropped.
@@ -252,10 +256,9 @@ select
   a.scheduled_date,
   a.slot_time,
   a.status,
-  case a.status
-    when 'pending' then 'Requesting a check-up appointment.'
-    else 'Routine visit.'
-  end,
+  -- One value now that no row is pending. Kept as a column rather than folded
+  -- into the insert so the shape still reads as "per booking".
+  'Routine visit.',
   -- Three days before the visit, but never in the future.
   --
   -- The unclamped form dates a request for next week to next week, so six
@@ -295,7 +298,7 @@ select setval('booking_ref_seq', 811 + (select count(*) from appointments), true
 -- Notifications
 --
 -- Derived from the appointments just inserted rather than written out, so the
--- dropdown says the same thing the Booking Requests tab does.
+-- dropdown says the same thing the Bookings tab does.
 --
 -- Seeded at all because nothing above goes through book_appointment: these rows
 -- are inserted directly and carry no account_id, so the notify trigger does not
@@ -303,20 +306,32 @@ select setval('booking_ref_seq', 811 + (select count(*) from appointments), true
 -- feature looks broken rather than quiet. Every notification after the first
 -- patient books is written by the trigger.
 --
--- The oldest is marked read; the rest are not. One read row is what shows the
--- dropdown's two states at a glance.
+-- The five most recently submitted, rather than the pending ones this used to
+-- select — nothing is pending any more, and that predicate would have left the
+-- bell empty. Cancelled bookings are excluded: a notification announcing an
+-- appointment that is not happening is worse than no notification.
+--
+-- The oldest of the five is marked read; the rest are not. One read row is what
+-- shows the dropdown's two states at a glance.
 -- ---------------------------------------------------------------------------
 insert into notifications (message, href, read, occurred_at)
 select
-  a.patient_name || ' requested ' || a.service_name
-    || ' on ' || short_date(a.scheduled_date) || ', ' || a.slot_time,
-  '/admin/appointments',
-  -- Oldest request only. Marked by rank rather than by an age cut-off because
-  -- the seeded submitted_at values are relative to clinic_today() and a fixed
-  -- interval would put every row on the same side of it.
-  row_number() over (order by a.submitted_at) = 1,
-  a.submitted_at
-from appointments a
-where a.status = 'pending';
+  message, href, read, occurred_at
+from (
+  select
+    a.patient_name || ' booked ' || a.service_name
+      || ' on ' || short_date(a.scheduled_date) || ', ' || a.slot_time
+      as message,
+    '/admin/appointments' as href,
+    -- Ranked rather than cut off by age: the seeded submitted_at values are
+    -- relative to clinic_today(), so a fixed interval would put every row on
+    -- the same side of it.
+    row_number() over (order by a.submitted_at desc) = 5 as read,
+    a.submitted_at as occurred_at
+  from appointments a
+  where a.status <> 'cancelled'
+  order by a.submitted_at desc
+  limit 5
+) recent;
 
 commit;

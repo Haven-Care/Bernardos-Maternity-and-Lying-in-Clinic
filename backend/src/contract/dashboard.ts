@@ -10,7 +10,15 @@ import type { AppointmentStatus } from './appointment.js'
 /** The four stat tiles across the top of the Dashboard. */
 export interface DashboardStats {
   todaysSchedule: number
-  bookingRequests: number
+  /**
+   * Bookings *submitted* today, whatever day they are for.
+   *
+   * Replaced a count of pending requests, which became a permanent zero when
+   * bookings started being accepted on submission. Submissions rather than
+   * upcoming visits because this is the monitoring number — what arrived while
+   * nobody was looking — and upcoming visits would duplicate `todaysSchedule`.
+   */
+  bookedToday: number
   completedAppointments: number
   inventoryAlerts: number
 }
@@ -30,8 +38,13 @@ export interface AppointmentsOverviewSlice {
 /**
  * One entry in the Urgent Alerts feed.
  *
- * The feed mixes sources — low stock, near expiry, and pending bookings all land
- * in the same list, which is why this is a flat shape rather than a union.
+ * The feed mixes sources — low stock, near expiry, and open reschedule requests
+ * all land in the same list, which is why this is a flat shape rather than a
+ * union.
+ *
+ * `booking_review` used to mean "requests awaiting confirmation". Bookings are
+ * accepted on submission now, so it points at the reschedule queue instead:
+ * that is what is left that a member of staff has to decide.
  */
 export type UrgentAlertKind =
   | 'low_stock'
