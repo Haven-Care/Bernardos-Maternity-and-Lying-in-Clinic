@@ -15,10 +15,15 @@ const WINDOW_DAYS = 14
 /**
  * Step 2 — pick a date, then a time.
  *
- * **Booking opens tomorrow, not today.** Same-day requests are the ones staff
- * can't act on in time — a request submitted at 4 PM for an 8 AM slot that has
- * already passed is worse than no booking at all. Walk-ins stay a phone call,
- * which is what the clinic does now.
+ * **Booking opens tomorrow, not today.** The original reason was that staff
+ * could not review a same-day request in time; bookings are accepted on
+ * submission now, so that reason is gone but the rule is kept. A slot at 8 AM
+ * booked at 4 PM is a slot nobody can attend, and nothing here checks the time
+ * of day — only the date. Walk-ins stay a phone call, which is what the clinic
+ * does now.
+ *
+ * Whether the clinic wants same-day booking is theirs to decide. It needs a
+ * time-of-day comparison against `clinic_today()`, not just a wider window.
  *
  * Scheduling is capacity-based, matching `AppointmentSlot`: a fixed clock time
  * that holds N patients, not a duration to be subdivided. So the time list is a

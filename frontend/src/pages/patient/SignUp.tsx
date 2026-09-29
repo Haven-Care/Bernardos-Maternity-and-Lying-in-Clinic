@@ -105,7 +105,7 @@ export function SignUp() {
   return (
     <AuthShell
       title="Create your account"
-      subtitle="You’ll need an account to request an appointment."
+      subtitle="You’ll need an account to book an appointment."
       footer={
         <p className="text-center text-xs text-gray-500">
           Already registered?{' '}

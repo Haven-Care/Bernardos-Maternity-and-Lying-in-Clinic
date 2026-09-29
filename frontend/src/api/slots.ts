@@ -33,8 +33,9 @@ export async function listOpenWeekdays(): Promise<Weekday[]> {
  *
  * The count comes from the same database function that `book_appointment`
  * consults, so the form cannot offer a time that the booking then refuses.
- * Cancelled bookings free their seat; every other status holds it, pending
- * included — an unreviewed request still occupies the room.
+ * Cancelled bookings free their seat; every other status holds it. The count
+ * never looked at `pending` versus `confirmed`, which is why accepting bookings
+ * on submission changed nothing here.
  */
 export async function listAvailability(
   date: string,

@@ -33,9 +33,12 @@ export async function cancelMyBooking(id: string): Promise<BookingRequest> {
 /**
  * Ask to move an appointment.
  *
- * This does **not** move it. The request goes to a staff queue and the original
- * date keeps its slot until someone approves — the app collects requests, it
- * does not book appointments.
+ * This does **not** move it. The proposal goes to a staff queue and the original
+ * date keeps its slot until someone approves.
+ *
+ * Booking is automatic but moving is not, and the asymmetry is deliberate:
+ * taking a free slot costs the clinic nothing, while vacating one they have
+ * already planned staffing around is a decision they should make.
  *
  * One open request per booking; asking twice returns a 409 rather than queueing
  * a second proposal staff would have to choose between.

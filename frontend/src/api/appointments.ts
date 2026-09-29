@@ -39,7 +39,9 @@ export async function getBookingByReference(
  * with a message written for a patient ("That time was just filled"), which
  * `apiFetch` surfaces as-is.
  *
- * Always comes back `pending`. A submission is a request; staff confirm it.
+ * Comes back `confirmed`. Submitting the form *is* the booking — that lock and
+ * those checks are the whole of what staff confirmation used to mean, and they
+ * have already run by the time this resolves.
  */
 export async function createBooking(
   input: CreateBookingInput,
@@ -50,6 +52,14 @@ export async function createBooking(
   })
 }
 
+/**
+ * Move a booking back to `confirmed`.
+ *
+ * No longer part of the booking flow — nothing arrives needing confirmation.
+ * What it still does is settle a `rescheduled` appointment once the clinic and
+ * the patient have agreed on the new time, and accept the handful of `pending`
+ * rows that predate auto-acceptance. No screen calls it today.
+ */
 export async function confirmBooking(id: string): Promise<BookingRequest> {
   return apiFetch<BookingRequest>(`/bookings/${id}/confirm`, { method: 'POST' })
 }
