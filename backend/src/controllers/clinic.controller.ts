@@ -50,7 +50,20 @@ const operatingHoursSchema = z
   // Mirrors the table's own constraint. Catching it here turns a raw check
   // violation into a sentence someone can act on.
   .superRefine((rows, ctx) => {
+    const seen = new Set<string>()
+
     for (const [i, row] of rows.entries()) {
+      // A repeated day would make the upsert touch one row twice, which
+      // Postgres refuses outright.
+      if (seen.has(row.key)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [i],
+          message: `${row.label} appears more than once.`,
+        })
+      }
+      seen.add(row.key)
+
       if (row.closed && (row.opensAt || row.closesAt)) {
         ctx.addIssue({
           code: 'custom',
@@ -135,37 +148,27 @@ export async function getOperatingHours(_req: Request, res: Response) {
  *
  * A whole-table replace, because the UI edits the grid as one thing and a
  * per-row PATCH would let a half-saved week exist. Rows absent from the payload
- * are deleted — that is what makes "remove the Saturday row" expressible.
+ * are deleted — that is what makes "remove the Saturday row" expressible, and
+ * an empty payload clears the grid.
+ *
+ * The delete and the upsert run in one transaction inside
+ * `replace_operating_hours`, so a failure part-way leaves the week as it was.
  */
 export async function replaceOperatingHours(req: Request, res: Response) {
   const rows = parseBody(operatingHoursSchema, req.body)
-  const db = getSupabaseClient()
 
-  const keys = rows.map((r) => r.key)
-
-  if (keys.length > 0) {
-    const { error } = await db
-      .from('operating_hours')
-      .delete()
-      .not('key', 'in', `(${keys.join(',')})`)
-
-    if (error) throw error
-  }
-
-  const { error: upsertError } = await db.from('operating_hours').upsert(
-    rows.map((r) => ({
-      key: r.key,
-      label: r.label,
-      opens_at: r.opensAt,
-      closes_at: r.closesAt,
-      closed: r.closed,
-    })),
-    { onConflict: 'key' },
+  const saved = unwrapList(
+    await getSupabaseClient().rpc('replace_operating_hours', {
+      p_rows: rows.map((r) => ({
+        key: r.key,
+        label: r.label,
+        opens_at: r.opensAt,
+        closes_at: r.closesAt,
+        closed: r.closed,
+      })),
+    }),
   )
 
-  if (upsertError) throw upsertError
-
-  const saved = unwrapList(await db.from('operating_hours').select('*'))
   res.json(saved.map(toOperatingHours))
 }
 

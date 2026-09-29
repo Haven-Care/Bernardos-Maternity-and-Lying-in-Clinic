@@ -815,6 +815,25 @@ export type Database = {
       }
     }
     Functions: {
+      approve_reschedule_request: {
+        Args: { p_actor: string; p_request_id: string }
+        Returns: {
+          booking_id: string
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          proposed_date: string
+          proposed_time: string
+          requested_at: string
+          status: Database["public"]["Enums"]["reschedule_request_status"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "reschedule_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       assert_rls_posture: { Args: never; Returns: undefined }
       book_appointment: {
         Args: {
@@ -907,6 +926,53 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "medicine_batches"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      replace_operating_hours: {
+        Args: { p_rows: Json }
+        Returns: {
+          closed: boolean
+          closes_at: string | null
+          key: Database["public"]["Enums"]["operating_hours_key"]
+          label: string
+          opens_at: string | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "operating_hours"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      reschedule_appointment: {
+        Args: {
+          p_booking_id: string
+          p_scheduled_date: string
+          p_slot_time: unknown
+        }
+        Returns: {
+          account_id: string | null
+          contact_number: string
+          email: string
+          id: string
+          patient_id: string | null
+          patient_name: string
+          reason_for_visit: string
+          reference_no: string
+          scheduled_date: string
+          service_id: string
+          service_name: string
+          slot_time: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          submitted_at: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "appointments"
           isOneToOne: true
           isSetofReturn: false
         }

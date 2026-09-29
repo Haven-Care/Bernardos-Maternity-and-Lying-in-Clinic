@@ -1,11 +1,10 @@
 import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
-import { unwrap, unwrapList } from '../lib/db.js'
+import { dbError, unwrap, unwrapList } from '../lib/db.js'
 import { parseBody } from '../lib/validate.js'
 import { HttpError } from '../middleware/errorHandler.js'
 import { toRescheduleRequest } from '../mappers/appointment.js'
-import { applyReschedule } from './appointments.controller.js'
 
 /**
  * The staff side of patient-initiated reschedules.
@@ -64,27 +63,32 @@ async function openRequest(id: string) {
  * The booking is moved first. If that fails the request stays open, which is
  * the right way round: a request marked approved against a booking that never
  * moved would tell staff a job was done that was not.
+ *
+ * Both steps run inside `approve_reschedule_request`, one transaction that
+ * locks the request row first. Two staff approving at the same moment are
+ * serialised there, and the second is told the request was already approved
+ * rather than moving the booking twice.
  */
 export async function approveRescheduleRequest(req: Request, res: Response) {
   const id = parseBody(idSchema, req.params.id)
-  const request = await openRequest(id)
+  const db = getSupabaseClient()
 
-  await applyReschedule(
-    request.booking_id,
-    request.proposed_date,
-    request.proposed_time,
-  )
+  if (!req.staff) {
+    throw new HttpError(500, 'Staff route mounted without requireStaff')
+  }
+
+  const { error } = await db.rpc('approve_reschedule_request', {
+    p_request_id: id,
+    p_actor: req.staff.userId,
+  })
+
+  if (error) throw dbError(error)
 
   const row = unwrap(
-    await getSupabaseClient()
+    await db
       .from('reschedule_requests')
-      .update({
-        status: 'approved',
-        decided_at: new Date().toISOString(),
-        decided_by: req.staff?.userId ?? null,
-      })
-      .eq('id', id)
       .select('*, appointments(*)')
+      .eq('id', id)
       .single(),
   )
 

@@ -13,9 +13,17 @@ const serviceInputSchema = z.object({
 
 // PATCH carries either a full edit or just the active toggle, so every field is
 // optional — but an empty body is a mistake, not a no-op.
+//
+// `category` is redeclared without its default. Zod applies a default even
+// inside .partial(), so `{ active: false }` would otherwise parse with
+// `category: ''` and wipe the stored category — and the empty-body check below
+// would never fire, because the default always supplies a key.
 const servicePatchSchema = serviceInputSchema
   .partial()
-  .extend({ active: z.boolean().optional() })
+  .extend({
+    category: z.string().trim().optional(),
+    active: z.boolean().optional(),
+  })
   .refine((v) => Object.keys(v).length > 0, 'Nothing to update.')
 
 const idSchema = z.string().uuid('Not a valid service id.')

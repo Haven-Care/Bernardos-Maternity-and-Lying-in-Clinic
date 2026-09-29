@@ -2,7 +2,7 @@ import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
 import { unwrap, unwrapList } from '../lib/db.js'
-import { parseBody, parseQuery } from '../lib/validate.js'
+import { isoDate, parseBody, parseQuery } from '../lib/validate.js'
 import { toSlot, toSlotAvailability } from '../mappers/clinic.js'
 
 const WEEKDAYS = [
@@ -37,9 +37,7 @@ const listQuerySchema = z.object({
 })
 
 const availabilityQuerySchema = z.object({
-  date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must look like 2026-09-21.'),
+  date: isoDate('Date must look like 2026-09-21.'),
 })
 
 /**

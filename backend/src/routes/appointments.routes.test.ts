@@ -403,6 +403,140 @@ describe.skipIf(!up)('bookings', () => {
         free.body.find((s: { time: string }) => s.time === '09:00').available,
       ).toBe(true)
     })
+
+    it('closes the open reschedule request on the cancelled booking', async () => {
+      const booking = await request(app)
+        .post('/api/bookings')
+        .set(asAlice())
+        .send({
+          serviceId,
+          scheduledDate: await clinicDate(10),
+          slotTime: '10:00',
+          reasonForVisit: 'Cancel with a request open',
+        })
+        .expect(201)
+
+      const filed = await request(app)
+        .post(`/api/me/bookings/${booking.body.id}/reschedule-request`)
+        .set(asAlice())
+        .send({ proposedDate: await clinicDate(11), proposedTime: '10:00' })
+        .expect(201)
+
+      await request(app)
+        .delete(`/api/me/bookings/${booking.body.id}`)
+        .set(asAlice())
+        .expect(200)
+
+      // Left pending, it would sit in the staff queue and the Urgent Alerts
+      // count for an appointment that no longer exists.
+      const queue = await request(app)
+        .get('/api/reschedule-requests')
+        .set(asStaff())
+        .expect(200)
+
+      expect(
+        queue.body.find((r: { id: string }) => r.id === filed.body.id),
+      ).toBeUndefined()
+
+      const declined = await request(app)
+        .get('/api/reschedule-requests?status=declined')
+        .set(asStaff())
+        .expect(200)
+
+      expect(
+        declined.body.find((r: { id: string }) => r.id === filed.body.id),
+      ).toBeDefined()
+    })
+  })
+
+  describe('dates', () => {
+    it('400s a date that does not exist instead of failing in Postgres', async () => {
+      const res = await request(app)
+        .post('/api/bookings')
+        .set(asBob())
+        .send({
+          serviceId,
+          scheduledDate: '2026-02-30',
+          slotTime: '08:00',
+          reasonForVisit: '',
+        })
+
+      expect(res.status).toBe(400)
+      expect(res.body.error).toMatch(/does not exist/)
+
+      await request(app).get('/api/slots/availability?date=2026-02-30').expect(400)
+    })
+
+    it('refuses to move a booking into the past, from either side', async () => {
+      const booking = await request(app)
+        .post('/api/bookings')
+        .set(asBob())
+        .send({
+          serviceId,
+          scheduledDate: await clinicDate(12),
+          slotTime: '10:00',
+          reasonForVisit: 'Past-date reschedule',
+        })
+        .expect(201)
+
+      const byStaff = await request(app)
+        .patch(`/api/bookings/${booking.body.id}/reschedule`)
+        .set(asStaff())
+        .send({ scheduledDate: '2020-01-06', slotTime: '08:00' })
+
+      expect(byStaff.status).toBe(400)
+      expect(byStaff.body.error).toMatch(/already passed/)
+
+      const byPatient = await request(app)
+        .post(`/api/me/bookings/${booking.body.id}/reschedule-request`)
+        .set(asBob())
+        .send({ proposedDate: '2020-01-06', proposedTime: '08:00' })
+
+      expect(byPatient.status).toBe(400)
+      expect(byPatient.body.error).toMatch(/already passed/)
+    })
+
+    it('cannot overbook a slot with a reschedule racing new bookings', async () => {
+      // 09:00 on a weekday has one seat. A staff reschedule and several new
+      // bookings all aim at it at once; the shared advisory lock must let
+      // exactly one through.
+      const date = await clinicDate(13)
+
+      const moving = await request(app)
+        .post('/api/bookings')
+        .set(asBob())
+        .send({
+          serviceId,
+          scheduledDate: await clinicDate(14),
+          slotTime: '10:00',
+          reasonForVisit: 'Will be moved',
+        })
+        .expect(201)
+
+      const attempts = await Promise.all([
+        request(app)
+          .patch(`/api/bookings/${moving.body.id}/reschedule`)
+          .set(asStaff())
+          .send({ scheduledDate: date, slotTime: '09:00' }),
+        ...Array.from({ length: 5 }, () =>
+          request(app)
+            .post('/api/bookings')
+            .set(asAlice())
+            .send({ serviceId, scheduledDate: date, slotTime: '09:00', reasonForVisit: 'Race' }),
+        ),
+      ])
+
+      expect(attempts.filter((r) => r.status === 200 || r.status === 201)).toHaveLength(1)
+      expect(attempts.filter((r) => r.status === 409)).toHaveLength(5)
+
+      const availability = await request(app)
+        .get(`/api/slots/availability?date=${date}`)
+        .expect(200)
+
+      expect(
+        availability.body.find((s: { time: string }) => s.time === '09:00').booked,
+      ).toBe(1)
+    })
   })
 
   describe('reschedule is a request, not a move', () => {
@@ -610,6 +744,26 @@ describe.skipIf(!up)('bookings', () => {
         .expect(200)
 
       expect(found.body.id).toBe(bookingId)
+
+      // Case-insensitive through upper-casing, not through ilike.
+      await request(app)
+        .get(`/api/bookings/reference/${booking.body.referenceNo.toLowerCase()}`)
+        .set(asStaff())
+        .expect(200)
+    })
+
+    it('treats % and _ in a reference literally', async () => {
+      // With ilike, BR-% matched every booking, maybeSingle() errored on the
+      // many rows, and the lookup became a 500.
+      await request(app)
+        .get(`/api/bookings/reference/${encodeURIComponent('BR-%')}`)
+        .set(asStaff())
+        .expect(404)
+
+      await request(app)
+        .get('/api/bookings/reference/BR-____')
+        .set(asStaff())
+        .expect(404)
     })
   })
 })

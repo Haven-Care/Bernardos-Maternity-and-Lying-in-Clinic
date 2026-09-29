@@ -111,6 +111,44 @@ describe.skipIf(!up)('patients and documents', () => {
       })
     })
 
+    it('leaves fields a PATCH does not mention alone', async () => {
+      const created = await request(app)
+        .post('/api/patients')
+        .set(auth())
+        .send({
+          fullName: 'Partial Edit',
+          allergies: 'Penicillin',
+          bloodType: 'A+',
+          gravida: 3,
+          attendingPhysician: 'Dr. Reyes',
+        })
+        .expect(201)
+
+      const updated = await request(app)
+        .patch(`/api/patients/${created.body.id}`)
+        .set(auth())
+        .send({ contactNumber: '0917 555 0000' })
+        .expect(200)
+
+      // The create defaults used to apply here too, so this body wiped the
+      // clinical fields to blank.
+      expect(updated.body).toMatchObject({
+        contactNumber: '0917 555 0000',
+        allergies: 'Penicillin',
+        bloodType: 'A+',
+        gravida: 3,
+        attendingPhysician: 'Dr. Reyes',
+      })
+    })
+
+    it('400s an impossible date of birth', async () => {
+      await request(app)
+        .post('/api/patients')
+        .set(auth())
+        .send({ fullName: 'Bad Date', dateOfBirth: '1990-02-30' })
+        .expect(400)
+    })
+
     it('404s an unknown patient and 400s a malformed id', async () => {
       await request(app)
         .get('/api/patients/11111111-1111-4111-8111-111111111111')

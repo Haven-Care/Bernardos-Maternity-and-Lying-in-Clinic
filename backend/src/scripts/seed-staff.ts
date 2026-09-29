@@ -42,9 +42,16 @@ const STAFF = [
 async function main() {
   const password = process.env.SEED_STAFF_PASSWORD ?? DEV_PASSWORD
 
-  if (env.nodeEnv === 'production' && !process.env.SEED_STAFF_PASSWORD) {
+  // Decided by where the accounts are going, not only by NODE_ENV — which
+  // defaults to development, so an unset value would otherwise let this create
+  // a confirmed administrator on a hosted project with a password printed in
+  // this repository.
+  const { hostname } = new URL(env.supabaseUrl)
+  const isLocal = ['localhost', '127.0.0.1', '[::1]'].includes(hostname)
+
+  if (!process.env.SEED_STAFF_PASSWORD && (env.nodeEnv === 'production' || !isLocal)) {
     throw new Error(
-      'Refusing to seed production staff with the built-in development ' +
+      'Refusing to seed a non-local project with the built-in development ' +
         'password. Set SEED_STAFF_PASSWORD.',
     )
   }

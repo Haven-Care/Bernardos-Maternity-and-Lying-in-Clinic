@@ -202,6 +202,46 @@ describe.skipIf(!up)('inventory', () => {
       expect(batches.body).toHaveLength(1)
     })
 
+    it('refuses a top-up whose expiry differs from the batch on file', async () => {
+      const res = await request(app)
+        .post('/api/inventory/stock-in')
+        .set(auth())
+        .send({
+          medicineId,
+          batchNo: 'T-001',
+          quantity: 10,
+          expiresAt: '2028-06-30',
+          note: 'Wrong lot number',
+        })
+
+      expect(res.status).toBe(409)
+      expect(res.body.error).toMatch(/different expiry/)
+
+      const batches = await request(app)
+        .get(`/api/inventory/medicines/${medicineId}/batches`)
+        .set(auth())
+        .expect(200)
+
+      // Nothing was added under the old date.
+      expect(batches.body[0].quantity).toBe(150)
+    })
+
+    it('leaves fields a PATCH does not mention alone', async () => {
+      const updated = await request(app)
+        .patch(`/api/inventory/medicines/${medicineId}`)
+        .set(auth())
+        .send({ storageLocation: 'Cabinet B' })
+        .expect(200)
+
+      // reorderLevel used to reset to 0 here, which changes what is Low Stock.
+      expect(updated.body).toMatchObject({
+        storageLocation: 'Cabinet B',
+        reorderLevel: 50,
+        brandName: 'Testamol',
+        dosage: '100mg',
+      })
+    })
+
     it('records who dispensed what', async () => {
       const batches = await request(app)
         .get(`/api/inventory/medicines/${medicineId}/batches`)

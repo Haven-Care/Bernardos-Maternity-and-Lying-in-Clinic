@@ -1,8 +1,8 @@
 import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
-import { dbError, unwrap, unwrapList } from '../lib/db.js'
-import { parseBody } from '../lib/validate.js'
+import { dbError, definedOnly, unwrap, unwrapList } from '../lib/db.js'
+import { isoDate, parseBody } from '../lib/validate.js'
 import { HttpError } from '../middleware/errorHandler.js'
 import {
   daysBetween,
@@ -12,7 +12,6 @@ import {
   toMovement,
 } from '../mappers/inventory.js'
 
-const DATE = /^\d{4}-\d{2}-\d{2}$/
 const idSchema = z.string().uuid('Not a valid id.')
 
 const medicineSchema = z.object({
@@ -31,6 +30,27 @@ const medicineSchema = z.object({
   supplierContact: z.string().trim().default(''),
   storageLocation: z.string().trim().default(''),
 })
+
+// PATCH validates only what it is sent and applies none of the create
+// defaults: an edit that omits `reorderLevel` must not reset it to 0, which
+// would quietly change what counts as Low Stock.
+const medicinePatchSchema = z
+  .object({
+    genericName: z.string().trim().min(1, 'Generic name is required.'),
+    brandName: z.string().trim(),
+    category: z.string().trim(),
+    dosageForm: z.enum(['Tablet', 'Capsule', 'Syrup', 'Injection', 'Ointment']),
+    dosage: z.string().trim(),
+    unit: z.string().trim(),
+    reorderLevel: z.number().int().min(0),
+    unitCost: z.number().min(0),
+    sellingPrice: z.number().min(0),
+    supplierName: z.string().trim(),
+    supplierContact: z.string().trim(),
+    storageLocation: z.string().trim(),
+  })
+  .partial()
+  .refine((v) => Object.keys(v).length > 0, 'Nothing to update.')
 
 function toRow(input: z.infer<typeof medicineSchema>) {
   return {
@@ -243,12 +263,14 @@ export async function createMedicine(req: Request, res: Response) {
 
 export async function updateMedicine(req: Request, res: Response) {
   const id = parseBody(idSchema, req.params.id)
-  const input = parseBody(medicineSchema, req.body)
+  const input = parseBody(medicinePatchSchema, req.body)
 
   const updated = unwrap(
     await getSupabaseClient()
       .from('medicines')
-      .update(toRow(input))
+      // The cast lets the partial body through the full mapper; the keys it
+      // did not carry come out undefined and definedOnly drops them.
+      .update(definedOnly(toRow(input as z.infer<typeof medicineSchema>)))
       .eq('id', id)
       .select('id')
       .maybeSingle(),
@@ -270,7 +292,7 @@ const stockInSchema = z.object({
   medicineId: z.string().uuid('Choose a medicine.'),
   batchNo: z.string().trim().min(1, 'A batch or lot number is required.'),
   quantity: z.number().int().positive('Quantity must be at least 1.'),
-  expiresAt: z.string().regex(DATE, 'Enter an expiry date.'),
+  expiresAt: isoDate('Enter an expiry date.'),
   note: z.string().trim().default(''),
 })
 

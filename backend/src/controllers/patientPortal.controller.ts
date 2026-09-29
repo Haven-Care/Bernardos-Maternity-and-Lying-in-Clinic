@@ -2,13 +2,14 @@ import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
 import { dbError, unwrap, unwrapList } from '../lib/db.js'
-import { parseBody } from '../lib/validate.js'
+import { isoDate, parseBody } from '../lib/validate.js'
 import { HttpError } from '../middleware/errorHandler.js'
 import {
   toBooking,
   toPatientAccount,
   toRescheduleRequest,
 } from '../mappers/appointment.js'
+import { declineOpenRescheduleRequest } from './appointments.controller.js'
 
 /**
  * The patient's own view of their bookings.
@@ -24,7 +25,6 @@ import {
  */
 
 const TIME = /^([01][0-9]|2[0-3]):[0-5][0-9]$/
-const DATE = /^\d{4}-\d{2}-\d{2}$/
 const idSchema = z.string().uuid('Not a valid booking id.')
 
 function account(req: Request) {
@@ -124,7 +124,7 @@ export async function listMyBookings(req: Request, res: Response) {
 
 const createBookingSchema = z.object({
   serviceId: z.string().uuid('Choose a service.'),
-  scheduledDate: z.string().regex(DATE, 'Choose a date.'),
+  scheduledDate: isoDate('Choose a date.'),
   slotTime: z.string().regex(TIME, 'Choose a time.'),
   reasonForVisit: z.string().trim().default(''),
   // Optional overrides. The account already knows these, but the booking form
@@ -204,11 +204,12 @@ export async function cancelMyBooking(req: Request, res: Response) {
       .single(),
   )
 
+  await declineOpenRescheduleRequest(id)
   res.json(toBooking(row))
 }
 
 const requestRescheduleSchema = z.object({
-  proposedDate: z.string().regex(DATE, 'Choose a date.'),
+  proposedDate: isoDate('Choose a date.'),
   proposedTime: z.string().regex(TIME, 'Choose a time.'),
 })
 
@@ -242,6 +243,18 @@ export async function requestReschedule(req: Request, res: Response) {
   }
 
   const db = getSupabaseClient()
+
+  // clinic_today() rather than the server clock, the same "today" that
+  // book_appointment and reschedule_appointment refuse past dates against.
+  const today = await db.rpc('clinic_today')
+  if (today.error) throw dbError(today.error)
+
+  if (input.proposedDate < today.data) {
+    throw new HttpError(
+      400,
+      'That date has already passed. Please choose another one.',
+    )
+  }
 
   // Checked before the request is filed, so a patient is told now rather than
   // waiting for staff to decline something that was never possible. Staff still

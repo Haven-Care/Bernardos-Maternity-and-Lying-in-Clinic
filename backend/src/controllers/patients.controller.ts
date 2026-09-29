@@ -1,16 +1,14 @@
 import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
-import { unwrap, unwrapList } from '../lib/db.js'
-import { parseBody } from '../lib/validate.js'
+import { definedOnly, unwrap, unwrapList } from '../lib/db.js'
+import { isoDate, parseBody } from '../lib/validate.js'
 import { HttpError } from '../middleware/errorHandler.js'
 import {
   toPatient,
   toPatientDocument,
   toPatientListRow,
 } from '../mappers/patient.js'
-
-const DATE = /^\d{4}-\d{2}-\d{2}$/
 
 const idSchema = z.string().uuid('Not a valid patient id.')
 
@@ -22,47 +20,82 @@ const idSchema = z.string().uuid('Not a valid patient id.')
  * and an email and nothing more — staff complete the clinical fields at the
  * visit. A form that demanded a blood type would make that impossible.
  */
-const patientSchema = z.object({
+const patientFields = z.object({
   fullName: z.string().trim().min(1, 'Full name is required.'),
-  dateOfBirth: z.string().regex(DATE).nullable().default(null),
-  sex: z.enum(['male', 'female']).nullable().default(null),
-  civilStatus: z
-    .enum(['single', 'married', 'widowed', 'separated'])
-    .nullable()
-    .default(null),
-  contactNumber: z.string().trim().default(''),
-  email: z.string().trim().default(''),
-  address: z.string().trim().default(''),
-  occupation: z.string().trim().default(''),
+  dateOfBirth: isoDate().nullable(),
+  sex: z.enum(['male', 'female']).nullable(),
+  civilStatus: z.enum(['single', 'married', 'widowed', 'separated']).nullable(),
+  contactNumber: z.string().trim(),
+  email: z.string().trim(),
+  address: z.string().trim(),
+  occupation: z.string().trim(),
   bloodType: z
     .enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'])
-    .nullable()
-    .default(null),
-  emergencyContactName: z.string().trim().default(''),
-  emergencyContactNumber: z.string().trim().default(''),
-  emergencyContactRelation: z.string().trim().default(''),
+    .nullable(),
+  emergencyContactName: z.string().trim(),
+  emergencyContactNumber: z.string().trim(),
+  emergencyContactRelation: z.string().trim(),
 
-  lastMenstrualPeriod: z.string().regex(DATE).nullable().default(null),
-  expectedDeliveryDate: z.string().regex(DATE).nullable().default(null),
-  gravida: z.number().int().min(0).nullable().default(null),
-  para: z.number().int().min(0).nullable().default(null),
-  attendingPhysician: z.string().trim().default(''),
-  allergies: z.string().trim().default(''),
-  medicalConditions: z.string().trim().default(''),
-  visitType: z
-    .enum(['prenatal', 'delivery', 'postnatal'])
-    .nullable()
-    .default(null),
+  lastMenstrualPeriod: isoDate().nullable(),
+  expectedDeliveryDate: isoDate().nullable(),
+  gravida: z.number().int().min(0).nullable(),
+  para: z.number().int().min(0).nullable(),
+  attendingPhysician: z.string().trim(),
+  allergies: z.string().trim(),
+  medicalConditions: z.string().trim(),
+  visitType: z.enum(['prenatal', 'delivery', 'postnatal']).nullable(),
 })
-  // Mirrors the table constraint. A woman cannot have given birth more times
-  // than she has been pregnant, and catching it here names the problem instead
-  // of returning a check violation.
-  .refine(
-    (v) => v.gravida === null || v.para === null || v.para <= v.gravida,
-    { message: 'Para cannot be greater than gravida.', path: ['para'] },
-  )
 
-function toRow(input: z.infer<typeof patientSchema>) {
+type PatientFields = z.infer<typeof patientFields>
+type PatientInput = Partial<PatientFields>
+
+/**
+ * What a new record holds for anything the form left out. Applied on create
+ * only: a PATCH that omits a field must leave the stored value alone, not reset
+ * it to blank — omitting `allergies` from an edit must never erase them.
+ */
+const CREATE_DEFAULTS: Omit<PatientFields, 'fullName'> = {
+  dateOfBirth: null,
+  sex: null,
+  civilStatus: null,
+  contactNumber: '',
+  email: '',
+  address: '',
+  occupation: '',
+  bloodType: null,
+  emergencyContactName: '',
+  emergencyContactNumber: '',
+  emergencyContactRelation: '',
+  lastMenstrualPeriod: null,
+  expectedDeliveryDate: null,
+  gravida: null,
+  para: null,
+  attendingPhysician: '',
+  allergies: '',
+  medicalConditions: '',
+  visitType: null,
+}
+
+// Mirrors the table constraint. A woman cannot have given birth more times
+// than she has been pregnant, and catching it here names the problem instead
+// of returning a check violation. On a partial edit it can only be checked
+// when both are sent; the table constraint covers the rest.
+const paraWithinGravida = (v: PatientInput) =>
+  v.gravida == null || v.para == null || v.para <= v.gravida
+
+const PARA_ISSUE = { message: 'Para cannot be greater than gravida.', path: ['para'] }
+
+const patientCreateSchema = patientFields
+  .partial()
+  .required({ fullName: true })
+  .refine(paraWithinGravida, PARA_ISSUE)
+
+const patientPatchSchema = patientFields
+  .partial()
+  .refine((v) => Object.keys(v).length > 0, 'Nothing to update.')
+  .refine(paraWithinGravida, PARA_ISSUE)
+
+function toRow(input: PatientFields) {
   return {
     full_name: input.fullName,
     date_of_birth: input.dateOfBirth,
@@ -125,12 +158,12 @@ export async function getPatient(req: Request, res: Response) {
 }
 
 export async function createPatient(req: Request, res: Response) {
-  const input = parseBody(patientSchema, req.body)
+  const input = parseBody(patientCreateSchema, req.body)
 
   const row = unwrap(
     await getSupabaseClient()
       .from('patients')
-      .insert(toRow(input))
+      .insert(toRow({ ...CREATE_DEFAULTS, ...input }))
       .select('*')
       .single(),
   )
@@ -142,12 +175,14 @@ export async function createPatient(req: Request, res: Response) {
 
 export async function updatePatient(req: Request, res: Response) {
   const id = parseBody(idSchema, req.params.id)
-  const input = parseBody(patientSchema, req.body)
+  const input = parseBody(patientPatchSchema, req.body)
 
   const row = unwrap(
     await getSupabaseClient()
       .from('patients')
-      .update(toRow(input))
+      // The cast lets the partial body through the full mapper; the keys it
+      // did not carry come out undefined and definedOnly drops them.
+      .update(definedOnly(toRow(input as PatientFields)))
       .eq('id', id)
       .select('*')
       .maybeSingle(),

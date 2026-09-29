@@ -47,6 +47,18 @@ begin
   -- "double-booking is structurally impossible" is the strongest claim in the
   -- pitch. The lock is held to the end of the transaction and costs nothing
   -- when nobody is competing for the same slot.
+  --
+  -- The slot lock alone does not protect the day-wide ceiling: two bookings
+  -- for different times on the same date take different slot locks and could
+  -- both pass the daily count. So when a ceiling is set, the date is locked
+  -- too — always date first, then slot, here and in reschedule_appointment,
+  -- so the two can never wait on each other in opposite orders.
+  select daily_booking_capacity into v_daily_cap from clinic_settings where id = 1;
+
+  if v_daily_cap is not null then
+    perform pg_advisory_xact_lock(hashtext('day ' || p_scheduled_date::text)::bigint);
+  end if;
+
   perform pg_advisory_xact_lock(
     hashtext(p_scheduled_date::text || ' ' || p_slot_time)::bigint
   );
@@ -93,9 +105,8 @@ begin
   end if;
 
   -- The day-wide ceiling from the pitch deck, separate from per-slot capacity:
-  -- a day can fill before any single slot does. Null today, so dormant.
-  select daily_booking_capacity into v_daily_cap from clinic_settings where id = 1;
-
+  -- a day can fill before any single slot does. Null today, so dormant. Read
+  -- above, before the locks, because it decides whether the date is locked.
   if v_daily_cap is not null then
     select count(*) into v_on_date
     from appointments
@@ -149,6 +160,191 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
+-- Move a booking to another date and time.
+--
+-- Shared by the staff reschedule modal and the approval of a patient's
+-- request. It takes the same locks as book_appointment, in the same order, so
+-- a reschedule and a new booking into the last seat of a slot are serialised
+-- against each other rather than both passing the count.
+--
+-- The booking itself is excluded from every count: moving 08:00 to 08:00, or
+-- to another time on the same day, must not report the slot or the day as
+-- full against itself.
+-- ---------------------------------------------------------------------------
+create function reschedule_appointment(
+  p_booking_id uuid,
+  p_scheduled_date date,
+  p_slot_time clock_time
+)
+returns appointments
+language plpgsql
+set search_path = public, pg_temp
+as $$
+declare
+  v_booking appointments;
+  v_slot appointment_slots;
+  v_booked integer;
+  v_on_date integer;
+  v_daily_cap integer;
+begin
+  select daily_booking_capacity into v_daily_cap from clinic_settings where id = 1;
+
+  if v_daily_cap is not null then
+    perform pg_advisory_xact_lock(hashtext('day ' || p_scheduled_date::text)::bigint);
+  end if;
+
+  perform pg_advisory_xact_lock(
+    hashtext(p_scheduled_date::text || ' ' || p_slot_time)::bigint
+  );
+
+  select * into v_booking from appointments where id = p_booking_id for update;
+
+  if not found then
+    raise exception 'No such booking.' using errcode = 'HC404';
+  end if;
+
+  if v_booking.status in ('cancelled', 'completed') then
+    raise exception 'A % appointment cannot be rescheduled.', v_booking.status
+      using errcode = 'HC409';
+  end if;
+
+  if p_scheduled_date < clinic_today() then
+    raise exception 'That date has already passed. Please choose another one.'
+      using errcode = 'HC400';
+  end if;
+
+  select * into v_slot
+  from appointment_slots
+  where weekday = weekday_of(p_scheduled_date)
+    and slot_time = p_slot_time;
+
+  if not found or not v_slot.is_open then
+    raise exception 'That time is not available on that date.'
+      using errcode = 'HC409';
+  end if;
+
+  select count(*) into v_booked
+  from appointments
+  where scheduled_date = p_scheduled_date
+    and slot_time = p_slot_time
+    and status <> 'cancelled'
+    and id <> p_booking_id;
+
+  if v_booked >= v_slot.capacity then
+    raise exception 'That time is fully booked.' using errcode = 'HC409';
+  end if;
+
+  if v_daily_cap is not null then
+    select count(*) into v_on_date
+    from appointments
+    where scheduled_date = p_scheduled_date
+      and status <> 'cancelled'
+      and id <> p_booking_id;
+
+    if v_on_date >= v_daily_cap then
+      raise exception 'The clinic is fully booked on that day.'
+        using errcode = 'HC409';
+    end if;
+  end if;
+
+  update appointments
+  set scheduled_date = p_scheduled_date,
+      slot_time = p_slot_time,
+      status = 'rescheduled'
+  where id = p_booking_id
+  returning * into v_booking;
+
+  return v_booking;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- Approve a patient's reschedule request.
+--
+-- The request row is locked first, so two members of staff pressing Approve
+-- at the same moment are serialised: the second finds it already approved and
+-- is told so, instead of both moving the booking.
+--
+-- The booking is moved before the request is marked. If the move is refused —
+-- the slot filled while the request sat in the queue — the whole transaction
+-- rolls back and the request stays open, which is the right way round.
+-- ---------------------------------------------------------------------------
+create function approve_reschedule_request(
+  p_request_id uuid,
+  p_actor uuid
+)
+returns reschedule_requests
+language plpgsql
+set search_path = public, pg_temp
+as $$
+declare
+  v_request reschedule_requests;
+begin
+  select * into v_request from reschedule_requests where id = p_request_id for update;
+
+  if not found then
+    raise exception 'No such request.' using errcode = 'HC404';
+  end if;
+
+  if v_request.status <> 'pending' then
+    raise exception 'That request was already %.', v_request.status
+      using errcode = 'HC409';
+  end if;
+
+  perform reschedule_appointment(
+    v_request.booking_id, v_request.proposed_date, v_request.proposed_time
+  );
+
+  update reschedule_requests
+  set status = 'approved', decided_at = now(), decided_by = p_actor
+  where id = p_request_id
+  returning * into v_request;
+
+  return v_request;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- Replace the Operating Hours grid in one transaction.
+--
+-- The UI saves the week as one thing. Done as two requests from Express, a
+-- failed upsert left the delete already applied and the week half-saved —
+-- exactly the state the whole-table replace exists to prevent.
+--
+-- Rows absent from the payload are deleted, including every row when the
+-- payload is empty.
+-- ---------------------------------------------------------------------------
+create function replace_operating_hours(p_rows jsonb)
+returns setof operating_hours
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  delete from operating_hours
+  where key not in (
+    select (r ->> 'key')::operating_hours_key
+    from jsonb_array_elements(p_rows) as r
+  );
+
+  insert into operating_hours (key, label, opens_at, closes_at, closed)
+  select
+    (r ->> 'key')::operating_hours_key,
+    r ->> 'label',
+    r ->> 'opens_at',
+    r ->> 'closes_at',
+    (r ->> 'closed')::boolean
+  from jsonb_array_elements(p_rows) as r
+  on conflict (key) do update
+    set label = excluded.label,
+        opens_at = excluded.opens_at,
+        closes_at = excluded.closes_at,
+        closed = excluded.closed;
+
+  return query select * from operating_hours;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- Record Stock In — creates a batch, or tops up one that already exists.
 --
 -- Expiry is not overwritten on a top-up. Two deliveries sharing a batch number
@@ -177,6 +373,20 @@ begin
 
   if not exists (select 1 from medicines where id = p_medicine_id) then
     raise exception 'That medicine does not exist.' using errcode = 'HC400';
+  end if;
+
+  -- The header's rule, enforced rather than only described: a differing expiry
+  -- is reported instead of quietly filed under the older date.
+  if exists (
+    select 1 from medicine_batches
+    where medicine_id = p_medicine_id
+      and batch_no = p_batch_no
+      and expires_at <> p_expires_at
+  ) then
+    raise exception
+      'Batch % already exists with a different expiry date. Check the batch number.',
+      p_batch_no
+      using errcode = 'HC409';
   end if;
 
   insert into medicine_batches (medicine_id, batch_no, quantity, expires_at)

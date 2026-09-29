@@ -63,6 +63,34 @@ describe.skipIf(!up)('services, slots and clinic', () => {
       expect(ids(asStaff)).toContain(created.body.id)
     })
 
+    it('keeps the category when a PATCH only toggles active', async () => {
+      const created = await request(app)
+        .post('/api/services')
+        .set(auth())
+        .send({ name: 'Category Keeper', category: 'Diagnostic', price: 10 })
+        .expect(201)
+
+      const toggled = await request(app)
+        .patch(`/api/services/${created.body.id}`)
+        .set(auth())
+        .send({ active: false })
+        .expect(200)
+
+      // The create schema's `category` default used to leak into PATCH, so
+      // this body parsed as { active: false, category: '' }.
+      expect(toggled.body.category).toBe('Diagnostic')
+    })
+
+    it('rejects an empty PATCH instead of treating it as a no-op', async () => {
+      const [service] = (await request(app).get('/api/services').expect(200)).body
+
+      await request(app)
+        .patch(`/api/services/${service.id}`)
+        .set(auth())
+        .send({})
+        .expect(400)
+    })
+
     it('refuses writes without a token', async () => {
       await request(app)
         .post('/api/services')
@@ -225,6 +253,24 @@ describe.skipIf(!up)('services, slots and clinic', () => {
         // Null until Administration grows a control for it.
         dailyBookingCapacity: null,
       })
+    })
+
+    it('refuses a day listed twice and leaves the grid as it was', async () => {
+      const before = await request(app).get('/api/clinic/hours').expect(200)
+
+      const res = await request(app)
+        .put('/api/clinic/hours')
+        .set(auth())
+        .send([
+          { key: 'monday', label: 'Monday', opensAt: '08:00', closesAt: '17:00', closed: false },
+          { key: 'monday', label: 'Monday', opensAt: '09:00', closesAt: '17:00', closed: false },
+        ])
+
+      expect(res.status).toBe(400)
+      expect(res.body.error).toMatch(/more than once/)
+
+      const after = await request(app).get('/api/clinic/hours').expect(200)
+      expect(after.body).toEqual(before.body)
     })
 
     it('refuses hours that contradict themselves', async () => {

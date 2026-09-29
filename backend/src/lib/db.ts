@@ -11,11 +11,13 @@ import { HttpError } from '../middleware/errorHandler.js'
  * for patients would never reach them.
  *
  *   HC400  bad request  -> 400
+ *   HC404  not found    -> 404
  *   HC409  conflict     -> 409
  *   PGRST116  no rows from .single()
  */
 export function dbError(error: PostgrestError, fallback = 500): HttpError {
   if (error.code === 'HC400') return new HttpError(400, error.message)
+  if (error.code === 'HC404') return new HttpError(404, error.message)
   if (error.code === 'HC409') return new HttpError(409, error.message)
 
   // Foreign key violation — almost always a reference to something deleted or
@@ -33,6 +35,13 @@ export function dbError(error: PostgrestError, fallback = 500): HttpError {
   // e.g. a negative batch quantity that slipped past validation.
   if (error.code === '23514') {
     return new HttpError(400, 'That value is not allowed.')
+  }
+
+  // Anything unmapped is ours, not the caller's. Postgres messages name tables,
+  // columns and constraints, so they are logged here and never sent back.
+  if (fallback >= 500) {
+    console.error('Database error', error)
+    return new HttpError(fallback, 'Something went wrong. Please try again.')
   }
 
   return new HttpError(fallback, error.message)
@@ -58,6 +67,21 @@ export function unwrap<T>(
   }
 
   return result.data as NonNullable<T>
+}
+
+/**
+ * Drops the keys whose value is `undefined`, for PATCH updates.
+ *
+ * supabase-js serialises the object it is given, so a key present with no
+ * value would still be sent. Removing it means an update writes only the
+ * columns the request actually carried.
+ */
+export function definedOnly<T extends Record<string, unknown>>(
+  row: T,
+): { [K in keyof T]?: Exclude<T[K], undefined> } {
+  return Object.fromEntries(
+    Object.entries(row).filter(([, value]) => value !== undefined),
+  ) as { [K in keyof T]?: Exclude<T[K], undefined> }
 }
 
 /** For list queries, where an empty result is a valid answer and not a 404. */

@@ -2,7 +2,7 @@ import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
 import { dbError, unwrap, unwrapList } from '../lib/db.js'
-import { parseBody } from '../lib/validate.js'
+import { isoDate, parseBody } from '../lib/validate.js'
 import { HttpError } from '../middleware/errorHandler.js'
 import { toBooking } from '../mappers/appointment.js'
 import type { Database } from '../db/types.js'
@@ -11,10 +11,9 @@ type Status = Database['public']['Enums']['appointment_status']
 
 const idSchema = z.string().uuid('Not a valid booking id.')
 const TIME = /^([01][0-9]|2[0-3]):[0-5][0-9]$/
-const DATE = /^\d{4}-\d{2}-\d{2}$/
 
 const rescheduleSchema = z.object({
-  scheduledDate: z.string().regex(DATE, 'Choose a date.'),
+  scheduledDate: isoDate('Choose a date.'),
   slotTime: z.string().regex(TIME, 'Choose a time.'),
 })
 
@@ -56,16 +55,18 @@ export async function getBooking(req: Request, res: Response) {
  * page through the clinic's entire appointment book.
  */
 export async function getBookingByReference(req: Request, res: Response) {
+  // Exact match on the stored upper-case form. `ilike` would read `%` and `_`
+  // as wildcards, so `BR-%` matched every booking and turned into a 500.
   const referenceNo = parseBody(
     z.string().trim().min(1, 'Enter a reference number.'),
     req.params.referenceNo,
-  )
+  ).toUpperCase()
 
   const row = unwrap(
     await getSupabaseClient()
       .from('appointments')
       .select('*')
-      .ilike('reference_no', referenceNo)
+      .eq('reference_no', referenceNo)
       .maybeSingle(),
     `No booking found for ${referenceNo}.`,
   )
@@ -80,12 +81,7 @@ export async function getBookingByReference(req: Request, res: Response) {
  * confirming or completing one would silently resurrect an appointment the
  * patient was told was off.
  */
-async function setStatus(
-  id: string,
-  next: Status,
-  allowedFrom: Status[],
-  res: Response,
-) {
+async function setStatus(id: string, next: Status, allowedFrom: Status[]) {
   const db = getSupabaseClient()
 
   const current = unwrap(
@@ -100,7 +96,7 @@ async function setStatus(
     )
   }
 
-  const row = unwrap(
+  return unwrap(
     await db
       .from('appointments')
       .update({ status: next })
@@ -108,13 +104,28 @@ async function setStatus(
       .select('*')
       .single(),
   )
+}
 
-  res.json(toBooking(row))
+/**
+ * Closes the open reschedule request on a booking that was just cancelled.
+ *
+ * Left pending, it stays in the staff queue and the Urgent Alerts count for an
+ * appointment that no longer exists, and approving it can only fail. Shared
+ * with the patient's own cancel in patientPortal.controller.ts.
+ */
+export async function declineOpenRescheduleRequest(bookingId: string) {
+  const { error } = await getSupabaseClient()
+    .from('reschedule_requests')
+    .update({ status: 'declined', decided_at: new Date().toISOString() })
+    .eq('booking_id', bookingId)
+    .eq('status', 'pending')
+
+  if (error) throw dbError(error)
 }
 
 export async function confirmBooking(req: Request, res: Response) {
   const id = parseBody(idSchema, req.params.id)
-  await setStatus(id, 'confirmed', ['pending', 'rescheduled'], res)
+  res.json(toBooking(await setStatus(id, 'confirmed', ['pending', 'rescheduled'])))
 }
 
 /**
@@ -126,19 +137,25 @@ export async function confirmBooking(req: Request, res: Response) {
  */
 export async function cancelBooking(req: Request, res: Response) {
   const id = parseBody(idSchema, req.params.id)
-  await setStatus(
-    id,
-    'cancelled',
-    ['pending', 'confirmed', 'rescheduled'],
-    res,
-  )
+  const row = await setStatus(id, 'cancelled', [
+    'pending',
+    'confirmed',
+    'rescheduled',
+  ])
+
+  await declineOpenRescheduleRequest(id)
+  res.json(toBooking(row))
 }
 
 export async function completeBooking(req: Request, res: Response) {
   const id = parseBody(idSchema, req.params.id)
   // Completing straight from pending is allowed: a walk-in the clinic saw
   // without ever formally confirming still happened.
-  await setStatus(id, 'completed', ['pending', 'confirmed', 'rescheduled'], res)
+  res.json(
+    toBooking(
+      await setStatus(id, 'completed', ['pending', 'confirmed', 'rescheduled']),
+    ),
+  )
 }
 
 /**
@@ -162,64 +179,26 @@ export async function rescheduleBooking(req: Request, res: Response) {
 }
 
 /**
- * Shared by the staff reschedule modal and the approval of a patient's request,
- * so both enforce the same capacity rule and both land on `rescheduled`.
+ * The staff path to `reschedule_appointment`. Patient requests reach the same
+ * function through `approve_reschedule_request`.
+ *
+ * The status, date and capacity checks and the update all happen in that one
+ * function, under the same advisory locks `book_appointment` takes. Done here
+ * as a read, a check and a write, a new booking could take the last seat
+ * between the check and the write and the slot would end up over capacity.
  */
 export async function applyReschedule(
   bookingId: string,
   date: string,
   time: string,
 ) {
-  const db = getSupabaseClient()
-
-  const booking = unwrap(
-    await db
-      .from('appointments')
-      .select('*')
-      .eq('id', bookingId)
-      .maybeSingle(),
-    'No such booking.',
+  const { data, error } = await getSupabaseClient().rpc(
+    'reschedule_appointment',
+    { p_booking_id: bookingId, p_scheduled_date: date, p_slot_time: time },
   )
-
-  if (booking.status === 'cancelled' || booking.status === 'completed') {
-    throw new HttpError(
-      409,
-      `A ${booking.status} appointment cannot be rescheduled.`,
-    )
-  }
-
-  const { data: slots, error } = await db.rpc('slot_availability', {
-    target_date: date,
-  })
 
   if (error) throw dbError(error)
+  if (!data) throw new HttpError(500, 'Reschedule returned nothing.')
 
-  const slot = slots.find((s) => s.slot_time === time)
-
-  if (!slot || !slot.is_open) {
-    throw new HttpError(409, 'That time is not available on that date.')
-  }
-
-  // The booking itself occupies a seat when it is already on that date and
-  // time, so exclude it before comparing — otherwise moving 08:00 to 08:00
-  // would report the slot as full against itself.
-  const alreadyThere =
-    booking.scheduled_date === date && booking.slot_time === time
-
-  if (!alreadyThere && slot.booked >= slot.capacity) {
-    throw new HttpError(409, 'That time is fully booked.')
-  }
-
-  return unwrap(
-    await db
-      .from('appointments')
-      .update({
-        scheduled_date: date,
-        slot_time: time,
-        status: 'rescheduled',
-      })
-      .eq('id', bookingId)
-      .select('*')
-      .single(),
-  )
+  return data
 }
