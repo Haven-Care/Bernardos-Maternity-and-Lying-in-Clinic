@@ -1,6 +1,8 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import * as api from '../api'
 import { useAsync } from '../hooks/useAsync'
+import { isSessionError } from '../lib/api'
+import { ErrorState } from './ui/states'
 import type { StaffRole } from '../types/account'
 
 /**
@@ -27,6 +29,17 @@ export function RequireStaff({ role }: { role?: StaffRole }) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-gray-400">
         Checking your session…
+      </div>
+    )
+  }
+
+  // A network error or a 5xx says nothing about the session. Sending a valid
+  // member of staff to the login page because the API hiccuped once would lose
+  // their place for no reason, so those stay here with a way to try again.
+  if (profile.error && !isSessionError(profile.error)) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <ErrorState error={profile.error} onRetry={profile.reload} />
       </div>
     )
   }

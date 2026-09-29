@@ -3,6 +3,31 @@ import { getAccessToken } from './supabase'
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api'
 
 /**
+ * A response the API actually sent, with its status.
+ *
+ * Kept distinct from a network failure (a plain `TypeError` from `fetch`) so a
+ * caller can tell "the server says no" from "the server did not answer" —
+ * the route guards redirect on the first and offer a retry on the second.
+ */
+export class ApiError extends Error {
+  status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.status = status
+  }
+}
+
+/**
+ * Whether a failed account lookup means "not signed in here": no or expired
+ * token (401), the wrong realm or a deactivated account (403), no account row
+ * (404). Anything else — the network, a 5xx — says nothing about the session.
+ */
+export function isSessionError(error: unknown): boolean {
+  return error instanceof ApiError && [401, 403, 404].includes(error.status)
+}
+
+/**
  * The one place a request leaves the browser.
  *
  * Attaching the bearer token here rather than at each call site means every
@@ -25,7 +50,7 @@ export async function apiFetch<T>(
   })
 
   if (!res.ok) {
-    throw new Error(await errorMessage(res))
+    throw new ApiError(res.status, await errorMessage(res))
   }
 
   // 204 and other empty responses have no body to parse, and calling .json()

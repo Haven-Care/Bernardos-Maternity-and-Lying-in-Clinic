@@ -34,7 +34,15 @@ export async function login(input: LoginInput): Promise<StaffProfile> {
   // improve on it.
   if (error) throw new Error(error.message)
 
-  return apiFetch<StaffProfile>('/account/me')
+  // GoTrue has already stored a session by now. If Express will not accept it
+  // — a patient on the staff login, a deactivated account, no profile row —
+  // that session has to go too, or every guard after this reads it as signed in.
+  try {
+    return await apiFetch<StaffProfile>('/account/me')
+  } catch (e) {
+    await supabase.auth.signOut()
+    throw e
+  }
 }
 
 export async function logout(): Promise<void> {

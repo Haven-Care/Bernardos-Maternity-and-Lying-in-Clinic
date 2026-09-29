@@ -111,6 +111,25 @@ export function BookingPage() {
     window.scrollTo({ top: 0 })
   }, [step, confirmed])
 
+  // The Details step needs an account, and `continueToDetails` is not the only
+  // way onto it: a restored draft opens there directly. If the session behind
+  // that draft has expired, or the email was never confirmed, park the choices
+  // again and send the patient back through sign-in, rather than leave them on
+  // a form with no email that can only fail on submit.
+  const signedOutOnDetails =
+    step === 2 && !account.loading && !account.data && service !== null
+
+  useEffect(() => {
+    if (!signedOutOnDetails || !service) return
+
+    saveDraftBooking({
+      serviceId: service.id,
+      scheduledDate: schedule.scheduledDate,
+      slotTime: schedule.slotTime,
+    })
+    navigate('/patient/login', { replace: true, state: { from: '/book' } })
+  }, [signedOutOnDetails, service, schedule, navigate])
+
   // Stable so `ScheduleStep`'s auto-select effect doesn't re-fire every render.
   const handleSchedule = useCallback(
     (next: { scheduledDate: string; slotTime: string }) => setSchedule(next),
@@ -222,7 +241,9 @@ export function BookingPage() {
         )}
 
         {current === 2 &&
-          (service ? (
+          // Not until the account is known: the email is read from it, and a
+          // signed-out patient is on their way to sign-in (see above).
+          (service && account.data ? (
             <DetailsStep
               value={contact}
               onChange={(patch) => setEdits((e) => ({ ...e, ...patch }))}
@@ -239,7 +260,8 @@ export function BookingPage() {
               }}
             />
           ) : (
-            // Restoring a draft: the service list is still in flight.
+            // Restoring a draft: the service list or the account is still in
+            // flight.
             <LoadingState label="Picking up where you left off…" />
           ))}
       </div>

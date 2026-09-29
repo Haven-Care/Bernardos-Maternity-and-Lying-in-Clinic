@@ -1,6 +1,8 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import * as api from '../api'
 import { useAsync } from '../hooks/useAsync'
+import { isSessionError } from '../lib/api'
+import { ErrorState } from './ui/states'
 
 /**
  * Route guard for the patient surface.
@@ -23,6 +25,16 @@ export function RequirePatient() {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-gray-400">
         Checking your session…
+      </div>
+    )
+  }
+
+  // Same split as RequireStaff: a network error or a 5xx gets a retry here,
+  // not a trip to the sign-in page for someone who is still signed in.
+  if (account.error && !isSessionError(account.error)) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <ErrorState error={account.error} onRetry={account.reload} />
       </div>
     )
   }

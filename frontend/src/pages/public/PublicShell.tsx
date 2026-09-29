@@ -4,6 +4,7 @@ import * as api from '../../api'
 import { useAsync } from '../../hooks/useAsync'
 import { formatTime } from '../../lib/format'
 import { ConfirmModal } from '../../components/ui/Modal'
+import { useToast } from '../../components/ui/toast-context'
 
 /**
  * Chrome for the patient-facing surface.
@@ -96,6 +97,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
  */
 function PatientNav() {
   const navigate = useNavigate()
+  const toast = useToast()
   const account = useAsync(() => api.patientAuth.getAccount())
   const [confirming, setConfirming] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
@@ -132,6 +134,13 @@ function PatientNav() {
       // state. Reloading is blunt but it is the one thing that cannot leave a
       // stale signed-in fragment on screen after signing out.
       window.location.reload()
+    } catch (err) {
+      // Said out loud: a failed sign-out otherwise just closes the spinner and
+      // leaves the patient believing they are signed out on a shared phone.
+      toast.error(
+        'Could not log out',
+        err instanceof Error ? err.message : 'Please try again.',
+      )
     } finally {
       setLoggingOut(false)
     }
