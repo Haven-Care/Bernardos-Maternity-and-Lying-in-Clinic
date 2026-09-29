@@ -1,0 +1,13 @@
+<!--
+  Password reset. Emits {{ .Token }} — the six-digit code the Verify Code screen
+  asks for — rather than the default {{ .ConfirmationURL }} magic link.
+-->
+<h2>Reset your password</h2>
+
+<p>Enter this code in HavenCare to choose a new password:</p>
+
+<p style="font-size: 28px; letter-spacing: 6px; font-weight: 600;">{{ .Token }}</p>
+
+<p>The code expires in one hour. If you did not ask for it, you can ignore this email — your password will not change.</p>
+
+<p>— Bernardo's Maternity and Lying-in Clinic</p>

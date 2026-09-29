@@ -1,4 +1,11 @@
-import type { DateString, DateTimeString, TimeString } from './common'
+// ---------------------------------------------------------------------------
+// GENERATED — do not edit.
+//
+// Source: frontend/src/types/. Regenerate with `npm run sync:types`.
+// Edit the frontend copy; it is the contract, and this is a mirror of it.
+// ---------------------------------------------------------------------------
+
+import type { DateString, DateTimeString, TimeString } from './common.js'
 
 /**
  * The five statuses in the Booking Requests table and the dashboard's

@@ -54,6 +54,15 @@ jobs:
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
+      # Runs from the repo root, not backend/, and needs no dependencies —
+      # the script uses node builtins only. Fails if backend/src/contract/ has
+      # drifted from frontend/src/types/, which is the one way the two packages
+      # can silently disagree about the API.
+      - name: Check contract is in sync
+        if: steps.detect.outputs.present == 'true'
+        working-directory: .
+        run: npm run sync:types:check
+
       - name: Install dependencies
         if: steps.detect.outputs.present == 'true'
         working-directory: backend
