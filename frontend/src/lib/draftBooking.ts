@@ -12,7 +12,7 @@
  *
  * So: `sessionStorage`, not `localStorage`. It survives the redirect and dies
  * with the tab. A draft is never worth restoring tomorrow — the slot it names
- * may be gone — and it is cleared the moment it is read back.
+ * may be gone — and the wizard clears it as soon as it has read it back.
  */
 const KEY = 'havencare.draft-booking'
 
@@ -31,13 +31,21 @@ export function saveDraftBooking(draft: DraftBooking): void {
   }
 }
 
-/** Reads and clears in one step — a draft is only ever restored once. */
-export function takeDraftBooking(): DraftBooking | null {
+/**
+ * Reads the draft without removing it.
+ *
+ * Pure on purpose: it runs as a `useState` initialiser, which StrictMode calls
+ * twice, and React only promises to keep *one* of the results. A read that also
+ * removed would leave the second call with nothing. The caller clears it with
+ * `clearDraftBooking` once it has been read.
+ *
+ * Anything unreadable is dropped here, since it can never be restored.
+ */
+export function readDraftBooking(): DraftBooking | null {
   try {
     const raw = sessionStorage.getItem(KEY)
     if (!raw) return null
 
-    sessionStorage.removeItem(KEY)
     const parsed: unknown = JSON.parse(raw)
 
     if (
@@ -50,8 +58,10 @@ export function takeDraftBooking(): DraftBooking | null {
       return parsed as DraftBooking
     }
 
+    clearDraftBooking()
     return null
   } catch {
+    clearDraftBooking()
     return null
   }
 }

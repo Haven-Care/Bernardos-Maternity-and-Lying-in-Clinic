@@ -6,7 +6,11 @@ import * as api from '../../api'
 import { useAsync } from '../../hooks/useAsync'
 import { Button } from '../../components/ui/Button'
 import { LoadingState } from '../../components/ui/states'
-import { saveDraftBooking, takeDraftBooking } from '../../lib/draftBooking'
+import {
+  clearDraftBooking,
+  readDraftBooking,
+  saveDraftBooking,
+} from '../../lib/draftBooking'
 import { BookingConfirmed } from './BookingConfirmed'
 import { DetailsStep, type Contact } from './DetailsStep'
 import { PublicShell } from './PublicShell'
@@ -58,8 +62,17 @@ export function BookingPage() {
    * `sessionStorage` is synchronous, so this belongs in a lazy initialiser
    * rather than an effect — the draft is known before the first paint, and the
    * wizard opens on the right step instead of flashing step one and jumping.
+   *
+   * The read is pure and the clear happens in the effect below, because
+   * StrictMode runs initialisers twice. If the session turns out to be gone,
+   * the re-gate effect further down parks the choices again — it waits for the
+   * account request, so it always runs after this clear.
    */
-  const [draft] = useState(takeDraftBooking)
+  const [draft] = useState(readDraftBooking)
+
+  useEffect(() => {
+    if (draft) clearDraftBooking()
+  }, [draft])
 
   const [step, setStep] = useState<BookingStep>(draft ? 2 : 0)
   const [picked, setPicked] = useState<Service | null>(null)
