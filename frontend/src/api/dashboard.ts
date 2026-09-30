@@ -1,6 +1,7 @@
 import type {
   AppNotification,
   AppointmentsOverviewSlice,
+  DashboardRange,
   DashboardStats,
   UrgentAlert,
 } from '../types/dashboard'
@@ -14,14 +15,20 @@ import { apiFetch } from './client'
  * stock and these numbers move on the next load.
  */
 
-export async function getStats(): Promise<DashboardStats> {
-  return apiFetch<DashboardStats>('/dashboard/stats')
+/**
+ * The tiles and the pie take the same range. Only the key is sent — the server
+ * works out the dates from the clinic's today, not this browser's clock.
+ */
+export async function getStats(range: DashboardRange): Promise<DashboardStats> {
+  return apiFetch<DashboardStats>(`/dashboard/stats?range=${range}`)
 }
 
-export async function getAppointmentsOverview(): Promise<
-  AppointmentsOverviewSlice[]
-> {
-  return apiFetch<AppointmentsOverviewSlice[]>('/dashboard/appointments-overview')
+export async function getAppointmentsOverview(
+  range: DashboardRange,
+): Promise<AppointmentsOverviewSlice[]> {
+  return apiFetch<AppointmentsOverviewSlice[]>(
+    `/dashboard/appointments-overview?range=${range}`,
+  )
 }
 
 /**

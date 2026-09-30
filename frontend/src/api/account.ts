@@ -149,12 +149,6 @@ export async function getNotificationPrefs(): Promise<NotificationPrefs> {
   return apiFetch<NotificationPrefs>('/account/notifications')
 }
 
-/**
- * `smsReminders` is stored but nothing acts on it — there is no SMS gateway and
- * Philippine providers bill per message. The toggle ships visibly disabled, so
- * persisting the preference costs nothing and turning it on later changes no
- * code here.
- */
 export async function updateNotificationPrefs(
   input: Partial<NotificationPrefs>,
 ): Promise<NotificationPrefs> {

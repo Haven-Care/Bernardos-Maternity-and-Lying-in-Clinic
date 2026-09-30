@@ -71,7 +71,7 @@ export async function getAccount(): Promise<PatientAccount> {
  * page.
  */
 export async function updateAccount(
-  input: Partial<PatientProfileInput & { emailNotifications: boolean; smsReminders: boolean }>,
+  input: Partial<PatientProfileInput & { emailNotifications: boolean }>,
 ): Promise<PatientAccount> {
   return apiFetch<PatientAccount>('/me/account', {
     method: 'PATCH',
