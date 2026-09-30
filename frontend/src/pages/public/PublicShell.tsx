@@ -154,6 +154,12 @@ function PatientNav() {
       >
         My bookings
       </Link>
+      <Link
+        to="/patient/account"
+        className="text-xs font-medium text-gray-600 transition-colors hover:text-gray-900"
+      >
+        Account
+      </Link>
       <button
         type="button"
         onClick={() => setConfirming(true)}

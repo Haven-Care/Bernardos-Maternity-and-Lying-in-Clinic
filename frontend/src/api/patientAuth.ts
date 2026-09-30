@@ -85,3 +85,13 @@ export async function requestPasswordReset(email: string): Promise<void> {
   )
   if (error) throw new Error(error.message)
 }
+
+/**
+ * Change password from the patient Account page.
+ *
+ * The same round trip as the staff one — re-authenticate with the current
+ * password, then `updateUser` — because both realms are GoTrue users and none
+ * of it goes through Express. Re-exported rather than copied, so a fix to one
+ * is a fix to both.
+ */
+export { changePassword } from './account'

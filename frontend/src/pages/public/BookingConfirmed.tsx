@@ -18,6 +18,10 @@ import { formatDateLong, formatTime } from '../../lib/format'
  *
  * The reference number is what staff ask for on the phone, so it is the largest
  * thing on the screen.
+ *
+ * The summary repeats only what the patient chose or typed. Email is left out:
+ * it comes from the account rather than the form, so showing it back reads as
+ * something they entered and might need to check.
  */
 export function BookingConfirmed({
   booking,
@@ -68,14 +72,14 @@ export function BookingConfirmed({
       </div>
 
       <dl className="mt-5 space-y-2 text-left text-sm">
-        <Row label="Name" value={booking.patientName} />
         <Row label="Service" value={booking.serviceName} />
         <Row
-          label="When"
+          label="Date & time"
           value={`${formatDateLong(booking.scheduledDate)}, ${formatTime(booking.slotTime)}`}
         />
+        <Row label="Name" value={booking.patientName} />
         <Row label="Mobile" value={booking.contactNumber} />
-        <Row label="Email" value={booking.email} />
+        <Row label="Reason for visit" value={booking.reasonForVisit} stacked />
       </dl>
 
       <Button
@@ -89,11 +93,31 @@ export function BookingConfirmed({
   )
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+/**
+ * `stacked` puts the value under its label, for free text: a sentence or two
+ * right-aligned beside the label wraps into a ragged column.
+ */
+function Row({
+  label,
+  value,
+  stacked = false,
+}: {
+  label: string
+  value: string
+  stacked?: boolean
+}) {
   return (
-    <div className="flex justify-between gap-3 border-b border-border pb-2 last:border-0">
+    <div
+      className={`border-b border-border pb-2 last:border-0 ${
+        stacked ? '' : 'flex justify-between gap-3'
+      }`}
+    >
       <dt className="shrink-0 text-gray-500">{label}</dt>
-      <dd className="min-w-0 text-right font-medium break-words text-gray-900">
+      <dd
+        className={`min-w-0 font-medium break-words text-gray-900 ${
+          stacked ? 'mt-1 whitespace-pre-line' : 'text-right'
+        }`}
+      >
         {value}
       </dd>
     </div>

@@ -1,13 +1,22 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import type { BookingRequest, RescheduleRequest } from '../../types/appointment'
 import * as api from '../../api'
 import { useAsync } from '../../hooks/useAsync'
 import { Badge, StatusBadge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { ConfirmModal } from '../../components/ui/Modal'
+import { Tabs } from '../../components/ui/Tabs'
 import { AsyncBoundary, EmptyState } from '../../components/ui/states'
 import { useToast } from '../../components/ui/toast-context'
+import {
+  ACTIONABLE,
+  BOOKING_FILTERS,
+  filterBookings,
+  isBookingFilter,
+  type BookingFilter,
+} from '../../lib/bookings'
+import { isoDate, today } from '../../lib/dates'
 import { formatDateLong, formatTime } from '../../lib/format'
 import { PublicShell } from '../public/PublicShell'
 import { RescheduleRequestModal } from './RescheduleRequestModal'
@@ -25,6 +34,11 @@ import { RescheduleRequestModal } from './RescheduleRequestModal'
 export function MyBookings() {
   const bookings = useAsync(() => api.myBookings.listMyBookings())
   const requests = useAsync(() => api.myBookings.listMyRescheduleRequests())
+
+  // In the query string, like the portal's tabs, so Back and a refresh keep it.
+  const [searchParams] = useSearchParams()
+  const tab = searchParams.get('tab')
+  const filter: BookingFilter = isBookingFilter(tab) ? tab : 'all'
 
   function reload() {
     bookings.reload()
@@ -49,24 +63,22 @@ export function MyBookings() {
       </div>
 
       <div className="mt-4">
+        <Tabs tabs={BOOKING_FILTERS} />
+      </div>
+
+      <div className="mt-4">
         <AsyncBoundary
           state={bookings}
-          empty={
-            <EmptyState
-              title="No bookings yet"
-              description="When you book an appointment it will show up here."
-            />
-          }
+          empty={<EmptyState {...EMPTY.all} />}
         >
-          {(rows) =>
-            rows.length === 0 ? (
-              <EmptyState
-                title="No bookings yet"
-                description="When you book an appointment it will show up here."
-              />
-            ) : (
+          {(rows) => {
+            const shown = filterBookings(rows, filter, isoDate(today()))
+
+            if (shown.length === 0) return <EmptyState {...EMPTY[filter]} />
+
+            return (
               <ul className="flex flex-col gap-3">
-                {rows.map((booking) => (
+                {shown.map((booking) => (
                   <BookingCard
                     key={booking.id}
                     booking={booking}
@@ -81,24 +93,32 @@ export function MyBookings() {
                 ))}
               </ul>
             )
-          }
+          }}
         </AsyncBoundary>
       </div>
     </PublicShell>
   )
 }
 
-/**
- * Which actions a booking still allows.
- *
- * A completed or cancelled visit is history — offering Cancel on it would be
- * offering something the server will refuse.
- *
- * `pending` is kept only for rows created before bookings were accepted on
- * submission. Nothing produces it now, but an old one is still a live
- * appointment its owner may want to drop, and the server will still act on it.
- */
-const ACTIONABLE = new Set(['pending', 'confirmed', 'rescheduled'])
+/** `all` doubles as the message for a patient with no bookings at all. */
+const EMPTY: Record<BookingFilter, { title: string; description: string }> = {
+  all: {
+    title: 'No bookings yet',
+    description: 'When you book an appointment it will show up here.',
+  },
+  upcoming: {
+    title: 'Nothing coming up',
+    description: 'Book again to see your next visit here.',
+  },
+  past: {
+    title: 'No past visits',
+    description: 'Appointments move here once their day has gone.',
+  },
+  cancelled: {
+    title: 'No cancelled bookings',
+    description: 'Bookings you or the clinic cancel will show up here.',
+  },
+}
 
 function BookingCard({
   booking,

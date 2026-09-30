@@ -2,34 +2,11 @@ import { useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import * as api from '../../api'
 import { Button } from '../../components/ui/Button'
-import { TextField } from '../../components/ui/fields'
+import { PasswordField } from '../../components/ui/fields'
+import { PasswordRules } from '../../components/ui/PasswordRules'
+import { meetsPasswordRules } from '../../lib/password'
 import { AuthShell, BackToLogin } from './AuthShell'
 import { useAuthRealm } from './realm'
-
-/**
- * The rules the prototype lists under the password fields.
- *
- * Checked live as the user types rather than only on submit — the design shows
- * them as a standing checklist, which only makes sense if it reacts.
- */
-const RULES: Array<{ label: string; test: (value: string) => boolean }> = [
-  {
-    label: 'Use at least 8 characters',
-    test: (v) => v.length >= 8,
-  },
-  {
-    label: 'Contains at least one uppercase letter (A–Z)',
-    test: (v) => /[A-Z]/.test(v),
-  },
-  {
-    label: 'Contains at least one number (0–9)',
-    test: (v) => /\d/.test(v),
-  },
-  {
-    label: 'Contains a special character (! @ # $)',
-    test: (v) => /[^A-Za-z0-9]/.test(v),
-  },
-]
 
 export function ResetPassword() {
   const navigate = useNavigate()
@@ -46,11 +23,7 @@ export function ResetPassword() {
   // a password on an unverified address.
   if (!email) return <Navigate to={realm.forgotPath} replace />
 
-  const results = RULES.map((rule) => ({
-    ...rule,
-    passed: rule.test(password),
-  }))
-  const allPassed = results.every((r) => r.passed)
+  const allPassed = meetsPasswordRules(password)
   const matches = password.length > 0 && password === confirm
 
   async function onSubmit(event: React.FormEvent) {
@@ -81,18 +54,16 @@ export function ResetPassword() {
       before={<BackToLogin to={realm.loginPath} />}
     >
       <form className="flex flex-col gap-4" onSubmit={onSubmit}>
-        <TextField
+        <PasswordField
           label="New Password"
-          type="password"
           value={password}
           onChange={setPassword}
           placeholder="Enter new password"
           autoComplete="new-password"
         />
 
-        <TextField
+        <PasswordField
           label="Confirm New Password"
-          type="password"
           value={confirm}
           onChange={setConfirm}
           placeholder="Re-enter new password"
@@ -102,34 +73,7 @@ export function ResetPassword() {
           }
         />
 
-        <ul className="flex flex-col gap-1">
-          {results.map((rule) => (
-            <li
-              key={rule.label}
-              className={`flex items-center gap-1.5 text-xs ${
-                rule.passed ? 'text-success-700' : 'text-gray-400'
-              }`}
-            >
-              <svg
-                className="size-3 shrink-0"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                {rule.passed ? (
-                  <path d="m5 13 4 4L19 7" />
-                ) : (
-                  <circle cx="12" cy="12" r="9" />
-                )}
-              </svg>
-              {rule.label}
-            </li>
-          ))}
-        </ul>
+        <PasswordRules value={password} />
 
         {error && (
           <p role="alert" className="text-sm text-danger-700">

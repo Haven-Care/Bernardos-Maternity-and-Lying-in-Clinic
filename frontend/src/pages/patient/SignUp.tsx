@@ -2,20 +2,11 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import * as api from '../../api'
 import { Button } from '../../components/ui/Button'
-import { TextField } from '../../components/ui/fields'
+import { PasswordField, TextField } from '../../components/ui/fields'
+import { PasswordRules } from '../../components/ui/PasswordRules'
+import { meetsPasswordRules } from '../../lib/password'
 import { isEmail, isPhMobile } from '../../lib/validate'
 import { AuthShell } from '../auth/AuthShell'
-
-/**
- * The same checklist the password-reset screen shows, for the same reason —
- * a rule the user can only discover by failing is a rule that gets failed.
- */
-const RULES: Array<{ label: string; test: (value: string) => boolean }> = [
-  { label: 'Use at least 8 characters', test: (v) => v.length >= 8 },
-  { label: 'Contains at least one uppercase letter (A–Z)', test: (v) => /[A-Z]/.test(v) },
-  { label: 'Contains at least one number (0–9)', test: (v) => /\d/.test(v) },
-  { label: 'Contains a special character (! @ # $)', test: (v) => /[^A-Za-z0-9]/.test(v) },
-]
 
 interface Form {
   fullName: string
@@ -74,8 +65,7 @@ export function SignUp() {
 
   const patch = (next: Partial<Form>) => setForm((f) => ({ ...f, ...next }))
 
-  const results = RULES.map((rule) => ({ ...rule, passed: rule.test(form.password) }))
-  const passwordOk = results.every((r) => r.passed)
+  const passwordOk = meetsPasswordRules(form.password)
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -153,44 +143,18 @@ export function SignUp() {
         />
 
         <div>
-          <TextField
+          <PasswordField
             label="Password"
             required
-            type="password"
             value={form.password}
             onChange={(password) => patch({ password })}
             placeholder="Create a password"
             autoComplete="new-password"
           />
 
-          <ul className="mt-2 flex flex-col gap-1">
-            {results.map((rule) => (
-              <li
-                key={rule.label}
-                className={`flex items-center gap-1.5 text-xs ${
-                  rule.passed ? 'text-success-700' : 'text-gray-400'
-                }`}
-              >
-                <svg
-                  className="size-3 shrink-0"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  {rule.passed ? (
-                    <path d="m5 13 4 4L19 7" />
-                  ) : (
-                    <circle cx="12" cy="12" r="9" />
-                  )}
-                </svg>
-                {rule.label}
-              </li>
-            ))}
-          </ul>
+          <div className="mt-2">
+            <PasswordRules value={form.password} />
+          </div>
         </div>
 
         {error && (

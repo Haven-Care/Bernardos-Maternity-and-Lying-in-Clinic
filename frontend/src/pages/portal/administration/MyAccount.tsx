@@ -6,10 +6,15 @@ import { Button } from '../../../components/ui/Button'
 import { Card, CardHeader } from '../../../components/ui/Card'
 import { Modal } from '../../../components/ui/Modal'
 import { Toggle } from '../../../components/ui/Toggle'
-import { TextField } from '../../../components/ui/fields'
 import { AsyncBoundary } from '../../../components/ui/states'
 import { useToast } from '../../../components/ui/toast-context'
+import { ChangePasswordFields } from '../../../components/ChangePasswordFields'
 import { formatTimestamp } from '../../../lib/format'
+import {
+  EMPTY_PASSWORD_CHANGE,
+  isPasswordChangeReady,
+  type PasswordChange,
+} from '../../../lib/password'
 import type { NotificationPrefs } from '../../../types/account'
 
 export function MyAccount() {
@@ -139,21 +144,17 @@ function ChangePasswordModal({
   onClose: () => void
   onSaved: () => void
 }) {
-  const [current, setCurrent] = useState('')
-  const [next, setNext] = useState('')
-  const [confirm, setConfirm] = useState('')
+  const [form, setForm] = useState<PasswordChange>(EMPTY_PASSWORD_CHANGE)
   const [error, setError] = useState<string>()
   const [saving, setSaving] = useState(false)
-
-  const matches = next.length > 0 && next === confirm
 
   async function save() {
     setSaving(true)
     setError(undefined)
     try {
       await api.account.changePassword({
-        currentPassword: current,
-        newPassword: next,
+        currentPassword: form.current,
+        newPassword: form.next,
       })
       onSaved()
       onClose()
@@ -174,36 +175,14 @@ function ChangePasswordModal({
         <Button
           onClick={() => void save()}
           loading={saving}
-          disabled={current === '' || !matches}
+          disabled={!isPasswordChangeReady(form)}
         >
           Save
         </Button>
       }
     >
       <div className="flex flex-col gap-4">
-        <TextField
-          label="Current Password"
-          type="password"
-          value={current}
-          onChange={setCurrent}
-          autoComplete="current-password"
-        />
-        <TextField
-          label="New Password"
-          type="password"
-          value={next}
-          onChange={setNext}
-          autoComplete="new-password"
-          hint="At least 8 characters."
-        />
-        <TextField
-          label="Confirm New Password"
-          type="password"
-          value={confirm}
-          onChange={setConfirm}
-          autoComplete="new-password"
-          error={confirm !== '' && !matches ? 'Passwords don’t match' : undefined}
-        />
+        <ChangePasswordFields value={form} onChange={setForm} />
         {error && (
           <p role="alert" className="text-sm text-danger-700">
             {error}
