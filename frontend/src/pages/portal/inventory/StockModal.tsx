@@ -122,19 +122,14 @@ export function StockModal({
       title={stockIn ? 'Record Stock In' : 'Record Stock Out'}
       description={`${medicine.genericName} ${medicine.dosage} · on hand ${medicine.qtyOnHand} ${medicine.unit}`}
       footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            variant={stockIn ? 'primary' : 'danger'}
-            onClick={() => void save()}
-            loading={saving}
-            disabled={!canSave || noStock}
-          >
-            {stockIn ? 'Record Stock In' : 'Confirm Stock Out'}
-          </Button>
-        </>
+        <Button
+          variant={stockIn ? 'primary' : 'danger'}
+          onClick={() => void save()}
+          loading={saving}
+          disabled={!canSave || noStock}
+        >
+          {stockIn ? 'Record Stock In' : 'Confirm Stock Out'}
+        </Button>
       }
     >
       <div className="flex flex-col gap-4">

@@ -112,13 +112,13 @@ export function ScheduleStep({
                     : 'border-border bg-gray-50 text-gray-300'
               }`}
             >
-              <span className="text-[10px] font-medium uppercase">
+              <span className="text-xs font-medium uppercase">
                 {label(date, { weekday: 'short' })}
               </span>
               <span className="text-base leading-none font-semibold tabular-nums">
                 {label(date, { day: 'numeric' })}
               </span>
-              <span className="text-[10px]">{label(date, { month: 'short' })}</span>
+              <span className="text-xs">{label(date, { month: 'short' })}</span>
             </button>
           )
         })}
@@ -184,7 +184,7 @@ function SlotGrid({
                 {formatTime(row.time)}
               </span>
               <span
-                className={`block text-[11px] ${
+                className={`block text-xs ${
                   selected ? 'text-white/80' : 'text-gray-400'
                 }`}
               >

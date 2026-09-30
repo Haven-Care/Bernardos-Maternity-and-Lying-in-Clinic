@@ -54,7 +54,7 @@ export function AuthShell({
 
         {footer && <div className="mt-4">{footer}</div>}
 
-        <p className="mt-6 text-center text-[11px] text-gray-400">
+        <p className="mt-6 text-center text-xs text-gray-400">
           © {new Date().getFullYear()} HavenCare. All rights reserved.
         </p>
       </div>

@@ -28,10 +28,10 @@ export function PublicShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex w-full max-w-2xl items-center gap-3 px-4 py-3">
           <Logo />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[13px] leading-tight font-semibold text-brand-700">
+            <p className="truncate text-sm leading-tight font-semibold text-brand-700">
               {clinic.data?.name ?? 'Bernardo’s Maternity & Lying-in Clinic'}
             </p>
-            <p className="truncate text-[11px] text-gray-400">
+            <p className="truncate text-xs text-gray-400">
               Book an appointment
             </p>
           </div>
@@ -73,7 +73,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
             </div>
           </div>
 
-          <p className="mt-5 text-[11px] text-gray-400">
+          <p className="mt-5 text-xs text-gray-400">
             © {new Date().getFullYear()} HavenCare. All rights reserved.
           </p>
         </div>

@@ -16,7 +16,7 @@ export function Administration() {
   const active = useActiveTab(TABS)
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-4">
+    <div className="mx-auto flex max-w-6xl flex-col gap-5">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Administration</h1>
         <p className="mt-0.5 text-sm text-gray-500">

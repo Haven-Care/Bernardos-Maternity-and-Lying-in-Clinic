@@ -202,18 +202,13 @@ function AddSlotModal({
       title="Add Time Slot"
       description={`Adds to ${weekday[0].toUpperCase() + weekday.slice(1)}.`}
       footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() => void save()}
-            loading={saving}
-            disabled={time === '' || capacity === '' || capacity < 1}
-          >
-            Save
-          </Button>
-        </>
+        <Button
+          onClick={() => void save()}
+          loading={saving}
+          disabled={time === '' || capacity === '' || capacity < 1}
+        >
+          Save
+        </Button>
       }
     >
       <div className="flex flex-col gap-4">

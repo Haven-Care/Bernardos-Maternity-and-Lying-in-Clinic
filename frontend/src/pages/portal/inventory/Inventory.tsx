@@ -39,7 +39,7 @@ export function Inventory() {
   }
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-4">
+    <div className="mx-auto flex max-w-6xl flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">

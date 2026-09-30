@@ -118,10 +118,10 @@ export function SystemAccess() {
   ]
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="mx-auto flex max-w-6xl flex-col gap-5">
       <div>
-        <h1 className="text-lg font-semibold text-gray-900">System Access</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-semibold text-gray-900">System Access</h1>
+        <p className="mt-0.5 text-sm text-gray-500">
           Staff accounts for the HavenCare portal. There is no self sign-up —
           accounts are created here.
         </p>
@@ -220,18 +220,13 @@ function AddStaffModal({
       size="sm"
       title="Add Staff Account"
       footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() => void save()}
-            loading={saving}
-            disabled={!canSave}
-          >
-            Create Account
-          </Button>
-        </>
+        <Button
+          onClick={() => void save()}
+          loading={saving}
+          disabled={!canSave}
+        >
+          Create Account
+        </Button>
       }
     >
       <div className="flex flex-col gap-4">

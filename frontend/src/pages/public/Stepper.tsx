@@ -38,7 +38,7 @@ export function Stepper({
                 }`}
               />
               <span
-                className={`truncate text-[11px] font-medium ${
+                className={`truncate text-xs font-medium ${
                   active
                     ? 'text-brand-700'
                     : done

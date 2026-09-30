@@ -127,7 +127,7 @@ export function AppointmentsPie({
           <span className="text-2xl font-semibold tabular-nums text-gray-900">
             {active ? active.count : total}
           </span>
-          <span className="text-[11px] text-gray-500">
+          <span className="text-xs text-gray-500">
             {active ? LABELS[active.status] : 'Total'}
           </span>
         </div>

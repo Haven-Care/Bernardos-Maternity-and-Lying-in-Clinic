@@ -56,7 +56,7 @@ export function BookingConfirmed({
       </p>
 
       <div className="mt-5 rounded-card border border-brand-200 bg-brand-50 px-4 py-3">
-        <p className="text-[11px] font-medium tracking-wide text-brand-700 uppercase">
+        <p className="text-xs font-medium tracking-wide text-brand-700 uppercase">
           Your reference number
         </p>
         <p className="mt-0.5 text-2xl font-semibold tracking-tight text-brand-700 tabular-nums">

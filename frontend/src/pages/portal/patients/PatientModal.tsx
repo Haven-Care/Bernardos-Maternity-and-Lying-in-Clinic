@@ -141,14 +141,9 @@ export function PatientModal({
           : 'Personal, maternity, and supporting documents.'
       }
       footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={() => void save()} loading={saving} disabled={!canSave}>
-            {editing ? 'Save Changes' : 'Save Patient'}
-          </Button>
-        </>
+        <Button onClick={() => void save()} loading={saving} disabled={!canSave}>
+          {editing ? 'Save Changes' : 'Save Patient'}
+        </Button>
       }
     >
       {values === null ? (
@@ -354,7 +349,7 @@ function Documents({ patientId }: { patientId: string }) {
           >
             <div className="min-w-0">
               <p className="text-xs font-medium text-gray-700">{type.label}</p>
-              <p className="truncate text-[11px] text-gray-400">
+              <p className="truncate text-xs text-gray-400">
                 {existing
                   ? `${existing.fileName} · ${formatSize(existing.fileSize)}`
                   : 'Not uploaded'}

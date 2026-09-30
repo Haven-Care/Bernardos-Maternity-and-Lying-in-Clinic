@@ -16,7 +16,7 @@ export function Dashboard() {
   const firstName = profile.data?.fullName.split(' ')[0] ?? ''
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-5">
+    <div className="mx-auto flex max-w-6xl flex-col gap-5">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
         <p className="mt-0.5 text-sm text-gray-500">
@@ -92,13 +92,13 @@ export function Dashboard() {
                       to={alert.href}
                       className={`block rounded-r-md border-l-[3px] bg-gray-50/70 px-3 py-2.5 transition-colors hover:bg-gray-100 ${SEVERITY_BAR[alert.severity]}`}
                     >
-                      <p className="text-[13px] leading-snug text-gray-700">
+                      <p className="text-sm leading-snug text-gray-700">
                         <span className="font-semibold text-gray-900">
                           {alert.subject}
                         </span>{' '}
                         {alert.message}
                       </p>
-                      <p className="mt-0.5 text-[11px] text-gray-400">
+                      <p className="mt-0.5 text-xs text-gray-400">
                         {alert.detail}
                       </p>
                     </Link>

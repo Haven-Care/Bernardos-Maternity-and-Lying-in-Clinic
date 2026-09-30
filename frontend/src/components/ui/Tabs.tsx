@@ -57,7 +57,7 @@ export function Tabs({
           >
             {tab.label}
             {tab.badge !== undefined && tab.badge > 0 && (
-              <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] leading-4 font-semibold text-white tabular-nums">
+              <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-xs leading-4 font-semibold text-white tabular-nums">
                 {tab.badge}
               </span>
             )}

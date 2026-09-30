@@ -67,9 +67,9 @@ export function Modal({
       <div onClick={(e) => e.stopPropagation()}>
         <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-3.5">
           <div>
-            <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
+            <h2 className="text-base font-semibold text-gray-900">{title}</h2>
             {description && (
-              <p className="mt-0.5 text-xs text-gray-500">{description}</p>
+              <p className="mt-0.5 text-sm text-gray-500">{description}</p>
             )}
           </div>
           <button

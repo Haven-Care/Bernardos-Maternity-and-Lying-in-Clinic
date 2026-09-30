@@ -74,18 +74,13 @@ export function RescheduleRequestModal({
       title="Request a different time"
       description={`Currently ${formatDateLong(booking.scheduledDate)}, ${formatTime(booking.slotTime)}`}
       footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>
-            Never mind
-          </Button>
-          <Button
-            onClick={() => void submit()}
-            loading={submitting}
-            disabled={!proposed.slotTime}
-          >
-            Send request
-          </Button>
-        </>
+        <Button
+          onClick={() => void submit()}
+          loading={submitting}
+          disabled={!proposed.slotTime}
+        >
+          Send request
+        </Button>
       }
     >
       <ScheduleStep value={proposed} onChange={handleChange} />

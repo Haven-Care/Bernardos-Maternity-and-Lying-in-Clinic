@@ -89,7 +89,7 @@ export function ClinicInfo() {
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-[11px] text-gray-400">{label}</dt>
+      <dt className="text-xs text-gray-400">{label}</dt>
       <dd className="mt-0.5 text-sm font-medium break-words text-gray-900">
         {value || '—'}
       </dd>
@@ -132,18 +132,13 @@ function EditClinicModal({
       onClose={onClose}
       title="Edit Clinic Info"
       footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() => void save()}
-            loading={saving}
-            disabled={form.name.trim() === ''}
-          >
-            Save
-          </Button>
-        </>
+        <Button
+          onClick={() => void save()}
+          loading={saving}
+          disabled={form.name.trim() === ''}
+        >
+          Save
+        </Button>
       }
     >
       <div className="grid gap-3 sm:grid-cols-2">

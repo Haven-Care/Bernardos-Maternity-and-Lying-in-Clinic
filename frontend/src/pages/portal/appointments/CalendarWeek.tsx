@@ -99,7 +99,7 @@ export function CalendarWeek() {
                           scope="col"
                           className="border-b border-l border-border px-2 py-2 text-center"
                         >
-                          <p className="text-[11px] font-medium text-gray-400 uppercase">
+                          <p className="text-xs font-medium text-gray-400 uppercase">
                             {day.toLocaleDateString('en-PH', {
                               weekday: 'short',
                             })}
@@ -124,7 +124,7 @@ export function CalendarWeek() {
                     <tr key={time}>
                       <th
                         scope="row"
-                        className="border-b border-border px-2 py-2 text-right align-top text-[11px] font-medium whitespace-nowrap text-gray-400"
+                        className="border-b border-border px-2 py-2 text-right align-top text-xs font-medium whitespace-nowrap text-gray-400"
                       >
                         {formatTime(time)}
                       </th>
@@ -144,7 +144,7 @@ export function CalendarWeek() {
                                   key={booking.id}
                                   type="button"
                                   onClick={() => setSelected(booking)}
-                                  className={`w-full rounded px-1.5 py-1 text-left text-[11px] leading-tight transition-colors ${CHIP[booking.status] ?? CHIP.confirmed}`}
+                                  className={`w-full rounded px-1.5 py-1 text-left text-xs leading-tight transition-colors ${CHIP[booking.status] ?? CHIP.confirmed}`}
                                 >
                                   <span className="block truncate font-semibold">
                                     {booking.patientName}

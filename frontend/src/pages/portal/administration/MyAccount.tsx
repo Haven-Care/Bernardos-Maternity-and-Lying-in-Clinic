@@ -9,7 +9,7 @@ import { Toggle } from '../../../components/ui/Toggle'
 import { TextField } from '../../../components/ui/fields'
 import { AsyncBoundary } from '../../../components/ui/states'
 import { useToast } from '../../../components/ui/toast-context'
-import { formatDate, formatTimestamp, initials } from '../../../lib/format'
+import { formatTimestamp } from '../../../lib/format'
 import type { NotificationPrefs } from '../../../types/account'
 
 export function MyAccount() {
@@ -17,7 +17,6 @@ export function MyAccount() {
   const prefs = useAsync(() => api.account.getNotificationPrefs())
   const toast = useToast()
 
-  const [editingProfile, setEditingProfile] = useState(false)
   const [changingPassword, setChangingPassword] = useState(false)
 
   async function setPref(key: keyof NotificationPrefs, value: boolean) {
@@ -27,44 +26,6 @@ export function MyAccount() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Card>
-        <CardHeader
-          title="Profile Details"
-          action={
-            <Button size="sm" variant="secondary" onClick={() => setEditingProfile(true)}>
-              Edit Profile
-            </Button>
-          }
-        />
-        <AsyncBoundary state={profile}>
-          {(p) => (
-            <div className="flex flex-col gap-5 p-5 sm:flex-row">
-              <span className="flex size-16 shrink-0 items-center justify-center rounded-full bg-brand-100 text-lg font-semibold text-brand-700">
-                {initials(p.fullName)}
-              </span>
-
-              <dl className="grid flex-1 gap-x-8 gap-y-3 sm:grid-cols-2">
-                <Field label="Name" value={p.fullName} />
-                <Field label="Role" value={<span className="capitalize">{p.role}</span>} />
-                <Field label="Employee ID" value={p.employeeId} />
-                <Field
-                  label="Status"
-                  value={
-                    <Badge tone={p.status === 'active' ? 'success' : 'neutral'}>
-                      {p.status === 'active' ? 'Active' : 'Inactive'}
-                    </Badge>
-                  }
-                />
-                <Field label="Contact Number" value={p.contactNumber} />
-                <Field label="Date Hired" value={formatDate(p.hiredAt)} />
-                <Field label="Email" value={p.email} />
-                <Field label="Last Login" value={formatTimestamp(p.lastLoginAt)} />
-              </dl>
-            </div>
-          )}
-        </AsyncBoundary>
-      </Card>
-
       <Card>
         <CardHeader
           title="Security"
@@ -121,24 +82,6 @@ export function MyAccount() {
                 }
               />
               <Row
-                title="SMS Reminders"
-                detail="Sent to patients before each appointment."
-                control={
-                  <div className="flex items-center gap-2">
-                    <Badge tone="neutral">Unavailable</Badge>
-                    <Toggle
-                      checked={false}
-                      onChange={() => {}}
-                      disabled
-                      label="SMS reminders"
-                      // Philippine SMS gateways bill per message and there is no
-                      // budget. Proposal Limitation 2 covers provider dependence.
-                      title="No SMS provider is configured for this deployment"
-                    />
-                  </div>
-                }
-              />
-              <Row
                 title="New Booking Alerts"
                 detail="Notify me when a patient books an appointment."
                 control={
@@ -154,22 +97,6 @@ export function MyAccount() {
         </AsyncBoundary>
       </Card>
 
-      {editingProfile && profile.data && (
-        <EditProfileModal
-          initial={{
-            fullName: profile.data.fullName,
-            email: profile.data.email,
-            contactNumber: profile.data.contactNumber,
-          }}
-          open={editingProfile}
-          onClose={() => setEditingProfile(false)}
-          onSaved={() => {
-            profile.reload()
-            toast.success('Record Updated', 'Your profile has been updated.')
-          }}
-        />
-      )}
-
       {changingPassword && (
         <ChangePasswordModal
           open={changingPassword}
@@ -179,15 +106,6 @@ export function MyAccount() {
           }
         />
       )}
-    </div>
-  )
-}
-
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div>
-      <dt className="text-[11px] text-gray-400">{label}</dt>
-      <dd className="mt-0.5 text-sm font-medium text-gray-900">{value}</dd>
     </div>
   )
 }
@@ -209,71 +127,6 @@ function Row({
       </div>
       {control}
     </div>
-  )
-}
-
-function EditProfileModal({
-  initial,
-  open,
-  onClose,
-  onSaved,
-}: {
-  initial: { fullName: string; email: string; contactNumber: string }
-  open: boolean
-  onClose: () => void
-  onSaved: () => void
-}) {
-  const [form, setForm] = useState(initial)
-  const [saving, setSaving] = useState(false)
-
-  async function save() {
-    setSaving(true)
-    try {
-      await api.account.updateProfile(form)
-      onSaved()
-      onClose()
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      size="sm"
-      title="Edit Profile"
-      description="Update your personal and contact information."
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={() => void save()} loading={saving}>
-            Save Changes
-          </Button>
-        </>
-      }
-    >
-      <div className="flex flex-col gap-4">
-        <TextField
-          label="Full Name"
-          value={form.fullName}
-          onChange={(v) => setForm({ ...form, fullName: v })}
-        />
-        <TextField
-          label="Email"
-          type="email"
-          value={form.email}
-          onChange={(v) => setForm({ ...form, email: v })}
-        />
-        <TextField
-          label="Contact"
-          value={form.contactNumber}
-          onChange={(v) => setForm({ ...form, contactNumber: v })}
-        />
-      </div>
-    </Modal>
   )
 }
 
@@ -318,18 +171,13 @@ function ChangePasswordModal({
       size="sm"
       title="Change Password"
       footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() => void save()}
-            loading={saving}
-            disabled={current === '' || !matches}
-          >
-            Save
-          </Button>
-        </>
+        <Button
+          onClick={() => void save()}
+          loading={saving}
+          disabled={current === '' || !matches}
+        >
+          Save
+        </Button>
       }
     >
       <div className="flex flex-col gap-4">
