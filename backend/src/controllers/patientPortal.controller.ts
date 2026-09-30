@@ -195,14 +195,21 @@ export async function cancelMyBooking(req: Request, res: Response) {
     return
   }
 
-  const row = unwrap(
-    await getSupabaseClient()
-      .from('appointments')
-      .update({ status: 'cancelled' })
-      .eq('id', id)
-      .select('*')
-      .single(),
-  )
+  // Conditional on the status still being cancellable, for the same reason as
+  // setStatus: staff completing the visit at the same moment must not be
+  // overwritten by this write.
+  const { data: row, error } = await getSupabaseClient()
+    .from('appointments')
+    .update({ status: 'cancelled' })
+    .eq('id', id)
+    .not('status', 'in', '(completed,cancelled)')
+    .select('*')
+    .maybeSingle()
+
+  if (error) throw dbError(error)
+  if (!row) {
+    throw new HttpError(409, 'That appointment changed while you were cancelling it.')
+  }
 
   await declineOpenRescheduleRequest(id)
   res.json(toBooking(row))

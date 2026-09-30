@@ -404,6 +404,38 @@ describe.skipIf(!up)('bookings', () => {
       ).toBe(true)
     })
 
+    it('lets exactly one of a racing cancel and complete win', async () => {
+      const booking = await request(app)
+        .post('/api/bookings')
+        .set(asAlice())
+        .send({
+          serviceId,
+          scheduledDate: await clinicDate(15),
+          slotTime: '10:00',
+          reasonForVisit: 'Cancel versus complete',
+        })
+        .expect(201)
+
+      const [cancel, complete] = await Promise.all([
+        request(app).delete(`/api/me/bookings/${booking.body.id}`).set(asAlice()),
+        request(app)
+          .post(`/api/bookings/${booking.body.id}/complete`)
+          .set(asStaff()),
+      ])
+
+      // Both used to pass their status check and both write, so the last one
+      // decided. The write is now conditional on the checked status.
+      const statuses = [cancel.status, complete.status].sort()
+      expect(statuses).toEqual([200, 409])
+
+      const final = await request(app)
+        .get(`/api/bookings/${booking.body.id}`)
+        .set(asStaff())
+        .expect(200)
+
+      expect(final.body.status).toBe(cancel.status === 200 ? 'cancelled' : 'completed')
+    })
+
     it('closes the open reschedule request on the cancelled booking', async () => {
       const booking = await request(app)
         .post('/api/bookings')

@@ -96,14 +96,24 @@ async function setStatus(id: string, next: Status, allowedFrom: Status[]) {
     )
   }
 
-  return unwrap(
-    await db
-      .from('appointments')
-      .update({ status: next })
-      .eq('id', id)
-      .select('*')
-      .single(),
-  )
+  // The write repeats the check as a filter. The read above is only for the
+  // message; without the filter, a complete and a cancel landing together would
+  // both pass it and the last write would win — a finished visit could end up
+  // cancelled, or a reschedule could be overwritten.
+  const { data, error } = await db
+    .from('appointments')
+    .update({ status: next })
+    .eq('id', id)
+    .in('status', allowedFrom)
+    .select('*')
+    .maybeSingle()
+
+  if (error) throw dbError(error)
+  if (!data) {
+    throw new HttpError(409, 'That appointment changed while you were updating it.')
+  }
+
+  return data
 }
 
 /**
