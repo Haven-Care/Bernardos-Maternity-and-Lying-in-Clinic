@@ -92,7 +92,6 @@ export async function updateMe(req: Request, res: Response) {
 const prefsSchema = z
   .object({
     emailNotifications: z.boolean().optional(),
-    smsReminders: z.boolean().optional(),
     newBookingAlerts: z.boolean().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, 'Nothing to update.')
@@ -116,18 +115,12 @@ export async function updateNotificationPrefs(req: Request, res: Response) {
   const staff = requireStaffContext(req)
   const input = parseBody(prefsSchema, req.body)
 
-  // SMS is accepted and stored, but nothing sends one: there is no gateway and
-  // no budget for per-message billing. The toggle ships visibly disabled in the
-  // UI, and storing the preference means turning it on later changes no code.
   const row = unwrap(
     await getSupabaseClient()
       .from('notification_prefs')
       .update({
         ...(input.emailNotifications !== undefined && {
           email_notifications: input.emailNotifications,
-        }),
-        ...(input.smsReminders !== undefined && {
-          sms_reminders: input.smsReminders,
         }),
         ...(input.newBookingAlerts !== undefined && {
           new_booking_alerts: input.newBookingAlerts,

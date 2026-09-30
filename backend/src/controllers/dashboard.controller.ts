@@ -1,8 +1,11 @@
 import type { Request, Response } from 'express'
+import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
 import { dbError, unwrapList } from '../lib/db.js'
+import { parseQuery } from '../lib/validate.js'
 import { HttpError } from '../middleware/errorHandler.js'
 import { APPOINTMENT_STATUSES } from '../contract/appointment.js'
+import { DASHBOARD_RANGES } from '../contract/dashboard.js'
 import type {
   AppNotification,
   AppointmentsOverviewSlice,
@@ -42,14 +45,28 @@ async function nearExpiryDays(): Promise<number> {
 }
 
 /**
- * GET /api/dashboard/stats
+ * `?range=` for the tiles and the pie. Only the key crosses the wire; the dates
+ * are worked out in SQL from clinic_today() — see dashboard_range().
+ *
+ * `today` when omitted, which is what the tiles counted before there was a
+ * range to choose.
+ */
+const rangeQuerySchema = z.object({
+  range: z.enum(DASHBOARD_RANGES).default('today'),
+})
+
+/**
+ * GET /api/dashboard/stats?range=
  *
  * One round trip. The four tiles are four counts over three tables, and pulling
  * them apart into separate queries would let them disagree with each other
  * across a booking that lands between two of them.
  */
-export async function getStats(_req: Request, res: Response) {
-  const rows = unwrapList(await getSupabaseClient().rpc('dashboard_stats'))
+export async function getStats(req: Request, res: Response) {
+  const { range } = parseQuery(rangeQuerySchema, req.query)
+  const rows = unwrapList(
+    await getSupabaseClient().rpc('dashboard_stats', { p_range: range }),
+  )
   const row = rows[0]
 
   // A function with a single unconditional SELECT always returns a row;
@@ -65,7 +82,7 @@ export async function getStats(_req: Request, res: Response) {
 }
 
 /**
- * GET /api/dashboard/appointments-overview
+ * GET /api/dashboard/appointments-overview?range=
  *
  * `percentage` is carried rather than left to the chart, because the legend
  * prints it as text ("Completed 41.4%") and the wedge is drawn from the same
@@ -74,9 +91,12 @@ export async function getStats(_req: Request, res: Response) {
  * Ordered by the contract's status order rather than by count, so a wedge does
  * not change colour from one load to the next when two statuses swap rank.
  */
-export async function getAppointmentsOverview(_req: Request, res: Response) {
+export async function getAppointmentsOverview(req: Request, res: Response) {
+  const { range } = parseQuery(rangeQuerySchema, req.query)
   const rows = unwrapList(
-    await getSupabaseClient().from('appointment_status_counts').select('*'),
+    await getSupabaseClient().rpc('appointment_status_counts', {
+      p_range: range,
+    }),
   )
 
   const counts = new Map(rows.map((r) => [r.status, Number(r.count ?? 0)]))

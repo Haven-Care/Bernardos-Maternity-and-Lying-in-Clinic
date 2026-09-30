@@ -1,7 +1,7 @@
 -- ---------------------------------------------------------------------------
 -- The Dashboard.
 --
--- Two derived reads and one writer.
+-- Two derived reads over a shared date range, and one writer.
 --
 -- The reads exist here rather than in Express for the same reason the inventory
 -- views do: the Dashboard counts the same things the Booking Requests table and
@@ -16,43 +16,116 @@
 -- ---------------------------------------------------------------------------
 
 -- ---------------------------------------------------------------------------
+-- The Dashboard's date range.
+--
+-- One key in, two dates out, in the clinic's calendar. The stat tiles and the
+-- pie both resolve their range through this, so they cannot disagree about
+-- where "last month" starts. Inventory Alerts ignores it: stock is a fact about
+-- now, whatever range is on screen.
+--
+-- Resolved here from clinic_today() rather than sent as dates by the browser. A
+-- laptop with the wrong clock or timezone would otherwise move "today" for
+-- everything the Dashboard counts.
+--
+--   today         today
+--   yesterday     the day before
+--   last-7-days   today and the six days before it
+--   this-month    the whole calendar month, so Scheduled includes the visits
+--                 still to come this month
+--   last-month    the whole previous calendar month
+--   all-time      -infinity to infinity, so every caller filters with a plain
+--                 BETWEEN instead of special-casing nulls
+-- ---------------------------------------------------------------------------
+create function dashboard_range(p_range text, out from_date date, out to_date date)
+language plpgsql
+stable
+set search_path = public, pg_temp
+as $$
+declare
+  v_today date := clinic_today();
+  v_month_start date := make_date(
+    extract(year from v_today)::int, extract(month from v_today)::int, 1
+  );
+begin
+  case p_range
+    when 'today' then
+      from_date := v_today;
+      to_date := v_today;
+    when 'yesterday' then
+      from_date := v_today - 1;
+      to_date := v_today - 1;
+    when 'last-7-days' then
+      from_date := v_today - 6;
+      to_date := v_today;
+    when 'this-month' then
+      from_date := v_month_start;
+      to_date := (v_month_start + interval '1 month')::date - 1;
+    when 'last-month' then
+      from_date := (v_month_start - interval '1 month')::date;
+      to_date := v_month_start - 1;
+    when 'all-time' then
+      from_date := '-infinity';
+      to_date := 'infinity';
+    else
+      -- Express validates the key first, so reaching this is a caller that
+      -- skipped it. Counting zero would look like a quiet day; say so instead.
+      raise exception 'Unknown dashboard range: %', p_range
+        using errcode = '22023';
+  end case;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- Appointments Overview — the pie chart.
 --
 -- Grouped in SQL because supabase-js has no GROUP BY: the alternative is
 -- selecting every appointment row and counting them in Node, which is the same
 -- answer computed over a result set that grows without bound.
 --
+-- Appointments are placed in the range by the day of the visit, the same as
+-- Scheduled and Completed on the tiles above it.
+--
 -- Statuses with no appointments do not appear. The chart draws a wedge per row,
 -- and a zero-width wedge with a legend entry reading "Cancelled 0%" is noise.
 -- `percentage` is computed in Express against the total, so the legend and the
 -- wedges are guaranteed to come from one number.
 -- ---------------------------------------------------------------------------
-create view appointment_status_counts
-with (security_invoker = true)
-as
-select
-  status,
-  count(*)::integer as count
-from appointments
-group by status;
+create function appointment_status_counts(p_range text)
+returns table (status appointment_status, count integer)
+language sql
+stable
+as $$
+  select a.status, count(*)::integer
+  from appointments a, dashboard_range(p_range) r
+  where a.scheduled_date between r.from_date and r.to_date
+  group by a.status;
+$$;
 
 -- ---------------------------------------------------------------------------
 -- The four stat tiles.
 --
--- clinic_today(), not current_date — Today's Schedule is the clinic's today,
--- and between Manila midnight and UTC midnight those are different days.
+-- Over the range from dashboard_range(), which is built on clinic_today(), not
+-- current_date — between Manila midnight and UTC midnight those are different
+-- days.
 --
--- Booked Today counts *submissions*, not visits — bookings that arrived today,
--- whatever day they are for. It replaced a count of pending requests, which
--- became a permanent zero when bookings started being accepted on submission.
+-- Scheduled (todays_schedule) counts visits in the range, cancelled ones left
+-- out: the tile answers "who is coming in", and someone who cancelled is not.
 --
--- Submissions rather than upcoming visits because this tile answers the
+-- Booked (booked_today) counts *submissions* in the range — bookings that
+-- arrived then, whatever day they are for. It replaced a count of pending
+-- requests, which became a permanent zero when bookings started being accepted
+-- on submission. Submissions rather than visits because this tile answers the
 -- question staff actually have now that nothing waits for them: what came in
--- while I wasn't looking. Upcoming visits would also duplicate the tile
--- immediately to its left.
+-- while I wasn't looking. Visits would duplicate the tile to its left.
+--
+-- Completed counts completed visits in the range, placed by the visit's day.
+--
+-- The column names still say "today" because that is the default range and
+-- the contract's field names; the range, not the name, decides what they count.
 --
 -- Inventory Alerts is low stock *plus* near expiry, matching the two tabs it
--- links to. Both halves are spelled the way their tab spells them:
+-- links to, and is always as of now. Both halves are spelled the way their tab
+-- spells them:
 --
 --   low stock   qty_on_hand < reorder_level, over active medicines
 --               (`stock_status <> 'good'` is close but not equal — it also
@@ -61,7 +134,7 @@ group by status;
 --   near expiry a lot that still holds stock, expiring inside the window or
 --               already expired
 -- ---------------------------------------------------------------------------
-create function dashboard_stats()
+create function dashboard_stats(p_range text)
 returns table (
   todays_schedule integer,
   booked_today integer,
@@ -74,16 +147,22 @@ as $$
   select
     (
       select count(*) from appointments
-      where scheduled_date = clinic_today() and status <> 'cancelled'
+      where scheduled_date between r.from_date and r.to_date
+        and status <> 'cancelled'
     )::integer,
     (
       select count(*) from appointments
       -- submitted_at is a timestamptz and the clinic is UTC+8, so it has to be
       -- read in Manila before its date is taken. Comparing the raw UTC date
-      -- would move the tile's cutoff to 8 AM local.
-      where (submitted_at at time zone 'Asia/Manila')::date = clinic_today()
+      -- would move the day's cutoff to 8 AM local.
+      where (submitted_at at time zone 'Asia/Manila')::date
+        between r.from_date and r.to_date
     )::integer,
-    (select count(*) from appointments where status = 'completed')::integer,
+    (
+      select count(*) from appointments
+      where status = 'completed'
+        and scheduled_date between r.from_date and r.to_date
+    )::integer,
     (
       (
         select count(*) from medicine_stock
@@ -97,7 +176,8 @@ as $$
                 (select near_expiry_days from clinic_settings where id = 1), 30
               )
       )
-    )::integer;
+    )::integer
+  from dashboard_range(p_range) r;
 $$;
 
 -- ---------------------------------------------------------------------------

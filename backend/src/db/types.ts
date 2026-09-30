@@ -292,21 +292,18 @@ export type Database = {
           email_notifications: boolean
           new_booking_alerts: boolean
           profile_id: string
-          sms_reminders: boolean
           updated_at: string
         }
         Insert: {
           email_notifications?: boolean
           new_booking_alerts?: boolean
           profile_id: string
-          sms_reminders?: boolean
           updated_at?: string
         }
         Update: {
           email_notifications?: boolean
           new_booking_alerts?: boolean
           profile_id?: string
-          sms_reminders?: boolean
           updated_at?: string
         }
         Relationships: [
@@ -378,7 +375,6 @@ export type Database = {
           email_notifications: boolean
           full_name: string
           id: string
-          sms_reminders: boolean
           updated_at: string
         }
         Insert: {
@@ -388,7 +384,6 @@ export type Database = {
           email_notifications?: boolean
           full_name: string
           id: string
-          sms_reminders?: boolean
           updated_at?: string
         }
         Update: {
@@ -398,7 +393,6 @@ export type Database = {
           email_notifications?: boolean
           full_name?: string
           id?: string
-          sms_reminders?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -743,13 +737,6 @@ export type Database = {
       }
     }
     Views: {
-      appointment_status_counts: {
-        Row: {
-          count: number | null
-          status: Database["public"]["Enums"]["appointment_status"] | null
-        }
-        Relationships: []
-      }
       medicine_stock: {
         Row: {
           active: boolean | null
@@ -815,6 +802,13 @@ export type Database = {
       }
     }
     Functions: {
+      appointment_status_counts: {
+        Args: { p_range: string }
+        Returns: {
+          count: number
+          status: Database["public"]["Enums"]["appointment_status"]
+        }[]
+      }
       approve_reschedule_request: {
         Args: { p_actor: string; p_request_id: string }
         Returns: {
@@ -871,8 +865,12 @@ export type Database = {
         }
       }
       clinic_today: { Args: never; Returns: string }
+      dashboard_range: {
+        Args: { p_range: string }
+        Returns: Record<string, unknown>
+      }
       dashboard_stats: {
-        Args: never
+        Args: { p_range: string }
         Returns: {
           booked_today: number
           completed_appointments: number

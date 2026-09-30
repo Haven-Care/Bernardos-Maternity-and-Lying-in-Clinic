@@ -33,7 +33,6 @@ export function toStaffProfile(row: ProfileRow): StaffProfile {
 export function toNotificationPrefs(row: PrefsRow): NotificationPrefs {
   return {
     emailNotifications: row.email_notifications,
-    smsReminders: row.sms_reminders,
     newBookingAlerts: row.new_booking_alerts,
   }
 }

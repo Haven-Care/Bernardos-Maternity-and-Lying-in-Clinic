@@ -319,7 +319,6 @@ describe.skipIf(!up)('patients and documents', () => {
 
       expect(before.body).toEqual({
         emailNotifications: expect.any(Boolean),
-        smsReminders: expect.any(Boolean),
         newBookingAlerts: expect.any(Boolean),
       })
 

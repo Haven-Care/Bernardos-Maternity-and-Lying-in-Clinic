@@ -29,14 +29,13 @@ export interface StaffProfile {
 
 /** Administration → My Account → Notification Preferences. */
 export interface NotificationPrefs {
-  /** Booking requests, reminders, and system alerts. */
-  emailNotifications: boolean
   /**
-   * Sent to patients before each appointment. Philippine SMS gateways bill per
-   * message and there is no budget — ship disabled with a tooltip. Proposal
-   * Limitation 2 already covers provider dependence.
+   * Booking requests, reminders, and system alerts.
+   *
+   * Email is the only channel. SMS is out of scope — Philippine gateways bill
+   * per message and there is no budget for it (Proposal Limitation 2).
    */
-  smsReminders: boolean
+  emailNotifications: boolean
   /** Notify me when a patient submits a request. */
   newBookingAlerts: boolean
 }

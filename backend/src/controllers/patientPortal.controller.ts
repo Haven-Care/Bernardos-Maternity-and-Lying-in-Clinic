@@ -73,7 +73,6 @@ const profileSchema = z
     fullName: z.string().trim().min(1, 'Your name is required.').optional(),
     contactNumber: z.string().trim().optional(),
     emailNotifications: z.boolean().optional(),
-    smsReminders: z.boolean().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, 'Nothing to update.')
 
@@ -94,9 +93,6 @@ export async function updateMyAccount(req: Request, res: Response) {
         }),
         ...(input.emailNotifications !== undefined && {
           email_notifications: input.emailNotifications,
-        }),
-        ...(input.smsReminders !== undefined && {
-          sms_reminders: input.smsReminders,
         }),
       })
       .eq('id', me.userId)

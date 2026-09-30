@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import request from 'supertest'
 import { createApp } from '../app.js'
 import { getSupabaseClient } from '../config/supabase.js'
+import { DASHBOARD_RANGES, type DashboardRange } from '../contract/dashboard.js'
 import {
   ADMIN_EMAIL,
   STAFF_PASSWORD,
@@ -78,7 +79,10 @@ describe.skipIf(!up)('dashboard', () => {
       const { data: clinicToday } = await getSupabaseClient().rpc('clinic_today')
 
       const [stats, bookings] = await Promise.all([
-        request(app).get('/api/dashboard/stats').set(asStaff()).expect(200),
+        request(app)
+          .get('/api/dashboard/stats?range=today')
+          .set(asStaff())
+          .expect(200),
         request(app).get('/api/bookings').set(asStaff()).expect(200),
       ])
 
@@ -93,8 +97,10 @@ describe.skipIf(!up)('dashboard', () => {
         return manila === clinicToday
       }).length
 
+      // Completed visits *scheduled* in the range — today, here.
       const completed = bookings.body.filter(
-        (b: { status: string }) => b.status === 'completed',
+        (b: { scheduledDate: string; status: string }) =>
+          b.status === 'completed' && b.scheduledDate === clinicToday,
       ).length
 
       expect(stats.body.bookedToday).toBe(bookedToday)
@@ -190,7 +196,7 @@ describe.skipIf(!up)('dashboard', () => {
     it('returns slices whose counts and percentages agree with each other', async () => {
       const [overview, bookings] = await Promise.all([
         request(app)
-          .get('/api/dashboard/appointments-overview')
+          .get('/api/dashboard/appointments-overview?range=all-time')
           .set(asStaff())
           .expect(200),
         request(app).get('/api/bookings').set(asStaff()).expect(200),
@@ -225,7 +231,7 @@ describe.skipIf(!up)('dashboard', () => {
 
     it('omits statuses with no appointments rather than drawing a 0% wedge', async () => {
       const res = await request(app)
-        .get('/api/dashboard/appointments-overview')
+        .get('/api/dashboard/appointments-overview?range=all-time')
         .set(asStaff())
         .expect(200)
 
@@ -236,7 +242,7 @@ describe.skipIf(!up)('dashboard', () => {
 
     it('orders slices by the contract status order, not by size', async () => {
       const res = await request(app)
-        .get('/api/dashboard/appointments-overview')
+        .get('/api/dashboard/appointments-overview?range=all-time')
         .set(asStaff())
         .expect(200)
 
@@ -253,6 +259,129 @@ describe.skipIf(!up)('dashboard', () => {
 
       expect(positions).not.toContain(-1)
       expect(positions).toEqual([...positions].sort((a, b) => a - b))
+    })
+  })
+
+  /**
+   * The date range, for the tiles and the pie.
+   *
+   * Asserted as agreement again: for every key, each tile equals the Bookings
+   * tab filtered to the same days. The bounds are worked out here in
+   * JavaScript, independently of dashboard_range(), so a wrong month edge in
+   * the SQL shows up as a disagreement rather than being checked against
+   * itself.
+   */
+  describe('range', () => {
+    type Booking = { scheduledDate: string; submittedAt: string; status: string }
+
+    function bounds(range: DashboardRange, today: string): [string, string] {
+      const [year, month] = today.split('-').map(Number)
+      const iso = (d: Date) => d.toISOString().slice(0, 10)
+      const shift = (days: number) => {
+        const d = new Date(`${today}T00:00:00Z`)
+        d.setUTCDate(d.getUTCDate() + days)
+        return iso(d)
+      }
+      // Date.UTC rolls month 0 back to December and day 0 back to the last
+      // day of the previous month, which is exactly the arithmetic wanted.
+      const first = (m: number) => iso(new Date(Date.UTC(year, m - 1, 1)))
+      const last = (m: number) => iso(new Date(Date.UTC(year, m, 0)))
+
+      switch (range) {
+        case 'today':
+          return [today, today]
+        case 'yesterday':
+          return [shift(-1), shift(-1)]
+        case 'last-7-days':
+          return [shift(-6), today]
+        case 'this-month':
+          return [first(month), last(month)]
+        case 'last-month':
+          return [first(month - 1), last(month - 1)]
+        case 'all-time':
+          return ['0000-01-01', '9999-12-31']
+      }
+    }
+
+    const manilaDate = (instant: string) =>
+      new Date(instant).toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
+
+    it.each(DASHBOARD_RANGES)(
+      'counts %s the way the Bookings tab does',
+      async (range) => {
+        const { data: today } = await getSupabaseClient().rpc('clinic_today')
+        if (!today) throw new Error('clinic_today() returned nothing')
+        const [from, to] = bounds(range, today)
+        const within = (date: string) => date >= from && date <= to
+
+        const [stats, overview, bookings] = await Promise.all([
+          request(app)
+            .get(`/api/dashboard/stats?range=${range}`)
+            .set(asStaff())
+            .expect(200),
+          request(app)
+            .get(`/api/dashboard/appointments-overview?range=${range}`)
+            .set(asStaff())
+            .expect(200),
+          request(app).get('/api/bookings').set(asStaff()).expect(200),
+        ])
+
+        const rows: Booking[] = bookings.body
+        const scheduled = rows.filter((b) => within(b.scheduledDate))
+
+        expect(stats.body.todaysSchedule).toBe(
+          scheduled.filter((b) => b.status !== 'cancelled').length,
+        )
+        expect(stats.body.bookedToday).toBe(
+          rows.filter((b) => within(manilaDate(b.submittedAt))).length,
+        )
+        expect(stats.body.completedAppointments).toBe(
+          scheduled.filter((b) => b.status === 'completed').length,
+        )
+
+        const pieTotal = overview.body.reduce(
+          (sum: number, s: { count: number }) => sum + s.count,
+          0,
+        )
+        expect(pieTotal).toBe(scheduled.length)
+      },
+    )
+
+    it('leaves Inventory Alerts alone whatever the range', async () => {
+      const responses = await Promise.all(
+        DASHBOARD_RANGES.map((range) =>
+          request(app)
+            .get(`/api/dashboard/stats?range=${range}`)
+            .set(asStaff())
+            .expect(200),
+        ),
+      )
+
+      const alerts = new Set(responses.map((r) => r.body.inventoryAlerts))
+      expect(alerts.size).toBe(1)
+    })
+
+    it('treats a missing range as today', async () => {
+      const [omitted, today] = await Promise.all([
+        request(app).get('/api/dashboard/stats').set(asStaff()).expect(200),
+        request(app)
+          .get('/api/dashboard/stats?range=today')
+          .set(asStaff())
+          .expect(200),
+      ])
+
+      expect(omitted.body).toEqual(today.body)
+    })
+
+    it('rejects a range it does not know', async () => {
+      for (const path of ['stats', 'appointments-overview']) {
+        const res = await request(app)
+          .get(`/api/dashboard/${path}?range=last-year`)
+          .set(asStaff())
+          .expect(400)
+
+        expect(res.body.error).toMatch(/^range:/)
+      }
     })
   })
 

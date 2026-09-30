@@ -52,10 +52,9 @@ create trigger profiles_set_updated_at
 create table notification_prefs (
   profile_id uuid primary key references profiles (id) on delete cascade,
 
+  -- Email only. SMS is out of scope: Philippine gateways bill per message and
+  -- the client has no budget for it (Proposal Limitation 2).
   email_notifications boolean not null default true,
-  -- Philippine SMS gateways bill per message and there is no budget. Ships
-  -- disabled; Proposal Limitation 2 covers provider dependence.
-  sms_reminders boolean not null default false,
   new_booking_alerts boolean not null default true,
 
   updated_at timestamptz not null default now()
@@ -85,7 +84,6 @@ create table patient_accounts (
 
   -- Mobile screen U43, Notification Setting.
   email_notifications boolean not null default true,
-  sms_reminders boolean not null default false,
 
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

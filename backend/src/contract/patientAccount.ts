@@ -25,13 +25,8 @@ export interface PatientAccount {
   contactNumber: string
   email: string
 
-  /** Mobile screen U43, Notification Setting. */
+  /** Mobile screen U43, Notification Setting. Email only; SMS is out of scope. */
   emailNotifications: boolean
-  /**
-   * Stored but inert. Philippine SMS gateways bill per message and there is no
-   * budget, so nothing sends one — the toggle ships visibly disabled.
-   */
-  smsReminders: boolean
 
   createdAt: DateTimeString
 }

@@ -71,7 +71,6 @@ export function toPatientAccount(row: AccountRow): PatientAccount {
     contactNumber: row.contact_number,
     email: row.email,
     emailNotifications: row.email_notifications,
-    smsReminders: row.sms_reminders,
     createdAt: row.created_at,
   }
 }
