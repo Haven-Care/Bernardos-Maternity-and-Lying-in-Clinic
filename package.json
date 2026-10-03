@@ -1,0 +1,24 @@
+{
+  "name": "havencare",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "HavenCare — tooling root. Not a workspace: frontend/ and backend/ keep their own package.json and their own CI job.",
+  "engines": {
+    "node": "20.x"
+  },
+  "scripts": {
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:status": "supabase status",
+    "db:reset": "supabase db reset",
+    "db:seed": "docker exec -i $(docker ps -qf name=supabase_db) psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/seed.sql",
+    "db:psql": "docker exec -it $(docker ps -qf name=supabase_db) psql -U postgres -d postgres",
+    "db:types": "supabase gen types typescript --local --schema public > backend/src/db/types.ts",
+    "sync:types": "node scripts/sync-types.mjs",
+    "sync:types:check": "node scripts/sync-types.mjs --check"
+  },
+  "devDependencies": {
+    "supabase": "^2.22.6"
+  }
+}

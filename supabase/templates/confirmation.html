@@ -1,0 +1,18 @@
+<!--
+  Patient sign-up confirmation. Offers both the link and the code, because the
+  mobile app (when it lands) cannot rely on a browser redirect the way the web
+  client can.
+-->
+<h2>Confirm your email</h2>
+
+<p>Welcome to HavenCare. Confirm this address to finish setting up your account and start booking appointments.</p>
+
+<p><a href="{{ .ConfirmationURL }}">Confirm my email</a></p>
+
+<p>Or enter this code in the app:</p>
+
+<p style="font-size: 28px; letter-spacing: 6px; font-weight: 600;">{{ .Token }}</p>
+
+<p>If you did not create a HavenCare account, you can ignore this email.</p>
+
+<p>— Bernardo's Maternity and Lying-in Clinic</p>
