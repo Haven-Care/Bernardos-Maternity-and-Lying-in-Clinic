@@ -4,9 +4,11 @@ import * as api from '../../api'
 import { Button } from '../../components/ui/Button'
 import { TextField } from '../../components/ui/fields'
 import { AuthShell, BackToLogin } from './AuthShell'
+import { useAuthRealm } from './realm'
 
 export function ForgotPassword() {
   const navigate = useNavigate()
+  const realm = useAuthRealm()
   const [email, setEmail] = useState('')
   const [error, setError] = useState<string>()
   const [submitting, setSubmitting] = useState(false)
@@ -20,7 +22,7 @@ export function ForgotPassword() {
       await api.account.requestPasswordReset(email)
       // Carry the address forward so the next two screens can use it without
       // re-asking. Lost on refresh, which is why VerifyCode guards for it.
-      navigate('/verify-code', { state: { email } })
+      navigate(realm.verifyPath, { state: { email } })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not send the code')
     } finally {
@@ -32,7 +34,7 @@ export function ForgotPassword() {
     <AuthShell
       title="Reset Password"
       subtitle="Enter your registered email and we’ll send you a 6-digit code to verify it’s you."
-      before={<BackToLogin />}
+      before={<BackToLogin to={realm.loginPath} />}
     >
       <form className="flex flex-col gap-4" onSubmit={onSubmit}>
         <TextField

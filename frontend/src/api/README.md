@@ -1,50 +1,36 @@
-# `src/api/` — the swap seam
+# `src/api/` — the backend seam
 
 Every backend call in the app goes through this directory. One file per domain,
-one exported function per operation. **Components never import from
-`src/mocks/`** — they call these functions and don't know the data is fake.
+one exported function per operation. Components call these functions and know
+nothing about transport, auth headers, or error shapes.
 
-Each function today returns fixture data and carries a `// BACKEND:` comment
-holding the real call. Swapping a domain means uncommenting one line and deleting
-one line, per function. Nothing in any component changes.
+**The swap is finished.** This layer began as typed fixture functions, each
+carrying a `// BACKEND:` comment holding the real call it would one day make;
+`src/mocks/` and the last of those markers were deleted when `dashboard` — the
+last domain, because it aggregates all the others — moved onto Postgres.
 
-```bash
-# every remaining stub
-grep -rn "// BACKEND:" src/api
-```
+Everything below is now a thin wrapper over `apiFetch`.
 
 ## Rules
 
-- **Functions are `async` and fully typed.** Components are already written
-  against the final signature, so the swap is invisible to them.
-- **Every read goes through `mockDelay()`**, which adds ~300 ms. Without it you
-  build screens that never show a spinner, and they all break the day real
-  latency arrives.
-- **Derived values are computed here, not in components.** `qtyOnHand`, Low
-  Stock, Days Left, and the dashboard aggregates are all things the backend will
-  eventually compute and return. Putting that logic here means the swap replaces
-  it wholesale; putting it in a component means rewriting the component.
-- **Mutations mutate the fixture arrays.** Confirm, Cancel, and Add Medicine
-  genuinely change what every screen renders. A prototype where the buttons do
-  nothing doesn't demo.
+- **Functions are `async` and fully typed** against `src/types/`, which is the
+  contract. The backend mirrors that directory into `backend/src/contract/` and
+  CI fails if the copy drifts, so a shape that compiles here is the shape the
+  server returns.
+- **No derived values.** `qtyOnHand`, Low Stock, Days Left and the dashboard
+  aggregates are computed in SQL and arrive ready to render. They used to be
+  computed here, which is why the swap replaced whole functions rather than
+  rewriting components.
+- **No error handling.** `apiFetch` turns a non-2xx into a thrown `Error`
+  carrying the server's message, which is written for whoever is looking at the
+  screen. `useAsync` and the `AsyncBoundary` components render it.
 
-## Exercising failure
+## Auth
 
-`mockDelay` can be told to reject, from the dev console:
+`src/lib/api.ts` attaches `Authorization: Bearer` from the current Supabase
+session. One place, and every domain picks it up — nothing in this directory
+mentions a token.
 
-```js
-__havencare.setMockFailureRate(1)   // every call fails
-__havencare.setMockFailureRate(0)   // back to normal
-```
-
-Build the error state when you build the screen.
-
-## Swap order
-
-Domains are independent. Flip one at a time — the rest keep running on fixtures
-while you go. Suggested order, easiest first:
-
-`services` → `slots` → `clinic` → `account` → `patients` → `inventory` →
-`appointments` → `dashboard`
-
-`dashboard` goes last because it aggregates across every other domain.
+Three endpoints stay unauthenticated so a patient can browse before signing up:
+`GET /services?active=true`, `GET /slots/availability`, `GET /clinic`. Posting a
+booking is not one of them.

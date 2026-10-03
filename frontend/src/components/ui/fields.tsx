@@ -1,4 +1,4 @@
-import { useId, type ReactNode, type SelectHTMLAttributes } from 'react'
+import { useId, useState, type ReactNode, type SelectHTMLAttributes } from 'react'
 
 const CONTROL =
   'w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500'
@@ -70,6 +70,63 @@ export function TextField({
         className={CONTROL}
       />
       {hint && !error && <p className="mt-1 text-xs text-gray-400">{hint}</p>}
+      <Error message={error} />
+    </div>
+  )
+}
+
+/**
+ * A password input with a Show / Hide toggle.
+ *
+ * Patients type these on a phone, where a mistyped character behind the dots
+ * is only discovered when the next screen refuses it.
+ */
+export function PasswordField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  required,
+  error,
+  autoComplete,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  placeholder?: string
+  required?: boolean
+  error?: string
+  autoComplete?: string
+}) {
+  const id = useId()
+  const [visible, setVisible] = useState(false)
+
+  return (
+    <div>
+      <Label htmlFor={id} required={required}>
+        {label}
+      </Label>
+      <div className="relative">
+        <input
+          id={id}
+          type={visible ? 'text' : 'password'}
+          value={value}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
+          aria-invalid={error ? true : undefined}
+          onChange={(e) => onChange(e.target.value)}
+          className={`${CONTROL} pr-16`}
+        />
+        <button
+          type="button"
+          onClick={() => setVisible((v) => !v)}
+          aria-label={visible ? 'Hide password' : 'Show password'}
+          aria-controls={id}
+          className="absolute inset-y-0 right-0 flex items-center px-3 text-xs font-medium text-gray-500 transition-colors hover:text-gray-800"
+        >
+          {visible ? 'Hide' : 'Show'}
+        </button>
+      </div>
       <Error message={error} />
     </div>
   )

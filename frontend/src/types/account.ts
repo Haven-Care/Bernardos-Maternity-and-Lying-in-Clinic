@@ -29,14 +29,13 @@ export interface StaffProfile {
 
 /** Administration → My Account → Notification Preferences. */
 export interface NotificationPrefs {
-  /** Booking requests, reminders, and system alerts. */
-  emailNotifications: boolean
   /**
-   * Sent to patients before each appointment. Philippine SMS gateways bill per
-   * message and there is no budget — ship disabled with a tooltip. Proposal
-   * Limitation 2 already covers provider dependence.
+   * Booking requests, reminders, and system alerts.
+   *
+   * Email is the only channel. SMS is out of scope — Philippine gateways bill
+   * per message and there is no budget for it (Proposal Limitation 2).
    */
-  smsReminders: boolean
+  emailNotifications: boolean
   /** Notify me when a patient submits a request. */
   newBookingAlerts: boolean
 }
@@ -53,11 +52,27 @@ export interface ChangePasswordInput {
 }
 
 /**
- * The login form's field reads "username or email". Supabase Auth is email-only,
- * so the backend phase must either resolve a username to an email before
- * `signInWithPassword`, or this field becomes email-only.
+ * The login form originally read "username or email". It is email-only:
+ * GoTrue authenticates on email, and resolving a username would require an
+ * unauthenticated lookup endpoint that tells anyone who asks whether a given
+ * username exists. `identifier` keeps its name because every call site already
+ * uses it; it carries an email address.
  */
 export interface LoginInput {
   identifier: string
   password: string
+}
+
+/**
+ * Staff provisioning — Administration → the unlisted `/admin/system` screen.
+ *
+ * There is no self sign-up on the admin side, so an account has to be created
+ * by an administrator or by the seed script. Both go through the same endpoint.
+ */
+export interface CreateStaffInput {
+  email: string
+  password: string
+  fullName: string
+  contactNumber: string
+  role: StaffRole
 }

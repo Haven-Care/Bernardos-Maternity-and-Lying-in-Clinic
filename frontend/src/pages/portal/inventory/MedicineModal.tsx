@@ -122,14 +122,9 @@ export function MedicineModal({
           : 'Stock and expiry are added separately, through Record Stock In.'
       }
       footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={() => void save()} loading={saving} disabled={!canSave}>
-            {editing ? 'Save Changes' : 'Add Medicine'}
-          </Button>
-        </>
+        <Button onClick={() => void save()} loading={saving} disabled={!canSave}>
+          {editing ? 'Save Changes' : 'Add Medicine'}
+        </Button>
       }
     >
       <div className="flex flex-col gap-5">
@@ -250,7 +245,7 @@ function Section({
 }) {
   return (
     <section>
-      <h3 className="mb-2.5 text-xs font-semibold tracking-wide text-brand-700 uppercase">
+      <h3 className="mb-2.5 text-sm font-semibold text-brand-700">
         {title}
       </h3>
       <div className="grid gap-3 sm:grid-cols-2">{children}</div>

@@ -5,97 +5,155 @@ import type {
   ProfileInput,
   StaffProfile,
 } from '../types/account'
-import { notificationPrefs, profile } from '../mocks/account'
-import { mockDelay, mockReject } from '../mocks/util'
-// import { apiFetch } from './client'
-// import { supabase } from '../lib/supabase'
+import { apiFetch } from './client'
+import { supabase } from '../lib/supabase'
 
 /**
  * Sign in.
  *
- * The form's field reads "username or email", but Supabase Auth is email-only.
- * The backend phase must either resolve a username to its email before calling
- * `signInWithPassword`, or the field becomes email-only. Decide before wiring
- * this — it changes the schema (`profiles.username`).
+ * Two steps, deliberately. GoTrue proves the credentials and issues a token;
+ * Express then says who that token actually belongs to. The JWT only asserts
+ * "some authenticated user" — the role, status and employee number that the
+ * portal renders all come from the `profiles` row.
+ *
+ * **Email only.** The prototype's field reads "username or email", but GoTrue
+ * authenticates on email, and resolving a username would need an
+ * unauthenticated lookup endpoint — which is an oracle telling anyone who asks
+ * whether a given username exists. With a handful of provisioned accounts a
+ * username buys nothing, so the label was changed to match. See the plan's open
+ * items if the clinic wants it back.
  */
 export async function login(input: LoginInput): Promise<StaffProfile> {
-  // BACKEND: const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-  // BACKEND: if (error) throw error; return apiFetch<StaffProfile>('/account/me')
-  if (!input.identifier || !input.password) {
-    return mockReject('Enter your username and password')
+  const { error } = await supabase.auth.signInWithPassword({
+    email: input.identifier.trim().toLowerCase(),
+    password: input.password,
+  })
+
+  // GoTrue says "Invalid login credentials" without distinguishing a wrong
+  // password from an unknown address, which is the correct behaviour — do not
+  // improve on it.
+  if (error) throw new Error(error.message)
+
+  // GoTrue has already stored a session by now. If Express will not accept it
+  // — a patient on the staff login, a deactivated account, no profile row —
+  // that session has to go too, or every guard after this reads it as signed in.
+  try {
+    return await apiFetch<StaffProfile>('/account/me')
+  } catch (e) {
+    await supabase.auth.signOut()
+    throw e
   }
-  return mockDelay(profile)
 }
 
 export async function logout(): Promise<void> {
-  // BACKEND: await supabase.auth.signOut()
-  return mockDelay(undefined)
+  const { error } = await supabase.auth.signOut()
+  if (error) throw new Error(error.message)
 }
 
 export async function getProfile(): Promise<StaffProfile> {
-  // BACKEND: return apiFetch<StaffProfile>('/account/me')
-  return mockDelay(profile)
+  return apiFetch<StaffProfile>('/account/me')
 }
 
+/**
+ * Changing the email here changes the address that signs in, not just the one
+ * displayed — the two cannot drift apart, or a password reset would go to the
+ * wrong inbox.
+ */
 export async function updateProfile(
   input: ProfileInput,
 ): Promise<StaffProfile> {
-  // BACKEND: return apiFetch<StaffProfile>('/account/me', { method: 'PATCH', body: JSON.stringify(input) })
-  Object.assign(profile, input)
-  return mockDelay(profile)
+  return apiFetch<StaffProfile>('/account/me', {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
 }
 
+/**
+ * Change password from My Account.
+ *
+ * `updateUser` does not check the current password — an open session is all it
+ * asks for. So the current password is verified by signing in with it first,
+ * which is what makes the "Current Password" field on that form mean anything.
+ * Without this, anyone who walked up to an unlocked machine could change it.
+ */
 export async function changePassword(
   input: ChangePasswordInput,
 ): Promise<void> {
-  // BACKEND: const { error } = await supabase.auth.updateUser({ password: input.newPassword })
-  // BACKEND: if (error) throw error
-  if (input.newPassword.length < 8) {
-    return mockReject('Password must be at least 8 characters')
-  }
-  return mockDelay(undefined)
+  const { data } = await supabase.auth.getUser()
+  const email = data.user?.email
+
+  if (!email) throw new Error('You are not signed in.')
+
+  const { error: reauth } = await supabase.auth.signInWithPassword({
+    email,
+    password: input.currentPassword,
+  })
+
+  if (reauth) throw new Error('Your current password is incorrect.')
+
+  const { error } = await supabase.auth.updateUser({
+    password: input.newPassword,
+  })
+
+  if (error) throw new Error(error.message)
 }
 
 // --- Password reset: email → 6-digit code → new password -------------------
 
+/**
+ * Sends the six-digit code.
+ *
+ * This only works because the recovery email template emits `{{ .Token }}`
+ * instead of the default `{{ .ConfirmationURL }}` — see supabase/config.toml.
+ * With the stock template the mail contains a link, `verifyResetCode` below has
+ * nothing to check, and the Verify Code screen is unreachable.
+ *
+ * Resolves even for an address with no account. Reporting "no such user" here
+ * would let anyone enumerate the clinic's staff addresses.
+ */
 export async function requestPasswordReset(email: string): Promise<void> {
-  // BACKEND: const { error } = await supabase.auth.resetPasswordForEmail(email)
-  // BACKEND: if (error) throw error
-  if (!email.includes('@')) return mockReject('Enter a valid email address')
-  return mockDelay(undefined)
+  const { error } = await supabase.auth.resetPasswordForEmail(
+    email.trim().toLowerCase(),
+  )
+
+  if (error) throw new Error(error.message)
 }
 
+/**
+ * Exchanges the code for a session.
+ *
+ * On success the user is signed in — a recovery OTP is a login — which is what
+ * lets `resetPassword` below call `updateUser` on the next screen.
+ */
 export async function verifyResetCode(
   email: string,
   code: string,
 ): Promise<void> {
-  // BACKEND: const { error } = await supabase.auth.verifyOtp({ email, token: code, type: 'recovery' })
-  // BACKEND: if (error) throw error
-  if (!email) return mockReject('Start again from the reset form')
-  if (code.length !== 6) return mockReject('Enter the 6-digit code')
-  return mockDelay(undefined)
+  const { error } = await supabase.auth.verifyOtp({
+    email: email.trim().toLowerCase(),
+    token: code.trim(),
+    type: 'recovery',
+  })
+
+  if (error) throw new Error('That code is incorrect or has expired.')
 }
 
 export async function resetPassword(newPassword: string): Promise<void> {
-  // BACKEND: const { error } = await supabase.auth.updateUser({ password: newPassword })
-  // BACKEND: if (error) throw error
-  if (newPassword.length < 8) {
-    return mockReject('Password must be at least 8 characters')
-  }
-  return mockDelay(undefined)
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
+  if (error) throw new Error(error.message)
 }
 
 // --- Preferences -----------------------------------------------------------
 
 export async function getNotificationPrefs(): Promise<NotificationPrefs> {
-  // BACKEND: return apiFetch<NotificationPrefs>('/account/notifications')
-  return mockDelay(notificationPrefs)
+  return apiFetch<NotificationPrefs>('/account/notifications')
 }
 
 export async function updateNotificationPrefs(
   input: Partial<NotificationPrefs>,
 ): Promise<NotificationPrefs> {
-  // BACKEND: return apiFetch<NotificationPrefs>('/account/notifications', { method: 'PATCH', body: JSON.stringify(input) })
-  Object.assign(notificationPrefs, input)
-  return mockDelay(notificationPrefs)
+  return apiFetch<NotificationPrefs>('/account/notifications', {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
 }

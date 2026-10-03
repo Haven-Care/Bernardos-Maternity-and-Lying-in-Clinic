@@ -1,15 +1,59 @@
 import type { AppointmentStatus } from './appointment'
 
-/** The four stat tiles across the top of the Dashboard. */
+/**
+ * The Dashboard's date range, sent as `?range=`.
+ *
+ * It applies to the stat tiles and the pie chart. Inventory Alerts always
+ * counts current stock, whatever the range.
+ *
+ * The server turns the key into dates from the clinic's today, so a browser
+ * with the wrong clock or timezone cannot shift it. `today` when omitted.
+ */
+export type DashboardRange =
+  | 'today'
+  | 'yesterday'
+  | 'last-7-days'
+  | 'this-month'
+  | 'last-month'
+  | 'all-time'
+
+export const DASHBOARD_RANGES: DashboardRange[] = [
+  'today',
+  'yesterday',
+  'last-7-days',
+  'this-month',
+  'last-month',
+  'all-time',
+]
+
+/**
+ * The four stat tiles across the top of the Dashboard, over one
+ * `DashboardRange`.
+ *
+ * The first two names say "today" because that is the default range; the range
+ * decides what they count.
+ */
 export interface DashboardStats {
+  /** Visits scheduled in the range, not counting cancelled ones. */
   todaysSchedule: number
-  bookingRequests: number
+  /**
+   * Bookings *submitted* in the range, whatever day they are for.
+   *
+   * Replaced a count of pending requests, which became a permanent zero when
+   * bookings started being accepted on submission. Submissions rather than
+   * upcoming visits because this is the monitoring number — what arrived while
+   * nobody was looking — and upcoming visits would duplicate `todaysSchedule`.
+   */
+  bookedToday: number
+  /** Completed visits scheduled in the range. */
   completedAppointments: number
+  /** Low stock plus near expiry, as of now. Not affected by the range. */
   inventoryAlerts: number
 }
 
 /**
- * One wedge of the Appointments Overview pie chart.
+ * One wedge of the Appointments Overview pie chart: appointments scheduled in
+ * the range, by status.
  *
  * `percentage` is carried rather than recomputed because the chart labels it
  * directly ("Completed 41.4%") and the numbers must match the legend exactly.
@@ -23,8 +67,13 @@ export interface AppointmentsOverviewSlice {
 /**
  * One entry in the Urgent Alerts feed.
  *
- * The feed mixes sources — low stock, near expiry, and pending bookings all land
- * in the same list, which is why this is a flat shape rather than a union.
+ * The feed mixes sources — low stock, near expiry, and open reschedule requests
+ * all land in the same list, which is why this is a flat shape rather than a
+ * union.
+ *
+ * `booking_review` used to mean "requests awaiting confirmation". Bookings are
+ * accepted on submission now, so it points at the reschedule queue instead:
+ * that is what is left that a member of staff has to decide.
  */
 export type UrgentAlertKind =
   | 'low_stock'

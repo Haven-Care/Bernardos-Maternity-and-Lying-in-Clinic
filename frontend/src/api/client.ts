@@ -1,8 +1,9 @@
 /**
- * The real HTTP client, unused until the first domain is swapped.
+ * The HTTP client every domain in this directory calls.
  *
- * `apiFetch` already has the right shape for the seam, so it stays where it is
- * and this file just re-exports it. When auth lands, the `Authorization: Bearer`
- * header is added in `lib/api.ts` — one place, and every domain picks it up.
+ * `apiFetch` lives in `lib/api.ts` and this file just re-exports it, so the
+ * import in each domain file reads `./client` and the transport can move
+ * without touching eight files. The `Authorization: Bearer` header is attached
+ * there — one place, and every domain picks it up.
  */
 export { apiFetch } from '../lib/api'

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import * as api from '../../api'
 import { useAsync } from '../../hooks/useAsync'
 import { ConfirmModal } from '../ui/Modal'
+import { useToast } from '../ui/toast-context'
 import {
   BellIcon,
   CalendarIcon,
@@ -31,6 +32,7 @@ const NAV = [
  */
 export function PortalLayout() {
   const navigate = useNavigate()
+  const toast = useToast()
   const clinic = useAsync(() => api.clinic.getClinicInfo())
   const profile = useAsync(() => api.account.getProfile())
 
@@ -42,6 +44,13 @@ export function PortalLayout() {
     try {
       await api.account.logout()
       navigate('/login', { replace: true })
+    } catch (err) {
+      // Otherwise the dialog just closes and the session is still live on a
+      // shared clinic desktop.
+      toast.error(
+        'Could not log out',
+        err instanceof Error ? err.message : 'Please try again.',
+      )
     } finally {
       setLoggingOut(false)
       setConfirmLogout(false)
@@ -50,20 +59,22 @@ export function PortalLayout() {
 
   return (
     <div className="flex min-h-full">
-      <aside className="flex w-16 shrink-0 flex-col border-r border-border bg-surface lg:w-60">
+      {/* Pinned to the viewport, so the footer with Log out is always on screen
+          rather than at the bottom of however long the page is. */}
+      <aside className="sticky top-0 flex h-dvh w-16 shrink-0 flex-col border-r border-border bg-surface lg:w-60">
         <div className="flex h-14 items-center gap-2.5 border-b border-border px-3 lg:px-4">
           <Logo />
           <div className="hidden min-w-0 lg:block">
-            <p className="truncate text-[13px] leading-tight font-semibold text-brand-700">
+            <p className="truncate text-sm leading-tight font-semibold text-brand-700">
               {clinic.data?.name ?? 'HavenCare'}
             </p>
-            <p className="truncate text-[11px] text-gray-400">
+            <p className="truncate text-xs text-gray-400">
               Management System
             </p>
           </div>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-0.5 p-2">
+        <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
           {NAV.map(({ to, end, label, Icon }) => (
             <NavLink
               key={to}
@@ -85,13 +96,15 @@ export function PortalLayout() {
         </nav>
 
         <div className="border-t border-border p-3">
-          <div className="flex items-center gap-2.5">
+          {/* Stacked while the sidebar is icon-only: a 64px rail has no room
+              for the avatar and the button side by side. */}
+          <div className="flex flex-col items-center gap-2 lg:flex-row lg:gap-2.5">
             <Avatar name={profile.data?.fullName ?? ''} />
             <div className="hidden min-w-0 flex-1 lg:block">
-              <p className="truncate text-[13px] font-semibold text-brand-700">
+              <p className="truncate text-sm font-semibold text-brand-700">
                 {profile.data?.fullName ?? '—'}
               </p>
-              <p className="truncate text-[11px] text-gray-400 capitalize">
+              <p className="truncate text-xs text-gray-400 capitalize">
                 {profile.data?.role ?? ''}
               </p>
             </div>
@@ -100,7 +113,7 @@ export function PortalLayout() {
               onClick={() => setConfirmLogout(true)}
               aria-label="Log out"
               title="Log out"
-              className="hidden size-7 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 lg:flex"
+              className="flex size-7 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
             >
               <LogoutIcon className="size-4" />
             </button>
@@ -114,7 +127,7 @@ export function PortalLayout() {
         onConfirm={() => void handleLogout()}
         loading={loggingOut}
         title="Log out"
-        message="Just be sure you need to end your current session? Any unsaved changes in active forms or patient records will be lost."
+        message="End your session? Unsaved changes will be lost."
         confirmLabel="Log out"
       />
 

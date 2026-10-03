@@ -3,6 +3,13 @@ import { useSearchParams } from 'react-router-dom'
 export interface Tab {
   id: string
   label: string
+  /**
+   * A count worth acting on, shown as a pill beside the label.
+   *
+   * Zero and undefined both render nothing — a badge reading "0" is a
+   * notification that there is nothing to notify about.
+   */
+  badge?: number
 }
 
 /**
@@ -42,13 +49,18 @@ export function Tabs({
               // back button should still leave the page.
               setSearchParams(next, { replace: true })
             }}
-            className={`-mb-px border-b-2 px-0.5 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
+            className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-0.5 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
               selected
                 ? 'border-brand-500 text-brand-700'
                 : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
           >
             {tab.label}
+            {tab.badge !== undefined && tab.badge > 0 && (
+              <span className="inline-flex min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-xs leading-4 font-semibold text-white tabular-nums">
+                {tab.badge}
+              </span>
+            )}
           </button>
         )
       })}

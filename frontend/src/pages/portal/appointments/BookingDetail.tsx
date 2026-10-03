@@ -13,12 +13,15 @@ import type { BookingRequest } from '../../../types/appointment'
 import { RescheduleModal } from './RescheduleModal'
 
 /**
- * The booking request detail from the prototype, with its three actions.
+ * The booking detail from the prototype.
  *
- * Confirm is the primary path and gets the full-width button; Reschedule and
- * Cancel sit below it. Only a `pending` request shows Confirm — a booking
- * that's already confirmed can still be moved or cancelled, but "confirming"
- * it again is meaningless.
+ * **Two actions, not three.** The prototype's primary path was Confirm, gated
+ * on a `pending` status. Bookings are accepted on submission now, so nothing
+ * arrives needing confirmation and that button was unreachable — a control that
+ * can never fire teaches staff the wrong model of what this screen does.
+ *
+ * Reschedule and Cancel remain: the clinic still owns its own schedule, and
+ * both are things staff decide rather than acknowledge.
  */
 export function BookingDetail({
   booking,
@@ -66,7 +69,7 @@ export function BookingDetail({
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title="Booking Request" size="sm">
+      <Modal open={open} onClose={onClose} title="Booking" size="sm">
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700">
@@ -91,8 +94,14 @@ export function BookingDetail({
               label="Status"
               value={<StatusBadge status={booking.status} />}
             />
+            {/*
+              "Preferred", before this change, because a pending row carried the
+              patient's requested time rather than an agreed one. The slot is
+              held the moment it is booked now, so this is simply when they are
+              coming.
+            */}
             <Row
-              label="Preferred Date & Time"
+              label="Date & Time"
               value={formatDateTime(booking.scheduledDate, booking.slotTime)}
             />
             <Row label="Reason for Visit" value={booking.reasonForVisit} />
@@ -100,43 +109,24 @@ export function BookingDetail({
 
           {resolved ? (
             <p className="text-center text-xs text-gray-400">
-              This request is {booking.status} and can no longer be actioned.
+              This booking is {booking.status} and can no longer be actioned.
             </p>
           ) : (
-            <div className="flex flex-col gap-2">
-              {booking.status === 'pending' && (
-                <Button
-                  variant="success"
-                  loading={busy}
-                  className="w-full"
-                  onClick={() =>
-                    void run(
-                      () => api.appointments.confirmBooking(booking.id),
-                      'Appointment Confirmed',
-                      'The appointment has been successfully scheduled.',
-                    )
-                  }
-                >
-                  Confirm
-                </Button>
-              )}
-
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant="secondary"
-                  disabled={busy}
-                  onClick={() => setRescheduling(true)}
-                >
-                  Reschedule
-                </Button>
-                <Button
-                  variant="secondary"
-                  disabled={busy}
-                  onClick={() => setConfirmingCancel(true)}
-                >
-                  Cancel
-                </Button>
-              </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="secondary"
+                disabled={busy}
+                onClick={() => setRescheduling(true)}
+              >
+                Reschedule
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={busy}
+                onClick={() => setConfirmingCancel(true)}
+              >
+                Cancel
+              </Button>
             </div>
           )}
         </div>

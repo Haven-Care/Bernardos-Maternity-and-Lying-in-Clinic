@@ -43,7 +43,7 @@ export function PatientRecords() {
       header: 'Patient Name',
       render: (p) => (
         <div className="flex items-center gap-2.5">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-100 text-[11px] font-semibold text-brand-700">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
             {initials(p.fullName)}
           </span>
           <span className="font-medium text-gray-900">{p.fullName}</span>
@@ -81,7 +81,7 @@ export function PatientRecords() {
   ]
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-4">
+    <div className="mx-auto flex max-w-6xl flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">

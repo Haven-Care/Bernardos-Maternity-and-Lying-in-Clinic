@@ -5,91 +5,99 @@ import type {
   PatientInput,
   PatientListRow,
 } from '../types/patient'
-import { patientDocuments, patients } from '../mocks/patients'
-import { mockDelay, mockReject, uid } from '../mocks/util'
-// import { apiFetch } from './client'
+import { apiFetch } from './client'
 
 export async function listPatients(): Promise<PatientListRow[]> {
-  // BACKEND: return apiFetch<PatientListRow[]>('/patients')
-  const rows = patients.map((p) => ({
-    id: p.id,
-    patientCode: p.patientCode,
-    fullName: p.fullName,
-    contactNumber: p.contactNumber,
-    lastVisit: p.lastVisit,
-  }))
-  return mockDelay(rows)
+  return apiFetch<PatientListRow[]>('/patients')
 }
 
 export async function getPatient(id: string): Promise<Patient> {
-  // BACKEND: return apiFetch<Patient>(`/patients/${id}`)
-  const p = patients.find((x) => x.id === id)
-  if (!p) return mockReject(`Patient not found: ${id}`)
-  return mockDelay(p)
+  return apiFetch<Patient>(`/patients/${id}`)
 }
 
 export async function createPatient(input: PatientInput): Promise<Patient> {
-  // BACKEND: return apiFetch<Patient>('/patients', { method: 'POST', body: JSON.stringify(input) })
-  const created: Patient = {
-    ...input,
-    id: uid('pat'),
-    patientCode: `P-${108 + patients.length}`,
-    lastVisit: null,
-    createdAt: new Date().toISOString(),
-  }
-  patients.push(created)
-  return mockDelay(created)
+  return apiFetch<Patient>('/patients', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
 }
 
 export async function updatePatient(
   id: string,
   input: PatientInput,
 ): Promise<Patient> {
-  // BACKEND: return apiFetch<Patient>(`/patients/${id}`, { method: 'PATCH', body: JSON.stringify(input) })
-  const p = patients.find((x) => x.id === id)
-  if (!p) return mockReject(`Patient not found: ${id}`)
-  Object.assign(p, input)
-  return mockDelay(p)
+  return apiFetch<Patient>(`/patients/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
 }
 
 export async function listDocuments(
   patientId: string,
 ): Promise<PatientDocument[]> {
-  // BACKEND: return apiFetch<PatientDocument[]>(`/patients/${patientId}/documents`)
-  return mockDelay(patientDocuments.filter((d) => d.patientId === patientId))
+  return apiFetch<PatientDocument[]>(`/patients/${patientId}/documents`)
 }
 
 /**
  * Attach a document to a patient record.
  *
- * The real implementation uploads to a **private** Supabase Storage bucket and
- * stores only the path — these are medical records, so they are never served
- * from a public bucket and reads go through a signed URL.
+ * Three steps, because the file never passes through our API:
+ *
+ *   1. ask Express for a signed upload URL
+ *   2. PUT the bytes straight to Storage
+ *   3. tell Express it landed, so the row exists
+ *
+ * The bucket is private and has no policies, so that signed URL is the only way
+ * to write to it and it is valid for one path for a few minutes. Reads work the
+ * same way in reverse — see `getDocumentUrl`. These are medical records; there
+ * is no public link to any of them at any point.
+ *
+ * Step 2 failing leaves no database row, which is the right way round. The
+ * opposite — a row pointing at a file that never arrived — would show staff a
+ * document they can never open.
  */
 export async function uploadDocument(
   patientId: string,
   docType: PatientDocumentType,
   file: File,
 ): Promise<PatientDocument> {
-  // BACKEND: upload to the private bucket via supabase.storage, then POST the
-  // BACKEND: returned path to `/patients/${patientId}/documents`
-  const created: PatientDocument = {
-    id: uid('doc'),
-    patientId,
-    docType,
-    fileName: file.name,
-    fileSize: file.size,
-    uploadedAt: new Date().toISOString(),
-    uploadedBy: 'Hannah Puerta',
+  const { signedUrl, path } = await apiFetch<{
+    signedUrl: string
+    path: string
+    token: string
+  }>(`/patients/${patientId}/documents/upload-url`, {
+    method: 'POST',
+    body: JSON.stringify({ fileName: file.name }),
+  })
+
+  const upload = await fetch(signedUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type || 'application/octet-stream' },
+    body: file,
+  })
+
+  if (!upload.ok) {
+    throw new Error('The file could not be uploaded. Please try again.')
   }
-  patientDocuments.push(created)
-  return mockDelay(created)
+
+  return apiFetch<PatientDocument>(`/patients/${patientId}/documents`, {
+    method: 'POST',
+    body: JSON.stringify({
+      docType,
+      fileName: file.name,
+      fileSize: file.size,
+      storagePath: path,
+    }),
+  })
 }
 
-/** Time-limited download link. Never a public URL. */
+/**
+ * A download link that works for five minutes and then does not.
+ *
+ * Long enough to click and open; short enough that a URL left in browser
+ * history or pasted into a chat stops being a way into someone's records.
+ */
 export async function getDocumentUrl(documentId: string): Promise<string> {
-  // BACKEND: return apiFetch<{ url: string }>(`/documents/${documentId}/url`).then(r => r.url)
-  const doc = patientDocuments.find((d) => d.id === documentId)
-  if (!doc) return mockReject(`Document not found: ${documentId}`)
-  return mockDelay(`#mock-download/${doc.fileName}`)
+  const { url } = await apiFetch<{ url: string }>(`/documents/${documentId}/url`)
+  return url
 }

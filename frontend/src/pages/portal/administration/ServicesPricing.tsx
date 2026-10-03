@@ -168,18 +168,13 @@ function ServiceModal({
       size="sm"
       title={service ? 'Edit Service and Pricing' : 'Add Service and Pricing'}
       footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() => void save()}
-            loading={saving}
-            disabled={form.name.trim() === '' || form.price <= 0}
-          >
-            Save
-          </Button>
-        </>
+        <Button
+          onClick={() => void save()}
+          loading={saving}
+          disabled={form.name.trim() === '' || form.price <= 0}
+        >
+          Save
+        </Button>
       }
     >
       <div className="flex flex-col gap-4">
