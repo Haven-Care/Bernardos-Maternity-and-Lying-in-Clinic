@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import request from 'supertest'
-import { createApp } from '../app.js'
-
-const app = createApp()
+import app from '../app.js'
 
 describe('health', () => {
   it('reports liveness without touching the database', async () => {
