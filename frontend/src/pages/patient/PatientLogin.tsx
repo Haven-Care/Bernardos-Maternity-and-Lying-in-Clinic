@@ -34,7 +34,7 @@ export function PatientLogin() {
 
     try {
       await api.patientAuth.login(email, password)
-      navigate(from ?? '/patient/bookings', { replace: true })
+      navigate(from ?? '/patient/home', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign in failed')
     } finally {

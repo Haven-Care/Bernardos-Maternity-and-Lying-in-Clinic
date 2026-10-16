@@ -13,6 +13,7 @@ import {
 } from '../../lib/draftBooking'
 import { BookingConfirmed } from './BookingConfirmed'
 import { DetailsStep, type Contact } from './DetailsStep'
+import { ReviewStep } from './ReviewStep'
 import { PublicShell } from './PublicShell'
 import { ScheduleStep } from './ScheduleStep'
 import { ServiceStep } from './ServiceStep'
@@ -31,11 +32,8 @@ type ContactEdits = Partial<Omit<Contact, 'email'>>
 /**
  * The public booking form — the patient half of the product, at `/book`.
  *
- * **This screen has no Figma frame.** Every frame in the prototype is the staff
- * portal; the public form is referenced only in admin copy ("toggling a slot off
- * blocks it from the public booking form immediately"). It is built here against
- * the portal's established visual language — same brand colour, same primitives,
- * same card radius — so it reads as one product when the design does land.
+ * The patient prototype has four booking screens: service, schedule, details,
+ * and review. Submission is deliberately reserved for the review screen.
  *
  * State lives in this component rather than in the router, unlike the password
  * reset sequence. That flow is genuinely four pages and needs a back button per
@@ -43,7 +41,7 @@ type ContactEdits = Partial<Omit<Contact, 'email'>>
  * clean start rather than a half-populated step three pointing at a slot that
  * may since have filled.
  *
- * **Steps 1 and 2 are public; step 3 requires an account.** Browsing services
+ * **Steps 1 and 2 are public; steps 3 and 4 require an account.** Browsing services
  * and times is how a patient decides whether the clinic is worth registering
  * with, so demanding a sign-up before either would cost bookings. But the
  * booking itself hangs off an account — that is what makes My Bookings,
@@ -130,7 +128,7 @@ export function BookingPage() {
   // again and send the patient back through sign-in, rather than leave them on
   // a form with no email that can only fail on submit.
   const signedOutOnDetails =
-    step === 2 && !account.loading && !account.data && service !== null
+    step >= 2 && !account.loading && !account.data && service !== null
 
   useEffect(() => {
     if (!signedOutOnDetails || !service) return
@@ -173,7 +171,7 @@ export function BookingPage() {
   }
 
   async function handleSubmit() {
-    if (!service) return
+    if (!service || !account.data || !schedule.slotTime) return
 
     setSubmitting(true)
     setSubmitError(undefined)
@@ -263,20 +261,30 @@ export function BookingPage() {
               service={service}
               scheduledDate={schedule.scheduledDate}
               slotTime={schedule.slotTime}
-              onSubmit={() => void handleSubmit()}
-              submitting={submitting}
-              error={submitError}
-              onPickAnotherTime={() => {
-                setSubmitError(undefined)
-                setSchedule((s) => ({ ...s, slotTime: '' }))
-                setStep(1)
-              }}
+              onContinue={() => setStep(3)}
             />
           ) : (
             // Restoring a draft: the service list or the account is still in
             // flight.
             <LoadingState label="Picking up where you left off…" />
           ))}
+        {current === 3 && (service && account.data ? (
+          <ReviewStep
+            service={service}
+            scheduledDate={schedule.scheduledDate}
+            slotTime={schedule.slotTime}
+            contact={contact}
+            submitting={submitting}
+            error={submitError}
+            onSubmit={() => void handleSubmit()}
+            onBack={() => setStep(2)}
+            onPickAnotherTime={() => {
+              setSubmitError(undefined)
+              setSchedule((s) => ({ ...s, slotTime: '' }))
+              setStep(1)
+            }}
+          />
+        ) : <LoadingState label="Picking up where you left off…" />)}
       </div>
 
       {current > 0 && current < 2 && (

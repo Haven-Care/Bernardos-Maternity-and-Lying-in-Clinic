@@ -1,10 +1,12 @@
 import { useState, type ReactNode } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import * as api from '../../api'
+import type { PatientAccount } from '../../types/patientAccount'
 import { useAsync } from '../../hooks/useAsync'
 import { formatTime } from '../../lib/format'
 import { ConfirmModal } from '../../components/ui/Modal'
 import { useToast } from '../../components/ui/toast-context'
+import { CalendarIcon, DashboardIcon, PatientsIcon, SettingsIcon } from '../../components/layout/icons'
 
 /**
  * Chrome for the patient-facing surface.
@@ -21,6 +23,7 @@ import { useToast } from '../../components/ui/toast-context'
 export function PublicShell({ children }: { children: ReactNode }) {
   const clinic = useAsync(() => api.clinic.getClinicInfo())
   const hours = useAsync(() => api.clinic.getOperatingHours())
+  const account = useAsync(() => api.patientAuth.getAccount().catch(() => null))
 
   return (
     <div className="flex min-h-full flex-col bg-brand-50/40">
@@ -35,15 +38,15 @@ export function PublicShell({ children }: { children: ReactNode }) {
               Book an appointment
             </p>
           </div>
-          <PatientNav />
+          <PatientNav account={account.data} loading={account.loading} />
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-5 sm:py-8">
+      <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-5 pb-28 sm:py-8">
         {children}
       </main>
 
-      <footer className="border-t border-border bg-surface">
+      <footer className="hidden border-t border-border bg-surface sm:block">
         <div className="mx-auto w-full max-w-2xl px-4 py-5 text-xs text-gray-500">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -78,6 +81,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
           </p>
         </div>
       </footer>
+      <PatientBottomNav />
     </div>
   )
 }
@@ -95,18 +99,17 @@ export function PublicShell({ children }: { children: ReactNode }) {
  * header agrees with what the server will actually answer. A failed fetch is
  * simply "signed out", which is the correct reading of an expired session.
  */
-function PatientNav() {
+function PatientNav({ account, loading }: { account: PatientAccount | null | undefined; loading: boolean }) {
   const navigate = useNavigate()
   const toast = useToast()
-  const account = useAsync(() => api.patientAuth.getAccount())
   const [confirming, setConfirming] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
 
   // Neither state is right until the first request settles, and flashing "Sign
   // in" at someone who is signed in is the more jarring of the two mistakes.
-  if (account.loading) return <span className="w-16 shrink-0" />
+  if (loading) return <span className="w-16 shrink-0" />
 
-  if (!account.data) {
+  if (!account) {
     return (
       <div className="flex shrink-0 items-center gap-3">
         <Link
@@ -147,12 +150,13 @@ function PatientNav() {
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-3">
+    <div className="hidden shrink-0 items-center gap-3 sm:flex">
+      <Link to="/patient/home" className="text-xs font-medium text-gray-600 hover:text-brand-700">Home</Link>
       <Link
         to="/patient/bookings"
         className="text-xs font-medium text-gray-600 transition-colors hover:text-gray-900"
       >
-        My bookings
+        History
       </Link>
       <Link
         to="/patient/account"
@@ -178,6 +182,33 @@ function PatientNav() {
         loading={loggingOut}
       />
     </div>
+  )
+}
+
+const patientTabs = [
+  { to: '/patient/home', label: 'Home', icon: DashboardIcon },
+  { to: '/book', label: 'Book', icon: CalendarIcon },
+  { to: '/patient/bookings', label: 'History', icon: PatientsIcon },
+  { to: '/patient/account', label: 'Profile', icon: SettingsIcon },
+]
+
+function PatientBottomNav() {
+  const location = useLocation()
+
+  return (
+    <nav aria-label="Patient navigation" className="fixed inset-x-0 bottom-0 z-30 border-t border-brand-100 bg-white/95 shadow-[0_-4px_18px_rgba(13,93,92,0.08)] backdrop-blur sm:hidden">
+      <div className="mx-auto grid max-w-2xl grid-cols-4 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
+        {patientTabs.map(({ to, label, icon: Icon }) => {
+          const active = to === '/book' ? location.pathname === to : location.pathname.startsWith(to)
+          return (
+            <NavLink key={to} to={to} aria-current={active ? 'page' : undefined} className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-lg text-[11px] font-semibold ${active ? 'bg-brand-50 text-brand-700' : 'text-gray-500'}`}>
+              <Icon className="size-5" />
+              {label}
+            </NavLink>
+          )
+        })}
+      </div>
+    </nav>
   )
 }
 

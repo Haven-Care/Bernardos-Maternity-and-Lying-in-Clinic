@@ -13,6 +13,7 @@ interface Form {
   email: string
   contactNumber: string
   password: string
+  confirmPassword: string
 }
 
 type Errors = Partial<Record<keyof Form, string>>
@@ -27,6 +28,9 @@ function validate(form: Form): Errors {
   if (!isPhMobile(form.contactNumber)) {
     errors.contactNumber =
       'Enter a mobile number the clinic can reach you on, e.g. 0917 123 4567.'
+  }
+  if (form.password !== form.confirmPassword) {
+    errors.confirmPassword = 'Passwords do not match.'
   }
 
   return errors
@@ -58,6 +62,7 @@ export function SignUp() {
     email: '',
     contactNumber: '',
     password: '',
+    confirmPassword: '',
   })
   const [errors, setErrors] = useState<Errors>({})
   const [error, setError] = useState<string>()
@@ -156,6 +161,16 @@ export function SignUp() {
             <PasswordRules value={form.password} />
           </div>
         </div>
+
+        <PasswordField
+          label="Confirm password"
+          required
+          value={form.confirmPassword}
+          onChange={(confirmPassword) => patch({ confirmPassword })}
+          placeholder="Re-enter your password"
+          autoComplete="new-password"
+          error={errors.confirmPassword}
+        />
 
         {error && (
           <p role="alert" className="text-sm text-danger-700">

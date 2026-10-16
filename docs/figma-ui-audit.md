@@ -23,24 +23,24 @@ Differences visible in the source and partial Figma view:
 
 Patient Accounts and the Reschedules queue serve existing application features. The My Account frame is outside the agreed admin scope. Before calling the deployed admin UI approved, sign in on Vercel and visually check Dashboard, all three Appointment tabs, all four Inventory tabs, Patient Records, and the four retained Administration tabs at desktop width. Check interactions and real data separately from visual matching.
 
-## User side to build after admin review
+## Patient mobile implementation status
 
-The USER Figma page is a mobile app layout with persistent bottom navigation: **Home, Book, History, Profile**. The deployed patient experience uses desktop-centered web pages and currently has no equivalent home screen or bottom navigation.
+The USER Figma page is a mobile app layout with persistent bottom navigation: **Home, Book, History, Profile**. The `feat/mobile-patient-ui` branch now implements that navigation and a signed-in Home route. This is a source review; the deployed Vercel build has not been checked against the Figma frames.
 
-| Figma flow | Design notes | Current frontend gap |
+| Figma flow | Branch implementation | Remaining gap |
 | --- | --- | --- |
-| Login | Email **or mobile number**, password, Remember me, Forgot Password, Create an Account | `/patient/login` accepts email only and has no Remember me control |
-| Sign up | Full name, email, mobile number, password confirmation, Terms/Privacy checkbox | `/patient/signup` lacks password confirmation and checkbox |
-| Home | Greeting, next appointment card, Book Appointment and Booking History shortcuts, reminders, recent activity | No patient home route |
-| Book | Four screens: service, date/time, patient information, review/submit | `/book` has three steps: service, schedule, details; submission is on the details step |
-| History | All, Upcoming, Completed, Cancelled filters; status cards and cancellation | `/patient/bookings` exists, with All, Upcoming, Past, Cancelled filters and cancel/reschedule actions; layout differs |
-| Profile | Personal and contact information, emergency contact, password management, notification settings, Help & FAQs, Contact Us, logout | `/patient/account` currently shows email and change password only; other screens/routes are absent |
+| Login | Email sign-in, password reset, sign-up link; successful default lands on Home | Mobile-number sign-in and Remember me need an auth decision. Supabase currently signs in by email and persists sessions. |
+| Sign up | Full name, email, mobile number, password confirmation | Terms/Privacy content and consent flow have not been supplied. Do not display a checkbox that points to nonexistent policies. |
+| Home | Greeting, next appointment from live bookings, shortcuts, recent activity | Reminder data and exact Figma visual matching remain open. |
+| Book | Four steps: service, schedule, details, review and confirm | Visual matching and a signed-in end-to-end booking check remain open. |
+| History | All, Upcoming, Completed, Cancelled filters; existing cancel and reschedule actions | Visual matching and live interaction checks remain open. |
+| Profile | Editable name and mobile, email notification setting, password management, clinic contact links, logout | Emergency contact is stored on the clinical patient record, not the account API. Help & FAQs content and a patient edit flow are still needed. |
 
-The user page also includes password recovery and several history/detail states. Capture those frame details during implementation. The current comment in `frontend/src/pages/public/BookingPage.tsx` saying the prototype has no patient booking frames is outdated and should be corrected when this work begins.
+The user page also includes password recovery and several history/detail states. Capture those frame details during a visual comparison against the signed-in deployment.
 
-## Recommended order
+## Next checks
 
-1. Verify the signed-in Vercel admin pages against Figma; record any concrete visual or functional gaps.
-2. Fix confirmed admin gaps without removing the added operational tabs.
-3. Implement the patient mobile shell and Home, then the four-step booking flow, History, and Profile/settings screens.
-4. Confirm how mobile-number login, notification settings, and emergency contacts should work in the backend before presenting them as functional controls.
+1. Run a mobile-width walkthrough with a confirmed patient account against a working backend: sign in, book, review, view History, edit Profile, and log out.
+2. Compare each mobile route with its Figma frame and resolve visual differences.
+3. Decide the mobile-number authentication path and provide Terms/Privacy and Help & FAQs content.
+4. Design a patient-safe emergency-contact API before adding editable emergency-contact fields to Profile.

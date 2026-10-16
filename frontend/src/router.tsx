@@ -19,6 +19,7 @@ import { SignUp } from './pages/patient/SignUp.tsx'
 import { CheckEmail } from './pages/patient/CheckEmail.tsx'
 import { MyBookings } from './pages/patient/MyBookings.tsx'
 import { Account } from './pages/patient/Account.tsx'
+import { Home } from './pages/patient/Home.tsx'
 import { NotFound } from './pages/NotFound.tsx'
 
 /**
@@ -78,6 +79,7 @@ export const router = createBrowserRouter([
   {
     element: <RequirePatient />,
     children: [
+      { path: '/patient/home', element: <Home /> },
       { path: '/patient/bookings', element: <MyBookings /> },
       { path: '/patient/account', element: <Account /> },
     ],
