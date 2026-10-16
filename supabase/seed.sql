@@ -31,10 +31,10 @@ values (
   1,
   'Bernardo''s Maternity & Lying-in Clinic',
   'DOH-LTO-2025-00417',
-  '123 Llano, Caloocan City',
+  '#656 Llano Road, Caloocan City',
   '(02) 8123 4567',
-  '0917 456 7890',
-  'bernardo1@havencare.ph',
+  '0942-569-8248',
+  'analynbernardo1967@gmail.com',
   'facebook.com/havencareclinic'
 );
 
@@ -52,20 +52,29 @@ insert into operating_hours (key, label, opens_at, closes_at, closed) values
 -- ---------------------------------------------------------------------------
 -- Services
 --
--- Prices are the prototype's own and are UNCONFIRMED — the clinic sets its
--- pricing, and the Figma disagrees with itself across screens. See CONFLICTS.md.
+-- The clinic banner lists these services but no prices. Zero means staff will
+-- confirm the price at the clinic; it is never displayed as a free service.
 -- ---------------------------------------------------------------------------
 
 insert into services (id, name, category, price, active) values
-  ('5e1c0000-0000-4000-8000-000000000001', 'Pre-natal Check-up', 'Consultation', 300, true),
-  ('5e1c0000-0000-4000-8000-000000000002', 'Consultation',       'Consultation', 200, true),
-  ('5e1c0000-0000-4000-8000-000000000003', 'Ultrasound',         'Diagnostic',   500, true),
-  ('5e1c0000-0000-4000-8000-000000000004', 'Follow-up',          'Consultation', 200, true),
-  -- The patient booking wizard offers "Other — tell us during session" but
-  -- Services & Pricing has no row for it, so an Other booking would arrive
-  -- pointing at a service that does not exist. Giving it a real row is the
-  -- smaller change; it is priced 0 because the fee is agreed at the visit.
-  ('5e1c0000-0000-4000-8000-000000000005', 'Other',              'Consultation',   0, true);
+  ('5e1c0000-0000-4000-8000-000000000001', 'Pre-natal Check-up',       'Maternity',             0, true),
+  ('5e1c0000-0000-4000-8000-000000000006', 'Normal Delivery',          'Maternity',             0, false),
+  ('5e1c0000-0000-4000-8000-000000000007', 'Post-natal Check-up',      'Maternity',             0, true),
+  ('5e1c0000-0000-4000-8000-000000000008', 'OB-Gyne Check-up',         'OB-Gyne',               0, true),
+  ('5e1c0000-0000-4000-8000-000000000005', 'Other',                    'Other',                 0, true),
+  ('5e1c0000-0000-4000-8000-000000000009', 'Pap Smear',                'OB-Gyne',               0, true),
+  ('5e1c0000-0000-4000-8000-000000000010', 'Pedia Check-up',          'Newborn & Pediatrics',  0, true),
+  ('5e1c0000-0000-4000-8000-000000000011', 'Newborn Care',            'Newborn & Pediatrics',  0, true),
+  ('5e1c0000-0000-4000-8000-000000000012', 'Newborn Screening',       'Newborn & Pediatrics',  0, true),
+  ('5e1c0000-0000-4000-8000-000000000013', 'Hearing Test',            'Newborn & Pediatrics',  0, true),
+  ('5e1c0000-0000-4000-8000-000000000014', 'BCG Immunization',        'Newborn & Pediatrics',  0, true),
+  ('5e1c0000-0000-4000-8000-000000000015', 'Hepa-B Immunization',     'Newborn & Pediatrics',  0, true),
+  ('5e1c0000-0000-4000-8000-000000000016', 'Ear Piercing',            'Newborn & Pediatrics',  0, true),
+  ('5e1c0000-0000-4000-8000-000000000017', 'Family Planning Counseling', 'Family Planning',     0, true),
+  ('5e1c0000-0000-4000-8000-000000000018', 'DMPA (Injectable)',       'Family Planning',       0, true),
+  ('5e1c0000-0000-4000-8000-000000000019', 'Implant',                 'Family Planning',       0, true),
+  ('5e1c0000-0000-4000-8000-000000000020', 'IUD',                     'Family Planning',       0, true),
+  ('5e1c0000-0000-4000-8000-000000000021', 'Pills',                   'Family Planning',       0, true);
 
 -- ---------------------------------------------------------------------------
 -- Appointment slots
@@ -293,8 +302,11 @@ join lateral (
 join lateral (
   select id, name
   from services
-  where name <> 'Other'
-  order by name
+  where name in ('Pre-natal Check-up', 'OB-Gyne Check-up', 'Pedia Check-up', 'Post-natal Check-up')
+  order by array_position(
+    array['Pre-natal Check-up', 'OB-Gyne Check-up', 'Pedia Check-up', 'Post-natal Check-up'],
+    name
+  )
   offset (a.n - 1) % 4
   limit 1
 ) sv on true;

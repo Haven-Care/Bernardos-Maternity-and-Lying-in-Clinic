@@ -123,7 +123,7 @@ describe.skipIf(!up)('dashboard', () => {
 
       const services = await request(app).get('/api/services').expect(200)
       const serviceId = services.body.find(
-        (s: { name: string }) => s.name === 'Consultation',
+        (s: { name: string }) => s.name === 'Pre-natal Check-up',
       ).id
 
       const { data: today } = await getSupabaseClient().rpc('clinic_today')
@@ -487,7 +487,7 @@ describe.skipIf(!up)('dashboard', () => {
       // range so it cannot collide with another suite's slots.
       const services = await request(app).get('/api/services').expect(200)
       const serviceId = services.body.find(
-        (s: { name: string }) => s.name === 'Consultation',
+        (s: { name: string }) => s.name === 'Pre-natal Check-up',
       ).id
 
       const { data: today } = await getSupabaseClient().rpc('clinic_today')
@@ -690,7 +690,7 @@ describe.skipIf(!up)('dashboard', () => {
 
       const services = await request(app).get('/api/services').expect(200)
       const serviceId = services.body.find(
-        (s: { name: string }) => s.name === 'Consultation',
+        (s: { name: string }) => s.name === 'Pre-natal Check-up',
       ).id
 
       const slots = await request(app)
@@ -734,10 +734,10 @@ describe.skipIf(!up)('dashboard', () => {
       expect(written).toHaveLength(beforeCount + 1)
       // Newest first, so ours is at the head.
       expect(written[0]).toMatchObject({
-        message: expect.stringContaining('Consultation'),
+        message: expect.stringContaining('Pre-natal Check-up'),
         read: false,
       })
-      // "… booked Consultation on Nov 17, 09:00" — "booked", not "requested",
+      // "… booked Pre-natal Check-up on Nov 17, 09:00" — "booked", not "requested",
       // since bookings are accepted on submission. The month name comes from
       // short_date(), not to_char(), so it cannot follow the server's locale.
       expect(written[0].message).toMatch(

@@ -52,7 +52,7 @@ describe.skipIf(!up)('bookings', () => {
 
     const services = await request(app).get('/api/services').expect(200)
     serviceId = services.body.find(
-      (s: { name: string }) => s.name === 'Consultation',
+      (s: { name: string }) => s.name === 'Pre-natal Check-up',
     ).id
   })
 
@@ -69,7 +69,7 @@ describe.skipIf(!up)('bookings', () => {
    *
    * Notifications do not cascade — they are clinic-wide and have no foreign key
    * to hang off — so they are cleared by name. Without this each run leaves a
-   * dozen "Alice A requested Consultation" rows behind and the header dropdown
+   * dozen "Alice A requested Pre-natal Check-up" rows behind and the header dropdown
    * on the demo database fills with test data.
    */
   afterAll(async () => {
@@ -120,7 +120,7 @@ describe.skipIf(!up)('bookings', () => {
       // inside book_appointment, under the lock, before the row existed.
       expect(first.body).toMatchObject({
         status: 'confirmed',
-        serviceName: 'Consultation',
+        serviceName: 'Pre-natal Check-up',
         patientName: 'Alice A',
       })
       expect(first.body.referenceNo).toMatch(/^BR-\d{4}$/)

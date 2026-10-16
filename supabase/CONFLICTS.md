@@ -3,39 +3,22 @@
 The Figma contradicts itself in a handful of places. A database cannot hold two
 answers, so each was resolved to write `seed.sql`. This file records what was
 chosen and why, so the design can be corrected to match rather than the two
-drifting further apart.
-
-**The rule applied throughout: the admin screens win.** Staff own pricing,
-stock and records; the patient-facing screens display them. Where a conflict is
-between an admin screen and a patient screen, the admin value is the one seeded.
+drifting further apart. Verified clinic information takes precedence over the
+prototype; the remaining conflicts use the admin screens.
 
 ---
 
-## 1. Service prices disagree — and the mocks disagree with both
+## 1. Clinic services have no published prices
 
-Three sources, three answers:
-
-| Service | Admin *Services & Pricing* | Patient *Select Service* | `frontend/src/mocks/services.ts` |
-|---|---|---|---|
-| Pre-natal Check-up | ₱200 | ₱500 | **₱300** |
-| Consultation | ₱200 | ₱350 | **₱200** |
-| Ultrasound | ₱500 | ₱1,200 | **₱500** |
-| Follow-up | ₱200 | ₱250 | **₱200** |
-
-**Seeded from the mocks.** They are the most recent read of the Figma and they
-are what the UI renders today, so seeding anything else would make the working
-app change its own prices the day the backend lands.
-
-> **These figures are not confirmed and must not be presented as the clinic's
-> pricing.** The clinic sets its prices; we cannot dictate them. The pitch deck
-> already avoids putting any peso figure on a slide, deliberately — keep it that
-> way until Ana Melinda Bernardo confirms the real numbers.
+The clinic banner lists 17 services but no prices. The seed uses those service
+names and stores 0 as an unknown-price marker. The patient booking flow displays
+"Price at clinic" for that marker. Staff can enter confirmed prices later.
 
 ## 2. "Other" had no service record
 
-The patient booking wizard offers *Other — tell us during session*. Services &
-Pricing lists only the four priced services, so an *Other* booking would arrive
-pointing at a service row that does not exist.
+The patient booking wizard offers *Other — tell us during session*. The
+prototype's Services & Pricing screen had no row for it, so an *Other* booking
+would arrive pointing at a service row that does not exist.
 
 **Seeded as a real service**, priced 0, because the fee is agreed at the visit.
 The alternative — a nullable `service_id` — would weaken the column for every
@@ -66,9 +49,10 @@ bernardo1@havencare.ph, Saturday 8:00 AM – 12:00 PM. Patient *Contact Us* says
 656 Llano Road Brgy 167, 0942 569 8248, a personal Gmail address, Saturday
 9:00 AM – 3:00 PM.
 
-**Seeded from Clinic Info**, including the Saturday half-day, which is why the
-Saturday slot grid ends at 10:00. The patient screen should read from this
-record rather than carrying its own copy.
+**Seeded the banner-confirmed address, mobile number, and email.** The banner
+does not settle the landline or Saturday hours, so the existing values remain.
+The patient screen should read from the clinic record rather than carrying its
+own copy.
 
 ## 6. Paracetamol B-2291 had two different countdowns
 
