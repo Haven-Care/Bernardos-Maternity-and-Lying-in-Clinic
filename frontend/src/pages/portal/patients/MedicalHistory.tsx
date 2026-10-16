@@ -15,6 +15,7 @@ export function MedicalHistory({ patientId, patientName, onClose }: {
   const history = useAsync(() => historyApi.list(patientId), [patientId])
   const [adding, setAdding] = useState(false)
   return (
+    <>
     <Modal open onClose={onClose} size="xl" title="Patient Clinical History Summary" description={patientName}
       headerAction={<Button onClick={() => setAdding(true)}>+ Add New Record</Button>}>
       <div className="max-h-[65dvh] space-y-4 overflow-y-auto p-1">
@@ -37,8 +38,9 @@ export function MedicalHistory({ patientId, patientName, onClose }: {
           </div>}
         </AsyncBoundary>
       </div>
-      {adding && <AddRecord patientId={patientId} onClose={() => setAdding(false)} onSaved={() => { setAdding(false); history.reload() }} />}
     </Modal>
+    {adding && <AddRecord patientId={patientId} onClose={() => setAdding(false)} onSaved={() => { setAdding(false); history.reload() }} />}
+    </>
   )
 }
 

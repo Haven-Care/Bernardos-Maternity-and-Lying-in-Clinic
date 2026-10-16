@@ -132,6 +132,7 @@ export function PatientModal({
   }
 
   return (
+    <>
     <Modal
       open={open}
       onClose={onClose}
@@ -244,9 +245,6 @@ export function PatientModal({
               Medical History
             </button>
           )}
-          {historyOpen && patientId && (
-            <MedicalHistory patientId={patientId} patientName={values.fullName} onClose={() => setHistoryOpen(false)} />
-          )}
           <Section title="Maternity & Medical Info">
             <TextField
               label="Last Menstrual Period"
@@ -330,6 +328,10 @@ export function PatientModal({
         </div>
       )}
     </Modal>
+    {historyOpen && patientId && (
+      <MedicalHistory patientId={patientId} patientName={values?.fullName ?? ''} onClose={() => setHistoryOpen(false)} />
+    )}
+    </>
   )
 }
 
