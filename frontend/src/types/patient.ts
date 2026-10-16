@@ -32,9 +32,21 @@ export interface Patient {
 
   // Personal Information
   fullName: string
-  dateOfBirth: DateString
-  sex: Sex
-  civilStatus: CivilStatus
+  /**
+   * These three are `null` on a record the system created rather than a person
+   * filled in.
+   *
+   * A patient record is materialised at the patient's first booking, and the
+   * booking form asks for a name, a contact number, an email and a reason for
+   * visit — nothing else. Date of birth, sex and civil status are unknown until
+   * staff complete the record at the visit.
+   *
+   * Every other unfilled field is a string and starts empty, which is why only
+   * these three needed widening: there is no empty `Sex`.
+   */
+  dateOfBirth: DateString | null
+  sex: Sex | null
+  civilStatus: CivilStatus | null
   contactNumber: string
   email: string
   address: string

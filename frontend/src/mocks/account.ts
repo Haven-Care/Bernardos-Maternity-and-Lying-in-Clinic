@@ -20,6 +20,5 @@ export const profile: StaffProfile = {
 
 export const notificationPrefs: NotificationPrefs = {
   emailNotifications: true,
-  smsReminders: false,
   newBookingAlerts: true,
 }
