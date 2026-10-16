@@ -3,7 +3,7 @@ import type { Service } from '../../types/service'
 import * as api from '../../api'
 import { useAsync } from '../../hooks/useAsync'
 import { AsyncBoundary, EmptyState } from '../../components/ui/states'
-import { formatPeso } from '../../lib/format'
+import { formatServicePrice } from '../../lib/format'
 import { groupServicesByCategory } from '../../lib/services'
 
 /**
@@ -13,8 +13,8 @@ import { groupServicesByCategory } from '../../lib/services'
  * Services & Pricing removes it here on the next load, which is the behaviour
  * that screen's toggle promises.
  *
- * Prices are shown because the clinic already publishes them in the portal and a
- * patient asking "how much" by phone is the call this form exists to avoid.
+ * Show confirmed prices when available; the clinic has not published prices
+ * for the services on its banner.
  */
 export function ServiceStep({
   value,
@@ -136,7 +136,7 @@ function ServiceGroups({
                         {service.name}
                       </span>
                       <span className="shrink-0 text-sm font-semibold text-brand-700">
-                        {formatPeso(service.price)}
+                        {formatServicePrice(service.price)}
                       </span>
                     </button>
                   </li>

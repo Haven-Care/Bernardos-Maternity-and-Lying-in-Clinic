@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Service } from '../../types/service'
 import { Button } from '../../components/ui/Button'
 import { TextArea, TextField } from '../../components/ui/fields'
-import { formatDateLong, formatPeso, formatTime } from '../../lib/format'
+import { formatDateLong, formatServicePrice, formatTime } from '../../lib/format'
 import { isPhMobile } from '../../lib/validate'
 
 export interface Contact {
@@ -98,7 +98,7 @@ export function DetailsStep({
           <dd className="text-right font-semibold text-gray-900">
             {service.name}{' '}
             <span className="font-normal text-gray-500">
-              · {formatPeso(service.price)}
+              · {formatServicePrice(service.price)}
             </span>
           </dd>
         </div>

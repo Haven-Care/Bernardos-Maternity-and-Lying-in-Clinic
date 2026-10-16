@@ -11,7 +11,7 @@ import { NumberField, TextField } from '../../../components/ui/fields'
 import { Table, type Column } from '../../../components/ui/Table'
 import { AsyncBoundary, EmptyState } from '../../../components/ui/states'
 import { useToast } from '../../../components/ui/toast-context'
-import { formatPeso } from '../../../lib/format'
+import { formatServicePrice } from '../../../lib/format'
 import type { Service, ServiceInput } from '../../../types/service'
 
 export function ServicesPricing() {
@@ -40,7 +40,7 @@ export function ServicesPricing() {
       header: 'Price',
       align: 'right',
       render: (s) => (
-        <span className="tabular-nums font-medium">{formatPeso(s.price)}</span>
+        <span className="tabular-nums font-medium">{formatServicePrice(s.price)}</span>
       ),
     },
     {
@@ -171,7 +171,7 @@ function ServiceModal({
         <Button
           onClick={() => void save()}
           loading={saving}
-          disabled={form.name.trim() === '' || form.price <= 0}
+          disabled={form.name.trim() === '' || form.price < 0}
         >
           Save
         </Button>
@@ -189,12 +189,11 @@ function ServiceModal({
           label="Category"
           value={form.category}
           onChange={(v) => setForm({ ...form, category: v })}
-          placeholder="e.g. Consultation"
+          placeholder="e.g. Maternity"
         />
         <NumberField
-          label="Price"
-          required
-          min={1}
+          label="Price (leave blank if unconfirmed)"
+          min={0}
           value={form.price === 0 ? '' : form.price}
           onChange={(v) => setForm({ ...form, price: v === '' ? 0 : v })}
           suffix="₱"

@@ -55,6 +55,11 @@ export function formatPeso(amount: number): string {
   })}`
 }
 
+/** Zero marks a service whose price the clinic has not confirmed. */
+export function formatServicePrice(amount: number): string {
+  return amount === 0 ? 'Price at clinic' : formatPeso(amount)
+}
+
 /** `2 days` / `1 day` / `Expired` — the Days Left column. */
 export function formatDaysLeft(days: number): string {
   if (days < 0) return 'Expired'
