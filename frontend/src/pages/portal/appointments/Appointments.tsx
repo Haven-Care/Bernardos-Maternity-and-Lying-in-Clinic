@@ -2,9 +2,10 @@ import { Tabs, type Tab } from '../../../components/ui/Tabs'
 import { useActiveTab } from '../../../hooks/useActiveTab'
 import { BookingRequests } from './BookingRequests'
 import { CalendarWeek } from './CalendarWeek'
+import './Appointments.css'
 
 const TABS: Tab[] = [
-  { id: 'requests', label: 'Booking Requests' },
+  { id: 'requests', label: 'Appointments' },
   { id: 'calendar', label: 'Calendar' },
 ]
 
@@ -12,7 +13,7 @@ export function Appointments() {
   const active = useActiveTab(TABS)
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-4">
+    <div className={`appointments-page flex w-full min-w-0 flex-col gap-4 ${active === 'requests' ? 'appointments-page--list' : ''}`}>
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">
           Appointment Management

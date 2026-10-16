@@ -122,7 +122,7 @@ export function MedicineList({
 
   return (
     <>
-      <Card>
+      <Card className="portal-table-card">
         <div className="flex flex-wrap items-end gap-3 border-b border-border p-4">
           <div className="w-44">
             <SelectField
@@ -167,7 +167,7 @@ export function MedicineList({
           }
         >
           {() => (
-            <Table
+            <Table fillHeight
               columns={columns}
               rows={rows}
               rowKey={(m) => m.id}

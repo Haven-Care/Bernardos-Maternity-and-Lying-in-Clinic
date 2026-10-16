@@ -99,7 +99,7 @@ export function BookingRequests() {
 
   return (
     <>
-      <Card>
+      <Card className="appointments-list-card">
         <div className="flex flex-wrap items-end gap-3 border-b border-border p-4">
           <div className="w-40">
             <SelectField
@@ -121,11 +121,11 @@ export function BookingRequests() {
               className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 focus:outline-none"
             />
           </div>
-          <div className="ml-auto w-full sm:w-64">
+          <div className="ml-auto w-full min-w-0 sm:w-80">
             <SearchField
               value={search}
               onChange={setSearch}
-              placeholder="Search name, reference, service"
+              placeholder="Search appointments..."
             />
           </div>
         </div>
@@ -141,6 +141,7 @@ export function BookingRequests() {
         >
           {() => (
             <Table
+              fillHeight
               columns={columns}
               rows={rows}
               rowKey={(b) => b.id}

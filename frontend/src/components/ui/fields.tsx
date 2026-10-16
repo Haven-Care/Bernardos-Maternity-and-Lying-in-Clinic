@@ -251,7 +251,7 @@ export function SearchField({
         placeholder={placeholder}
         aria-label={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className={`${CONTROL} pl-9`}
+        className={`${CONTROL} min-w-0 max-w-full text-ellipsis pl-9`}
       />
     </div>
   )

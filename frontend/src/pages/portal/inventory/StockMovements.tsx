@@ -121,7 +121,7 @@ export function StockMovements({ version }: { version: number }) {
   ]
 
   return (
-    <Card>
+    <Card className="portal-table-card">
       <div className="flex flex-wrap items-end gap-3 border-b border-border p-4">
         <div className="w-40">
           <SelectField
@@ -154,7 +154,7 @@ export function StockMovements({ version }: { version: number }) {
         }
       >
         {() => (
-          <Table
+          <Table fillHeight
             columns={columns}
             rows={rows}
             rowKey={(m) => m.id}

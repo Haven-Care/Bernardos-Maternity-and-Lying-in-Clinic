@@ -28,6 +28,7 @@ export function Table<T>({
   rows,
   rowKey,
   pageSize = 10,
+  fillHeight = false,
   onRowClick,
   empty,
 }: {
@@ -35,6 +36,7 @@ export function Table<T>({
   rows: T[]
   rowKey: (row: T) => string
   pageSize?: number
+  fillHeight?: boolean
   onRowClick?: (row: T) => void
   empty?: ReactNode
 }) {
@@ -56,8 +58,8 @@ export function Table<T>({
   const last = Math.min(rows.length, (current + 1) * pageSize)
 
   return (
-    <div className="flex flex-col">
-      <div className="overflow-x-auto">
+    <div className={`flex flex-col ${fillHeight ? 'min-h-0 flex-1' : ''}`}>
+      <div className={fillHeight ? 'min-h-0 flex-1 overflow-auto' : 'overflow-x-auto'}>
         <table className="w-full min-w-[640px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-border">
@@ -97,7 +99,7 @@ export function Table<T>({
         </table>
       </div>
 
-      <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-2.5">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-4 py-2.5">
         <p className="text-xs text-gray-500">
           Showing {first} to {last} of {rows.length}{' '}
           {rows.length === 1 ? 'entry' : 'entries'}

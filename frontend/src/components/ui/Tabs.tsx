@@ -25,7 +25,7 @@ export function Tabs({
   return (
     <div
       role="tablist"
-      className="flex gap-5 overflow-x-auto border-b border-border"
+      className="flex min-w-0 shrink-0 gap-5 overflow-x-auto overflow-y-hidden border-b border-border"
     >
       {tabs.map((tab) => {
         const selected = tab.id === active
@@ -42,7 +42,7 @@ export function Tabs({
               // back button should still leave the page.
               setSearchParams(next, { replace: true })
             }}
-            className={`-mb-px border-b-2 px-0.5 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
+            className={`shrink-0 border-b-2 px-0.5 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
               selected
                 ? 'border-brand-500 text-brand-700'
                 : 'border-transparent text-gray-500 hover:text-gray-800'

@@ -1,0 +1,46 @@
+.portal-table-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 420px;
+}
+
+.portal-table-card > .border-b {
+  flex-shrink: 0;
+}
+
+@media (min-width: 1024px) {
+  .portal-page {
+    height: calc(100dvh - 104px);
+    min-height: 480px;
+  }
+
+  .portal-page > :not(.portal-table-card):not(.portal-tab-body):not(.portal-settings-body) {
+    flex-shrink: 0;
+  }
+
+  .portal-table-card {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .portal-tab-body,
+  .portal-settings-body {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+  }
+
+  .portal-tab-body > :not(.portal-table-card) {
+    flex-shrink: 0;
+  }
+
+  .portal-settings-body {
+    overflow-y: auto;
+  }
+
+  .portal-settings-body > section {
+    flex: 1 0 auto;
+  }
+}
