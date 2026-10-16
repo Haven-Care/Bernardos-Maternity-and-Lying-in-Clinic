@@ -5,9 +5,7 @@ import { PasswordRules } from './ui/PasswordRules'
 /**
  * Current, new and confirm, with the rule checklist under the new one.
  *
- * Shared by the staff Change Password modal and the patient Account page, so
- * both realms are held to the same rules. The caller owns the state and the
- * submit, because one puts the button in a modal footer and the other does not.
+ * Used by the patient Account page. The caller owns the form state and submit.
  */
 export function ChangePasswordFields({
   value,

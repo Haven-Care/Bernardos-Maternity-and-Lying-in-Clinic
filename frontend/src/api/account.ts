@@ -69,7 +69,7 @@ export async function updateProfile(
 }
 
 /**
- * Change password from My Account.
+ * Change password for an authenticated account.
  *
  * `updateUser` does not check the current password — an open session is all it
  * asks for. So the current password is verified by signing in with it first,
