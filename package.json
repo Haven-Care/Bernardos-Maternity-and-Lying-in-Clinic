@@ -5,7 +5,7 @@
   "type": "module",
   "description": "HavenCare — tooling root. Not a workspace: frontend/ and backend/ keep their own package.json and their own CI job.",
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   },
   "scripts": {
     "db:start": "supabase start",
