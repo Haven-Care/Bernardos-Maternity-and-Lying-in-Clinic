@@ -2,7 +2,6 @@ import '../PortalPage.css'
 import { Tabs, type Tab } from '../../../components/ui/Tabs'
 import { useActiveTab } from '../../../hooks/useActiveTab'
 import { PatientAccounts } from './PatientAccounts'
-import { MyAccount } from './MyAccount'
 import { ServicesPricing } from './ServicesPricing'
 import { AppointmentSlots } from './AppointmentSlots'
 import { ClinicInfo } from './ClinicInfo'
@@ -12,7 +11,6 @@ const TABS: Tab[] = [
   { id: 'services', label: 'Services & Pricing' },
   { id: 'slots', label: 'Appointment Slots' },
   { id: 'clinic', label: 'Clinic Info' },
-  { id: 'account', label: 'My Account' },
 ]
 
 export function Administration() {
@@ -33,7 +31,6 @@ export function Administration() {
       {active === 'services' && <ServicesPricing />}
       {active === 'slots' && <AppointmentSlots />}
       {active === 'clinic' && <ClinicInfo />}
-      {active === 'account' && <MyAccount />}
     </div>
   )
 }
