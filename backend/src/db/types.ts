@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.18"
+  }
   public: {
     Tables: {
       appointment_slots: {
@@ -181,6 +186,61 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      clinical_records: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          findings: string
+          id: string
+          occurred_at: string
+          patient_id: string
+          provider: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          findings: string
+          id?: string
+          occurred_at: string
+          patient_id: string
+          provider: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          findings?: string
+          id?: string
+          occurred_at?: string
+          patient_id?: string
+          provider?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinical_records_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patient_list"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       medicine_batches: {
         Row: {
@@ -1206,4 +1266,3 @@ export const Constants = {
     },
   },
 } as const
-
