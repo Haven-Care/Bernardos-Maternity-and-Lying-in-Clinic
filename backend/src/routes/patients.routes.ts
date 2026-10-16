@@ -1,5 +1,7 @@
 import { Router } from 'express'
 import { requireStaff } from '../middleware/auth.js'
+import { createClinicalRecord, listClinicalHistory } from '../controllers/clinicalHistory.controller.js'
+import { listPatientAccounts } from '../controllers/patientAccounts.controller.js'
 import {
   createDocument,
   createPatient,
@@ -28,6 +30,9 @@ patientsRouter.post('/', createPatient)
 patientsRouter.get('/:id', getPatient)
 patientsRouter.patch('/:id', updatePatient)
 
+patientsRouter.get('/:id/clinical-history', listClinicalHistory)
+patientsRouter.post('/:id/clinical-history', createClinicalRecord)
+
 patientsRouter.get('/:id/documents', listDocuments)
 patientsRouter.post('/:id/documents/upload-url', createUploadUrl)
 patientsRouter.post('/:id/documents', createDocument)
@@ -41,3 +46,7 @@ export const documentsRouter = Router()
 
 documentsRouter.use(requireStaff)
 documentsRouter.get('/:id/url', getDocumentUrl)
+
+export const patientAccountsRouter = Router()
+patientAccountsRouter.use(requireStaff)
+patientAccountsRouter.get('/', listPatientAccounts)

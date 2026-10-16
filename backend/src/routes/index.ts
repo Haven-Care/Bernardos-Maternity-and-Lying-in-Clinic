@@ -7,7 +7,7 @@ import {
   servicesRouter,
   slotsRouter,
 } from './clinic.routes.js'
-import { documentsRouter, patientsRouter } from './patients.routes.js'
+import { documentsRouter, patientAccountsRouter, patientsRouter } from './patients.routes.js'
 import { inventoryRouter } from './inventory.routes.js'
 import {
   bookingsRouter,
@@ -57,6 +57,7 @@ apiRouter.use('/services', servicesRouter)
 apiRouter.use('/slots', slotsRouter)
 apiRouter.use('/clinic', clinicRouter)
 apiRouter.use('/patients', patientsRouter)
+apiRouter.use('/patient-accounts', patientAccountsRouter)
 apiRouter.use('/documents', documentsRouter)
 apiRouter.use('/inventory', inventoryRouter)
 apiRouter.use('/bookings', bookingsRouter)
