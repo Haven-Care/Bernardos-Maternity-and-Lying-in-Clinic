@@ -176,8 +176,8 @@ select setval('patient_code_seq', 112, true);
 insert into clinical_records (id, patient_id, occurred_at, title, findings, provider) values
   ('c1a71e00-0000-4000-8000-000000000001', '9a71e000-0000-4000-8000-000000000001', (clinic_today() - 7)::timestamptz + interval '9 hours', 'Prenatal Routine Check-Up', 'Mild ankle swelling; urine dipstick negative for proteinuria.', 'Dr. Rey Alonzo'),
   ('c1a71e00-0000-4000-8000-000000000002', '9a71e000-0000-4000-8000-000000000001', (clinic_today() - 35)::timestamptz + interval '13 hours 30 minutes', 'Ultrasound', 'Fetal growth and fluid levels reviewed.', 'Dr. Maria Santos'),
-  ('c1a71e00-0000-4000-8000-000000000003', '9a71e000-0000-4000-8000-000000000001', (clinic_today() - 90)::timestamptz + interval '10 hours 15 minutes', 'Prenatal Laboratory Review', 'CBC and urinalysis reviewed with the patient.', 'Dr. Rey Alonzo'),
-  ('c1a71e00-0000-4000-8000-000000000004', '9a71e000-0000-4000-8000-000000000001', (clinic_today() - 160)::timestamptz + interval '9 hours 30 minutes', 'Initial Consultation', 'Pregnancy confirmed and follow-up plan discussed.', 'Dr. Maria Santos');
+  ('c1a71e00-0000-4000-8000-000000000003', '9a71e000-0000-4000-8000-000000000001', (clinic_today() - 38)::timestamptz + interval '10 hours 15 minutes', 'Prenatal Laboratory Review', 'CBC and urinalysis reviewed with the patient.', 'Dr. Rey Alonzo'),
+  ('c1a71e00-0000-4000-8000-000000000004', '9a71e000-0000-4000-8000-000000000001', (clinic_today() - 42)::timestamptz + interval '9 hours 30 minutes', 'Initial Consultation', 'Pregnancy confirmed and follow-up plan discussed.', 'Dr. Maria Santos');
 
 -- ---------------------------------------------------------------------------
 -- Appointments
