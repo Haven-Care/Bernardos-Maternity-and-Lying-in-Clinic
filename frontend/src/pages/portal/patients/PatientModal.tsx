@@ -1,3 +1,4 @@
+import { MedicalHistory } from './MedicalHistory'
 import { useState } from 'react'
 import * as api from '../../../api'
 import { useAsync } from '../../../hooks/useAsync'
@@ -76,6 +77,7 @@ export function PatientModal({
   onClose: () => void
   onSaved: () => void
 }) {
+  const [historyOpen, setHistoryOpen] = useState(false)
   const toast = useToast()
   const editing = patientId !== undefined
 
@@ -237,6 +239,14 @@ export function PatientModal({
             />
           </Section>
 
+          {patientId && (
+            <button type="button" onClick={() => setHistoryOpen(true)} className="w-fit text-sm font-medium text-brand-600 underline underline-offset-4 hover:text-brand-700">
+              Medical History
+            </button>
+          )}
+          {historyOpen && patientId && (
+            <MedicalHistory patientId={patientId} patientName={values.fullName} onClose={() => setHistoryOpen(false)} />
+          )}
           <Section title="Maternity & Medical Info">
             <TextField
               label="Last Menstrual Period"

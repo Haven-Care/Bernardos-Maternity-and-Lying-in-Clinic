@@ -5,6 +5,7 @@ import { useActiveTab } from '../../../hooks/useActiveTab'
 import { BookingRequests } from './BookingRequests'
 import { CalendarWeek } from './CalendarWeek'
 import { RescheduleQueue } from './RescheduleQueue'
+import './Appointments.css'
 
 export function Appointments() {
   /**
@@ -18,7 +19,7 @@ export function Appointments() {
   )
 
   const tabs: Tab[] = [
-    { id: 'requests', label: 'Bookings' },
+    { id: 'requests', label: 'Appointments' },
     { id: 'reschedules', label: 'Reschedules', badge: pending.data?.length },
     { id: 'calendar', label: 'Calendar' },
   ]
@@ -26,7 +27,7 @@ export function Appointments() {
   const active = useActiveTab(tabs)
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-5">
+    <div className={`appointments-page flex w-full min-w-0 flex-col gap-4 ${active === 'requests' ? 'appointments-page--list' : ''}`}>
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">
           Appointment Management

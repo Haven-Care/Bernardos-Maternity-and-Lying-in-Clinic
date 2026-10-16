@@ -109,8 +109,8 @@ export function AppointmentSlots() {
   ]
 
   return (
-    <div className="flex flex-col gap-4">
-      <Card>
+    <div className="portal-tab-body flex flex-col gap-4">
+      <Card className="portal-table-card">
         <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border p-4">
           <div className="w-44">
             <SelectField
@@ -140,7 +140,7 @@ export function AppointmentSlots() {
             />
           }
         >
-          {(rows) => <Table columns={columns} rows={rows} rowKey={(s) => s.id} />}
+          {(rows) => <Table fillHeight columns={columns} rows={rows} rowKey={(s) => s.id} />}
         </AsyncBoundary>
       </Card>
 
