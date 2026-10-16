@@ -19,8 +19,14 @@ export function errorHandler(err: unknown, _req: Request, res: Response, next: N
     return
   }
 
-  const status = err instanceof HttpError ? err.status : 500
-  const message = err instanceof Error ? err.message : 'Internal Server Error'
+  if (err instanceof HttpError) {
+    res.status(err.status).json({ error: err.message })
+    return
+  }
 
-  res.status(status).json({ error: message })
+  // Anything that is not an HttpError was not written for the caller — a raw
+  // Supabase error, a TypeError. Its message can name tables and columns, so it
+  // is logged here and replaced.
+  console.error(err)
+  res.status(500).json({ error: 'Something went wrong. Please try again.' })
 }
