@@ -11,7 +11,7 @@
 
 @media (min-width: 1024px) {
   .portal-page {
-    height: calc(100dvh - 104px);
+    height: calc(100dvh - 120px);
     min-height: 480px;
   }
 
@@ -43,4 +43,13 @@
   .portal-settings-body > section {
     flex: 1 0 auto;
   }
+}
+/* Inventory pagination sizes itself to the available table viewport. */
+.inventory-fit-table tbody tr {
+  height: 56px;
+}
+.inventory-fit-table td {
+  padding-top: 6px;
+  padding-bottom: 6px;
+  white-space: nowrap;
 }

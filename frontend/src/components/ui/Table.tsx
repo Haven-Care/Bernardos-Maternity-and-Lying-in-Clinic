@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 export interface Column<T> {
   key: string
@@ -29,6 +29,7 @@ export function Table<T>({
   rowKey,
   pageSize = 10,
   fillHeight = false,
+  fitRows = false,
   onRowClick,
   empty,
 }: {
@@ -37,30 +38,47 @@ export function Table<T>({
   rowKey: (row: T) => string
   pageSize?: number
   fillHeight?: boolean
+  fitRows?: boolean
   onRowClick?: (row: T) => void
   empty?: ReactNode
 }) {
   const [page, setPage] = useState(0)
+  const viewport = useRef<HTMLDivElement>(null)
+  const [capacity, setCapacity] = useState(pageSize)
+  useLayoutEffect(() => {
+    const element = viewport.current
+    if (!fitRows || !element) return
+    const measure = () => {
+      const headerHeight = element.querySelector('thead')?.getBoundingClientRect().height ?? 40
+      // Compact inventory rows are 56px; clientHeight excludes horizontal scrollbar.
+      setCapacity(Math.max(1, Math.floor((element.clientHeight - headerHeight - 2) / 56)))
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [fitRows, rows.length])
+  const effectivePageSize = fitRows ? Math.min(pageSize, capacity) : pageSize
 
-  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize))
+  const pageCount = Math.max(1, Math.ceil(rows.length / effectivePageSize))
   // Clamp rather than reset: deleting the last row of page 3 should land on
   // page 2, not throw the user back to the start.
   const current = Math.min(page, pageCount - 1)
 
   const visible = useMemo(
-    () => rows.slice(current * pageSize, current * pageSize + pageSize),
-    [rows, current, pageSize],
+    () => rows.slice(current * effectivePageSize, current * effectivePageSize + effectivePageSize),
+    [rows, current, effectivePageSize],
   )
 
   if (rows.length === 0 && empty) return <>{empty}</>
 
-  const first = rows.length === 0 ? 0 : current * pageSize + 1
-  const last = Math.min(rows.length, (current + 1) * pageSize)
+  const first = rows.length === 0 ? 0 : current * effectivePageSize + 1
+  const last = Math.min(rows.length, (current + 1) * effectivePageSize)
 
   return (
     <div className={`flex flex-col ${fillHeight ? 'min-h-0 flex-1' : ''}`}>
-      <div className={fillHeight ? 'min-h-0 flex-1 overflow-auto' : 'overflow-x-auto'}>
-        <table className="w-full min-w-[640px] border-collapse text-sm">
+      <div ref={viewport} className={fitRows ? 'min-h-0 flex-1 overflow-x-auto overflow-y-hidden' : fillHeight ? 'min-h-0 flex-1 overflow-auto' : 'overflow-x-auto'}>
+        <table className={`w-full min-w-[640px] border-collapse text-sm ${fitRows ? 'inventory-fit-table' : ''}`}>
           <thead>
             <tr className="border-b border-border">
               {columns.map((col) => (

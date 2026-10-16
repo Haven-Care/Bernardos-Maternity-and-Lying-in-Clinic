@@ -12,7 +12,7 @@
 .hc-inventory header a { flex-shrink:0; font-size:12px; font-weight:700; color:#008580; }
 .hc-inventory header a:hover { text-decoration:underline; }
 .hc-filter { display:flex; justify-content:flex-end; margin:12px 0; }
-.hc-filter select { border:1px solid #bfc3c3; border-radius:9px; background:white; padding:7px 10px; font:inherit; font-size:12px; color:#63706e; min-width:132px; }
+.hc-filter select { border:1px solid #bfc3c3; border-radius:9px; background-color:white; padding:7px 2.5rem 7px 10px; font:inherit; font-size:12px; color:#63706e; min-width:132px; }
 .hc-table-frame { flex:1; min-height:0; display:flex; flex-direction:column; border:1px solid #c6c9c9; border-radius:9px; overflow:hidden; }
 .hc-table-scroll { flex:1; min-height:0; overflow:auto; }
 .hc-dashboard table { width:100%; border-collapse:collapse; font-size:12px; text-align:left; }
@@ -58,7 +58,7 @@
 .hc-stats { flex-shrink:0; }
 .hc-table-frame footer { flex-shrink:0; }
 @media (min-width:1101px) {
-  .hc-dashboard { height:calc(100dvh - 104px); display:grid; grid-template-rows:auto auto minmax(0,1fr); }
+  .hc-dashboard { height:calc(100dvh - 120px); display:grid; grid-template-rows:auto auto minmax(0,1fr); }
   .hc-inventory, .hc-alerts { overflow:hidden; }
   .hc-table-frame > div:not(.hc-table-scroll) { overflow:auto; }
 }

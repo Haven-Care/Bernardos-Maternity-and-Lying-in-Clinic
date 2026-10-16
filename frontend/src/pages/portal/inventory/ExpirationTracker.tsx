@@ -83,7 +83,7 @@ export function ExpirationTracker({ version }: { version: number }) {
         }
       >
         {(data) => (
-          <Table fillHeight columns={columns} rows={data} rowKey={(r) => r.batchId} />
+          <Table fillHeight fitRows columns={columns} rows={data} rowKey={(r) => r.batchId} />
         )}
       </AsyncBoundary>
     </Card>

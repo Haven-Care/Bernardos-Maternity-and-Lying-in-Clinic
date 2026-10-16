@@ -1,7 +1,7 @@
 .appointments-list-card { display: flex; flex-direction: column; min-height: 480px; }
 .appointments-list-card > div:first-child { flex-shrink: 0; }
 @media (min-width: 1024px) {
-  .appointments-page--list { height: calc(100dvh - 104px); min-height: 0; }
+  .appointments-page--list { height: calc(100dvh - 120px); min-height: 0; }
   .appointments-page--list > div:first-child { flex-shrink: 0; }
   .appointments-list-card { flex: 1; min-height: 0; overflow: hidden; }
 }

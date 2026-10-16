@@ -93,7 +93,7 @@ export function LowStock({ version }: { version: number }) {
         }
       >
         {(data) => (
-          <Table fillHeight columns={columns} rows={data} rowKey={(r) => r.medicineId} />
+          <Table fillHeight fitRows columns={columns} rows={data} rowKey={(r) => r.medicineId} />
         )}
       </AsyncBoundary>
     </Card>

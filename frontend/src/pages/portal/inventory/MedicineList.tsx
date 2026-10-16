@@ -167,7 +167,7 @@ export function MedicineList({
           }
         >
           {() => (
-            <Table fillHeight
+            <Table fillHeight fitRows
               columns={columns}
               rows={rows}
               rowKey={(m) => m.id}
