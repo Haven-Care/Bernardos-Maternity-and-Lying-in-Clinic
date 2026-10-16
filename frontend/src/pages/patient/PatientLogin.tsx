@@ -24,7 +24,7 @@ export function PatientLogin() {
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string>()
+  const [error, setError] = useState<string | undefined>((location.state as { accessError?: string } | null)?.accessError)
   const [submitting, setSubmitting] = useState(false)
 
   async function onSubmit(event: React.FormEvent) {
@@ -34,9 +34,12 @@ export function PatientLogin() {
 
     try {
       await api.patientAuth.login(email, password)
+      // Supabase accepts both staff and patient credentials. Check the patient
+      // API before navigating so a staff account cannot bounce back here.
+      await api.patientAuth.getAccount()
       navigate(from ?? '/patient/home', { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign in failed')
+      setError(api.patientAuth.patientAccessMessage(err))
     } finally {
       setSubmitting(false)
     }

@@ -1,7 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import * as api from '../api'
 import { useAsync } from '../hooks/useAsync'
-import { isSessionError } from '../lib/api'
+import { ApiError, isSessionError } from '../lib/api'
 import { ErrorState } from './ui/states'
 
 /**
@@ -44,7 +44,12 @@ export function RequirePatient() {
       <Navigate
         to="/patient/login"
         replace
-        state={{ from: location.pathname + location.search }}
+        state={{
+          from: location.pathname + location.search,
+          accessError: account.error instanceof ApiError && account.error.status === 403
+            ? api.patientAuth.patientAccessMessage(account.error)
+            : undefined,
+        }}
       />
     )
   }
