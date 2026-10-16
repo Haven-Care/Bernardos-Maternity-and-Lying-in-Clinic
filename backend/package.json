@@ -15,7 +15,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "seed:staff": "tsx src/scripts/seed-staff.ts"
+    "seed:staff": "tsx src/scripts/seed-staff.ts",
+    "seed:patient": "tsx src/scripts/seed-patient.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.115.0",

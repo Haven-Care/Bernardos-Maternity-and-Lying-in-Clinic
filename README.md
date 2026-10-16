@@ -4,6 +4,20 @@ Centralized Management System for **Bernardo's Maternity and Lying-in Clinic**.
 
 One system, two products:
 
+## Demo patient account
+
+With local Supabase running and `backend/.env` configured, run
+`npm run seed:patient` from `backend/` after the database seed. Sign in to the
+patient app as `demo.patient@havencare.test` with `HavenCare!2026`. The command
+creates a confirmed patient login, a linked synthetic clinical record, and a
+completed prenatal visit. It is safe to rerun after a local database reset.
+
+For a hosted Supabase project, set `SEED_PATIENT_EMAIL` and
+`SEED_PATIENT_PASSWORD` to unique test credentials before running the same
+command with a server-side `SUPABASE_SERVICE_ROLE_KEY`. The published local
+credentials are rejected for hosted projects. Do not put the service role key
+in the frontend or commit it.
+
 | Product | Users | What it does |
 |---|---|---|
 | **Command center** (desktop) | Clinic staff | Daily schedules, inventory movements, patient records, service configuration |
