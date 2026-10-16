@@ -22,20 +22,13 @@ export function AuthShell({
         {before}
 
         <div className="flex flex-col items-center gap-2 text-center">
-          <span className="flex size-11 items-center justify-center rounded-xl bg-brand-500 text-white">
-            <svg
-              className="size-6"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M12 21s-7-4.4-9-9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c-2 4.6-9 9-9 9Z" />
-            </svg>
-          </span>
+          <img
+            src="/images/clinic-logo.jpg"
+            alt="Bernardo's Maternity and Lying-in Clinic logo"
+            className="size-20 object-contain"
+            width={80}
+            height={80}
+          />
           <p className="text-sm leading-tight font-semibold text-brand-700">
             Bernardo’s Maternity and
             <br />
@@ -54,7 +47,7 @@ export function AuthShell({
 
         {footer && <div className="mt-4">{footer}</div>}
 
-        <p className="mt-6 text-center text-[11px] text-gray-400">
+        <p className="mt-6 text-center text-xs text-gray-400">
           © {new Date().getFullYear()} HavenCare. All rights reserved.
         </p>
       </div>
@@ -62,10 +55,15 @@ export function AuthShell({
   )
 }
 
-export function BackToLogin() {
+/**
+ * `to` rather than a hardcoded `/login`: the reset sequence is mounted twice,
+ * once per realm, and a patient resetting their password must not be sent back
+ * to the staff portal's sign-in screen. See `useAuthRealm`.
+ */
+export function BackToLogin({ to = '/login' }: { to?: string }) {
   return (
     <Link
-      to="/login"
+      to={to}
       className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 transition-colors hover:text-gray-800"
     >
       <svg

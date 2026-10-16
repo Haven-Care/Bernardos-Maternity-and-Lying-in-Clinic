@@ -31,16 +31,22 @@ export function Login() {
     <AuthShell title="Welcome Back!" subtitle="Please sign in to access your account.">
       <form className="flex flex-col gap-4" onSubmit={onSubmit}>
         {/*
-          The prototype labels this "username or email", but Supabase Auth is
-          email-only — wiring this needs either a `profiles.username` lookup or
-          an email-only field. Flagged in types/account.ts; unresolved.
+          The prototype labels this "username or email". It is email only.
+
+          GoTrue authenticates on email, and accepting a username would mean an
+          unauthenticated endpoint that turns a guessed username into an email —
+          an oracle for enumerating the clinic's staff. Accounts here are
+          provisioned and few, so a username earns nothing to pay for that.
+
+          A field that accepts something it cannot use is worse than a renamed
+          one, so the label matches the behaviour.
         */}
         <TextField
-          label="Username"
-          type="text"
+          label="Email"
+          type="email"
           value={identifier}
           onChange={setIdentifier}
-          placeholder="Enter your username or email"
+          placeholder="you@havencare.ph"
           autoComplete="username"
         />
 

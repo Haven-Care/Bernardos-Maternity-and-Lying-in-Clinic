@@ -4,10 +4,12 @@ import * as api from '../../api'
 import { Button } from '../../components/ui/Button'
 import { AuthShell, BackToLogin } from './AuthShell'
 import { CodeInput } from './CodeInput'
+import { useAuthRealm } from './realm'
 
 export function VerifyCode() {
   const navigate = useNavigate()
   const location = useLocation()
+  const realm = useAuthRealm()
   const email = (location.state as { email?: string } | null)?.email
 
   const [code, setCode] = useState('')
@@ -17,7 +19,7 @@ export function VerifyCode() {
 
   // Reached directly, or after a refresh dropped the router state — there is no
   // address to verify against, so start the flow over rather than fail opaquely.
-  if (!email) return <Navigate to="/forgot-password" replace />
+  if (!email) return <Navigate to={realm.forgotPath} replace />
 
   async function submit(value: string) {
     setSubmitting(true)
@@ -25,7 +27,7 @@ export function VerifyCode() {
 
     try {
       await api.account.verifyResetCode(email!, value)
-      navigate('/reset-password', { state: { email } })
+      navigate(realm.resetPath, { state: { email } })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'That code didn’t work')
     } finally {
@@ -47,7 +49,7 @@ export function VerifyCode() {
     <AuthShell
       title="Enter Verification Code"
       subtitle={`We sent a 6-digit code to ${email}. Enter it below to continue — you’ll set your new password on the next screen.`}
-      before={<BackToLogin />}
+      before={<BackToLogin to={realm.loginPath} />}
     >
       <form
         className="flex flex-col gap-4"

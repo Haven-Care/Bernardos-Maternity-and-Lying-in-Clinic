@@ -1,3 +1,4 @@
+import '../PortalPage.css'
 import { useMemo, useState } from 'react'
 import * as api from '../../../api'
 import { useAsync } from '../../../hooks/useAsync'
@@ -43,7 +44,7 @@ export function PatientRecords() {
       header: 'Patient Name',
       render: (p) => (
         <div className="flex items-center gap-2.5">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-100 text-[11px] font-semibold text-brand-700">
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
             {initials(p.fullName)}
           </span>
           <span className="font-medium text-gray-900">{p.fullName}</span>
@@ -81,7 +82,7 @@ export function PatientRecords() {
   ]
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-4">
+    <div className="portal-page flex w-full min-w-0 flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">
@@ -95,7 +96,7 @@ export function PatientRecords() {
         <Button onClick={() => setAdding(true)}>+ Add New Patient</Button>
       </div>
 
-      <Card>
+      <Card className="portal-table-card">
         <div className="border-b border-border p-4">
           <div className="sm:max-w-xs">
             <SearchField
@@ -116,7 +117,7 @@ export function PatientRecords() {
           }
         >
           {() => (
-            <Table
+            <Table fillHeight
               columns={columns}
               rows={rows}
               rowKey={(p) => p.id}

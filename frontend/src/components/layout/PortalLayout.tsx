@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import * as api from '../../api'
 import { useAsync } from '../../hooks/useAsync'
 import { ConfirmModal } from '../ui/Modal'
+import { useToast } from '../ui/toast-context'
 import {
   BellIcon,
   CalendarIcon,
@@ -31,6 +32,7 @@ const NAV = [
  */
 export function PortalLayout() {
   const navigate = useNavigate()
+  const toast = useToast()
   const clinic = useAsync(() => api.clinic.getClinicInfo())
   const profile = useAsync(() => api.account.getProfile())
 
@@ -42,6 +44,8 @@ export function PortalLayout() {
     try {
       await api.account.logout()
       navigate('/login', { replace: true })
+    } catch (err) {
+      toast.error('Could not log out', err instanceof Error ? err.message : 'Please try again.')
     } finally {
       setLoggingOut(false)
       setConfirmLogout(false)
@@ -49,95 +53,94 @@ export function PortalLayout() {
   }
 
   return (
-    <div className="flex min-h-full">
-      <aside className="flex w-16 shrink-0 flex-col border-r border-border bg-surface lg:w-60">
-        <div className="flex h-14 items-center gap-2.5 border-b border-border px-3 lg:px-4">
-          <Logo />
-          <div className="hidden min-w-0 lg:block">
-            <p className="truncate text-[13px] leading-tight font-semibold text-brand-700">
-              {clinic.data?.name ?? 'HavenCare'}
-            </p>
-            <p className="truncate text-[11px] text-gray-400">
-              Management System
-            </p>
-          </div>
-        </div>
+    <div className="flex min-h-dvh flex-col">
+      <Header clinicName={clinic.data?.name} />
+      <div className="flex min-h-0 flex-1">
+        <aside className="sticky top-[72px] flex h-[calc(100dvh-72px)] w-16 shrink-0 flex-col border-r border-border bg-surface lg:w-60">
+          <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
+            {NAV.map(({ to, end, label, Icon }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                title={label}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-brand-50 text-brand-700'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`
+                }
+              >
+                <Icon className="size-[18px] shrink-0" />
+                <span className="hidden lg:inline">{label}</span>
+              </NavLink>
+            ))}
+          </nav>
 
-        <nav className="flex flex-1 flex-col gap-0.5 p-2">
-          {NAV.map(({ to, end, label, Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              title={label}
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-brand-50 text-brand-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`
-              }
-            >
-              <Icon className="size-[18px] shrink-0" />
-              <span className="hidden lg:inline">{label}</span>
-            </NavLink>
-          ))}
-        </nav>
-
-        <div className="border-t border-border p-3">
-          <div className="flex items-center gap-2.5">
-            <Avatar name={profile.data?.fullName ?? ''} />
-            <div className="hidden min-w-0 flex-1 lg:block">
-              <p className="truncate text-[13px] font-semibold text-brand-700">
-                {profile.data?.fullName ?? '—'}
-              </p>
-              <p className="truncate text-[11px] text-gray-400 capitalize">
-                {profile.data?.role ?? ''}
-              </p>
+          <div className="border-t border-border p-3">
+            <div className="flex flex-col items-center gap-2 lg:flex-row lg:gap-2.5">
+              <Avatar name={profile.data?.fullName ?? ''} />
+              <div className="hidden min-w-0 flex-1 lg:block">
+                <p className="truncate text-[13px] font-semibold text-brand-700">
+                  {profile.data?.fullName ?? '—'}
+                </p>
+                <p className="truncate text-[11px] text-gray-400 capitalize">
+                  {profile.data?.role ?? ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setConfirmLogout(true)}
+                aria-label="Log out"
+                title="Log out"
+                className="flex size-7 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+              >
+                <LogoutIcon className="size-4" />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setConfirmLogout(true)}
-              aria-label="Log out"
-              title="Log out"
-              className="hidden size-7 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 lg:flex"
-            >
-              <LogoutIcon className="size-4" />
-            </button>
           </div>
+        </aside>
+
+        <ConfirmModal
+          open={confirmLogout}
+          onClose={() => setConfirmLogout(false)}
+          onConfirm={() => void handleLogout()}
+          loading={loggingOut}
+          title="Log out"
+          message="End your session? Unsaved changes will be lost."
+          confirmLabel="Log out"
+        />
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <main className="flex-1 overflow-x-hidden p-4 lg:p-6">
+            <Outlet />
+          </main>
         </div>
-      </aside>
-
-      <ConfirmModal
-        open={confirmLogout}
-        onClose={() => setConfirmLogout(false)}
-        onConfirm={() => void handleLogout()}
-        loading={loggingOut}
-        title="Log out"
-        message="Just be sure you need to end your current session? Any unsaved changes in active forms or patient records will be lost."
-        confirmLabel="Log out"
-      />
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Header />
-        <main className="flex-1 overflow-x-hidden p-4 lg:p-6">
-          <Outlet />
-        </main>
       </div>
     </div>
   )
 }
 
-function Header() {
+function Header({ clinicName }: { clinicName?: string }) {
   const notifications = useAsync(() => api.dashboard.listNotifications())
   const [open, setOpen] = useState(false)
   const unread = notifications.data?.filter((n) => !n.read).length ?? 0
 
   return (
-    <header className="sticky top-0 z-20 flex h-14 items-center justify-end gap-4 border-b border-border bg-surface px-4 lg:px-6">
+    <header className="sticky top-0 z-20 flex h-[72px] shrink-0 items-center gap-3 border-b border-border bg-surface px-4 lg:px-6">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <Logo />
+        <div className="min-w-0">
+          <p className="text-sm leading-tight font-semibold italic text-brand-700 sm:text-base lg:text-lg">
+            {clinicName ?? "Bernardo's Maternity and Lying-in Clinic"}
+          </p>
+          <p className="text-xs italic text-brand-600 sm:text-sm">HavenCare System</p>
+        </div>
+      </div>
       <LiveDate />
 
-      <div className="relative">
+      <div className="relative shrink-0">
         <button
           onClick={() => setOpen((o) => !o)}
           className="relative flex size-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700"
@@ -153,7 +156,7 @@ function Header() {
           <>
             {/* Click-away layer, so the panel closes on any outside click. */}
             <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-            <div className="absolute right-0 z-20 mt-2 w-80 overflow-hidden rounded-card border border-border bg-surface shadow-lg">
+            <div className="absolute right-0 z-20 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-card border border-border bg-surface shadow-lg">
               <p className="border-b border-border px-4 py-2.5 text-sm font-semibold text-gray-900">
                 Notifications
               </p>
@@ -199,7 +202,7 @@ function LiveDate() {
   })
 
   return (
-    <p className="hidden text-xs text-gray-500 sm:block">
+    <p className="hidden shrink-0 text-xs text-gray-500 md:block lg:text-sm">
       {formatted.replace(' at ', ' at ')}
     </p>
   )
@@ -223,19 +226,12 @@ function Avatar({ name }: { name: string }) {
 
 function Logo() {
   return (
-    <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-brand-500 text-white">
-      <svg
-        className="size-[18px]"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <path d="M12 21s-7-4.4-9-9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c-2 4.6-9 9-9 9Z" />
-      </svg>
-    </span>
+    <img
+      src="/images/clinic-logo.jpg"
+      alt="Bernardo's Maternity and Lying-in Clinic logo"
+      className="size-12 shrink-0 rounded-full object-contain"
+      width={48}
+      height={48}
+    />
   )
 }

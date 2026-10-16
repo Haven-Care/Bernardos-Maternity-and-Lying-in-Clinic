@@ -83,13 +83,13 @@ export function ServicesPricing() {
   const active = services.data?.filter((s) => s.active).length ?? 0
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="portal-tab-body flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-4 sm:max-w-sm">
         <StatTile label="Total Services" value={services.data?.length ?? '—'} />
         <StatTile label="Active" value={services.data ? active : '—'} />
       </div>
 
-      <Card>
+      <Card className="portal-table-card">
         <div className="flex items-center justify-between gap-3 border-b border-border p-4">
           <p className="text-xs text-gray-500">
             Inactive services are hidden from the public booking form. Existing
@@ -105,7 +105,7 @@ export function ServicesPricing() {
           empty={<EmptyState title="No services yet" />}
         >
           {(rows) => (
-            <Table columns={columns} rows={rows} rowKey={(s) => s.id} />
+            <Table fillHeight columns={columns} rows={rows} rowKey={(s) => s.id} />
           )}
         </AsyncBoundary>
       </Card>
@@ -168,18 +168,13 @@ function ServiceModal({
       size="sm"
       title={service ? 'Edit Service and Pricing' : 'Add Service and Pricing'}
       footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() => void save()}
-            loading={saving}
-            disabled={form.name.trim() === '' || form.price <= 0}
-          >
-            Save
-          </Button>
-        </>
+        <Button
+          onClick={() => void save()}
+          loading={saving}
+          disabled={form.name.trim() === '' || form.price <= 0}
+        >
+          Save
+        </Button>
       }
     >
       <div className="flex flex-col gap-4">

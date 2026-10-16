@@ -1,3 +1,4 @@
+import { MedicalHistory } from './MedicalHistory'
 import { useState } from 'react'
 import * as api from '../../../api'
 import { useAsync } from '../../../hooks/useAsync'
@@ -31,11 +32,14 @@ const DOCUMENT_TYPES: Array<{ id: PatientDocumentType; label: string }> = [
   { id: 'previous_hospital_records', label: 'Previous Hospital Records' },
 ]
 
+// Unknown rather than guessed. A record the system created at booking has none
+// of these three, and defaulting sex to 'female' would put an assumption into a
+// medical record that nobody typed.
 const EMPTY: PatientInput = {
   fullName: '',
-  dateOfBirth: '',
-  sex: 'female',
-  civilStatus: 'single',
+  dateOfBirth: null,
+  sex: null,
+  civilStatus: null,
   contactNumber: '',
   email: '',
   address: '',
@@ -73,6 +77,7 @@ export function PatientModal({
   onClose: () => void
   onSaved: () => void
 }) {
+  const [historyOpen, setHistoryOpen] = useState(false)
   const toast = useToast()
   const editing = patientId !== undefined
 
@@ -127,6 +132,7 @@ export function PatientModal({
   }
 
   return (
+    <>
     <Modal
       open={open}
       onClose={onClose}
@@ -138,14 +144,9 @@ export function PatientModal({
           : 'Personal, maternity, and supporting documents.'
       }
       footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={() => void save()} loading={saving} disabled={!canSave}>
-            {editing ? 'Save Changes' : 'Save Patient'}
-          </Button>
-        </>
+        <Button onClick={() => void save()} loading={saving} disabled={!canSave}>
+          {editing ? 'Save Changes' : 'Save Patient'}
+        </Button>
       }
     >
       {values === null ? (
@@ -159,16 +160,20 @@ export function PatientModal({
               value={values.fullName}
               onChange={(v) => set('fullName', v)}
             />
+            {/* An empty control means "not recorded yet", so it round-trips
+                back as null instead of an empty string the schema would have
+                to special-case. */}
             <TextField
               label="Date of Birth"
               type="date"
-              value={values.dateOfBirth}
-              onChange={(v) => set('dateOfBirth', v)}
+              value={values.dateOfBirth ?? ''}
+              onChange={(v) => set('dateOfBirth', v || null)}
             />
             <SelectField
               label="Sex"
-              value={values.sex}
-              onChange={(v) => set('sex', v as Sex)}
+              placeholder="Not recorded"
+              value={values.sex ?? ''}
+              onChange={(v) => set('sex', (v || null) as Sex | null)}
               options={[
                 { value: 'female', label: 'Female' },
                 { value: 'male', label: 'Male' },
@@ -176,8 +181,9 @@ export function PatientModal({
             />
             <SelectField
               label="Civil Status"
-              value={values.civilStatus}
-              onChange={(v) => set('civilStatus', v as CivilStatus)}
+              placeholder="Not recorded"
+              value={values.civilStatus ?? ''}
+              onChange={(v) => set('civilStatus', (v || null) as CivilStatus | null)}
               options={[
                 { value: 'single', label: 'Single' },
                 { value: 'married', label: 'Married' },
@@ -234,6 +240,11 @@ export function PatientModal({
             />
           </Section>
 
+          {patientId && (
+            <button type="button" onClick={() => setHistoryOpen(true)} className="w-fit text-sm font-medium text-brand-600 underline underline-offset-4 hover:text-brand-700">
+              Medical History
+            </button>
+          )}
           <Section title="Maternity & Medical Info">
             <TextField
               label="Last Menstrual Period"
@@ -317,6 +328,10 @@ export function PatientModal({
         </div>
       )}
     </Modal>
+    {historyOpen && patientId && (
+      <MedicalHistory patientId={patientId} patientName={values?.fullName ?? ''} onClose={() => setHistoryOpen(false)} />
+    )}
+    </>
   )
 }
 
@@ -346,7 +361,7 @@ function Documents({ patientId }: { patientId: string }) {
           >
             <div className="min-w-0">
               <p className="text-xs font-medium text-gray-700">{type.label}</p>
-              <p className="truncate text-[11px] text-gray-400">
+              <p className="truncate text-xs text-gray-400">
                 {existing
                   ? `${existing.fileName} · ${formatSize(existing.fileSize)}`
                   : 'Not uploaded'}

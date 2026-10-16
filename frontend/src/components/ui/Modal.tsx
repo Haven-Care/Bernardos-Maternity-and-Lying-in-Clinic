@@ -17,6 +17,7 @@ export function Modal({
   children,
   footer,
   size = 'md',
+  headerAction,
 }: {
   open: boolean
   onClose: () => void
@@ -24,7 +25,8 @@ export function Modal({
   description?: string
   children?: ReactNode
   footer?: ReactNode
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
+  headerAction?: ReactNode
 }) {
   const ref = useRef<HTMLDialogElement>(null)
 
@@ -54,6 +56,7 @@ export function Modal({
     sm: 'max-w-sm',
     md: 'max-w-lg',
     lg: 'max-w-3xl',
+    xl: 'max-w-6xl',
   }[size]
 
   return (
@@ -67,11 +70,12 @@ export function Modal({
       <div onClick={(e) => e.stopPropagation()}>
         <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-3.5">
           <div>
-            <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
+            <h2 className="text-base font-semibold text-gray-900">{title}</h2>
             {description && (
-              <p className="mt-0.5 text-xs text-gray-500">{description}</p>
+              <p className="mt-0.5 text-sm text-gray-500">{description}</p>
             )}
           </div>
+          {headerAction && <div className="ml-auto shrink-0">{headerAction}</div>}
           <button
             type="button"
             onClick={onClose}

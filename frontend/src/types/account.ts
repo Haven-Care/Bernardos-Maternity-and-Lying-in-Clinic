@@ -5,7 +5,7 @@ export type StaffRole = 'administrator' | 'staff'
 
 export type StaffStatus = 'active' | 'inactive'
 
-/** Administration → My Account → Profile Details. */
+/** Staff profile returned by the account API. */
 export interface StaffProfile {
   id: string
   fullName: string
@@ -27,7 +27,7 @@ export interface StaffProfile {
   twoFactorEnabled: boolean
 }
 
-/** Administration → My Account → Notification Preferences. */
+/** Staff notification preferences. */
 export interface NotificationPrefs {
   /**
    * Booking requests, reminders, and system alerts.

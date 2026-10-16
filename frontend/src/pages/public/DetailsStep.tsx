@@ -3,7 +3,7 @@ import type { Service } from '../../types/service'
 import { Button } from '../../components/ui/Button'
 import { TextArea, TextField } from '../../components/ui/fields'
 import { formatDateLong, formatPeso, formatTime } from '../../lib/format'
-import { isEmail, isPhMobile } from '../../lib/validate'
+import { isPhMobile } from '../../lib/validate'
 
 export interface Contact {
   patientName: string
@@ -28,9 +28,8 @@ function validate(contact: Contact): Errors {
     errors.contactNumber =
       'Enter a mobile number the clinic can reach you on, e.g. 0917 123 4567.'
   }
-  if (!isEmail(contact.email)) {
-    errors.email = 'Enter a valid email address, e.g. juan@gmail.com.'
-  }
+  // The email is not validated because it is not entered. It comes from the
+  // signed-in account and is shown read-only — see the field below.
   if (contact.reasonForVisit.trim().length < 5) {
     errors.reasonForVisit = 'Tell the clinic briefly why you’re coming in.'
   }
@@ -44,6 +43,11 @@ function validate(contact: Contact): Errors {
  * The chosen service and time are repeated at the top rather than hidden behind
  * a Back button: this is the last screen before submitting, and a patient who
  * has to navigate away to check what they picked usually doesn't come back.
+ *
+ * That repetition matters more now than it did. Submitting used to open a
+ * request the clinic would confirm by phone, which gave a wrong date a chance
+ * to be caught by a human; it books the slot outright today, so this summary is
+ * the last point at which anyone checks.
  *
  * Errors surface on submit, not on keystroke — validating a phone number while
  * it is still being typed flags every number as wrong for as long as it takes to
@@ -128,16 +132,26 @@ export function DetailsStep({
           error={errors.contactNumber}
         />
 
-        <TextField
-          label="Email address"
-          required
-          type="email"
-          value={value.email}
-          onChange={(email) => onChange({ email })}
-          placeholder="juana@gmail.com"
-          autoComplete="email"
-          error={errors.email}
-        />
+        {/*
+          Read-only, not a text field.
+
+          The server takes the email from the account behind the token and
+          ignores anything sent in the body — that is what stops a booking being
+          made under somebody else's address. An editable box whose contents are
+          discarded would be a lie about what the form does, and the patient
+          would only find out when the confirmation went to the other address.
+        */}
+        <div>
+          <span className="mb-1.5 block text-xs font-medium text-gray-700">
+            Email address
+          </span>
+          <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+            {value.email}
+          </p>
+          <p className="mt-1 text-xs text-gray-400">
+            The clinic sends confirmations here. Change it in your account.
+          </p>
+        </div>
 
         <TextArea
           label="Reason for visit"
@@ -171,12 +185,12 @@ export function DetailsStep({
         loading={submitting}
         className="mt-5 w-full justify-center"
       >
-        Request appointment
+        Book appointment
       </Button>
 
       <p className="mt-3 text-center text-xs text-gray-500">
-        This sends a request. The clinic reviews it and confirms by text or
-        email — it isn’t booked until they do.
+        This books the time straight away. You can cancel or ask to move it from
+        My bookings.
       </p>
     </form>
   )

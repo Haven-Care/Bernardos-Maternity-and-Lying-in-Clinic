@@ -83,18 +83,13 @@ export function RescheduleModal({
       description={`${booking.referenceNo} · ${booking.patientName}`}
       size="sm"
       footer={
-        <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() => void save()}
-            loading={saving}
-            disabled={!time || noSlots}
-          >
-            Save
-          </Button>
-        </>
+        <Button
+          onClick={() => void save()}
+          loading={saving}
+          disabled={!time || noSlots}
+        >
+          Save
+        </Button>
       }
     >
       <div className="flex flex-col gap-4">
