@@ -10,18 +10,18 @@ The public `/book` and `/patient/login` pages were viewed on Vercel. The Vercel 
 
 ## Admin side
 
-The Figma admin page has frames for Dashboard; Appointment Booking Requests and Calendar; Inventory Medicine List, Stock Movement, Low Stock, and Expiring Soon; Patient Records; Administration My Account, Services & Pricing, Appointment Slots, and Clinic Info; and staff login/password reset. The merged frontend contains corresponding admin pages and tabs. The local dashboard preview shows the clinic header, icon navigation, five summary tiles, inventory summary, and alert area.
+The Figma admin page has frames for Dashboard; Appointment Booking Requests and Calendar; Inventory Medicine List, Stock Movement, Low Stock, and Expiring Soon; Patient Records; Administration My Account, Services & Pricing, Appointment Slots, and Clinic Info; and staff login/password reset. **The user confirmed that Administration → My Account should be removed; that Figma frame is outdated scope.** The merged frontend otherwise contains corresponding admin pages and tabs. The local dashboard preview shows the clinic header, icon navigation, five summary tiles, inventory summary, and alert area.
 
 Differences visible in the source and partial Figma view:
 
 | Area | Figma | Current merged frontend |
 | --- | --- | --- |
 | Inventory heading | `Inventory Management` in the visible Low Stock frame | `Medicine Inventory` |
-| Administration tabs | Four named frames: My Account, Services & Pricing, Appointment Slots, Clinic Info | Adds `Patient Accounts` as the first tab |
+| Administration tabs | Four named frames, including the now-outdated My Account | Keep Patient Accounts, Services & Pricing, Appointment Slots, and Clinic Info; remove My Account |
 | Appointments tabs | Booking Requests and Calendar frames | Adds a `Reschedules` queue |
 | Staff provisioning | No frame observed | Administrator-only `/admin/system` page |
 
-The extra admin pages serve existing application features; they should not be removed just to match the prototype. Before calling the deployed admin UI approved, sign in on Vercel and visually check Dashboard, all three Appointment tabs, all four Inventory tabs, Patient Records, and all Administration tabs at desktop width. Check interactions and real data separately from visual matching.
+Patient Accounts and the Reschedules queue serve existing application features. The My Account frame is outside the agreed admin scope. Before calling the deployed admin UI approved, sign in on Vercel and visually check Dashboard, all three Appointment tabs, all four Inventory tabs, Patient Records, and the four retained Administration tabs at desktop width. Check interactions and real data separately from visual matching.
 
 ## User side to build after admin review
 
