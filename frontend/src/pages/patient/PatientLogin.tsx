@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import * as api from '../../api'
 import { Button } from '../../components/ui/Button'
@@ -21,11 +21,17 @@ export function PatientLogin() {
   const navigate = useNavigate()
   const location = useLocation()
   const from = (location.state as { from?: string } | null)?.from
+  const logoClicks = useRef(0)
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | undefined>((location.state as { accessError?: string } | null)?.accessError)
   const [submitting, setSubmitting] = useState(false)
+
+  function onLogoClick() {
+    logoClicks.current += 1
+    if (logoClicks.current === 10) navigate('/login')
+  }
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -49,6 +55,7 @@ export function PatientLogin() {
     <AuthShell
       title="Sign in"
       subtitle="Sign in to book an appointment and see your bookings."
+      onLogoClick={onLogoClick}
       footer={
         <p className="text-center text-xs text-gray-500">
           New here?{' '}

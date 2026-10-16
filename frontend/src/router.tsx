@@ -29,9 +29,7 @@ import { NotFound } from './pages/NotFound.tsx'
  * else is public: `/book` is the patient booking form, and the auth screens are
  * the way into the portal.
  *
- * `/` still lands on the portal rather than `/book`. Staff are the ones who open
- * this app by habit; patients arrive on a link the clinic sends them. Flip it if
- * the clinic ever points a public domain here.
+ * `/` opens patient sign-in. Staff can reach their separate sign-in at `/login`.
  *
  * `/admin/*` sits behind `<RequireStaff>`, which redirects a signed-out visitor
  * to the login page. It decides what renders, not what is permitted — every
@@ -58,7 +56,7 @@ import { NotFound } from './pages/NotFound.tsx'
  * offers and when before deciding to register.
  */
 export const router = createBrowserRouter([
-  { path: '/', element: <Navigate to="/admin" replace /> },
+  { path: '/', element: <Navigate to="/patient/login" replace /> },
 
   { path: '/book', element: <BookingPage /> },
 
