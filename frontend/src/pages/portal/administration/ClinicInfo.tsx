@@ -18,7 +18,7 @@ export function ClinicInfo() {
   const [editing, setEditing] = useState(false)
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="portal-settings-body flex flex-col gap-4">
       <Card>
         <CardHeader
           title="General Information"

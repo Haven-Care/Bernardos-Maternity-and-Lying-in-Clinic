@@ -72,7 +72,7 @@ export function ExpirationTracker({ version }: { version: number }) {
   ]
 
   return (
-    <Card>
+    <Card className="portal-table-card">
       <AsyncBoundary
         state={rows}
         empty={
@@ -83,7 +83,7 @@ export function ExpirationTracker({ version }: { version: number }) {
         }
       >
         {(data) => (
-          <Table columns={columns} rows={data} rowKey={(r) => r.batchId} />
+          <Table fillHeight fitRows columns={columns} rows={data} rowKey={(r) => r.batchId} />
         )}
       </AsyncBoundary>
     </Card>
