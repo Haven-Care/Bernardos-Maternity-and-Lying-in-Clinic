@@ -11,5 +11,12 @@ export interface PatientAccountRow {
 }
 
 export async function list(): Promise<PatientAccountRow[]> {
-  return apiFetch<PatientAccountRow[]>('/patient-accounts')
+  const rows: PatientAccountRow[] = []
+  const limit = 100
+  for (;;) {
+    const page = await apiFetch<PatientAccountRow[]>(`/patient-accounts?offset=${rows.length}&limit=${limit}`)
+    if (rows.length > 0 && page[0]?.id === rows[0].id) return rows
+    rows.push(...page)
+    if (page.length !== limit) return rows
+  }
 }
