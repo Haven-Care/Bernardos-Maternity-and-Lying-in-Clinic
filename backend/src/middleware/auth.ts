@@ -220,7 +220,8 @@ export async function requirePatient(
       )
     }
 
-    const { data: account, error } = await getSupabaseClient()
+    const db = getSupabaseClient()
+    const { data: existingAccount, error } = await db
       .from('patient_accounts')
       .select('id, full_name, email, contact_number')
       .eq('id', user.id)
@@ -228,8 +229,45 @@ export async function requirePatient(
 
     if (error) throw error
 
+    let account = existingAccount
     if (!account) {
-      throw new HttpError(403, 'You do not have access to this.')
+      // A hosted project can contain confirmed Auth users created before its
+      // account-sync trigger was installed. Repair only the patient realm;
+      // an absent row must never turn a staff user into a patient.
+      const { data: profile, error: profileError } = await db
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (profileError) throw profileError
+      if (profile || user.app_metadata?.user_type === 'staff' || !user.email) {
+        throw new HttpError(403, 'You do not have access to this.')
+      }
+
+      const name = user.user_metadata?.full_name
+      const contact = user.user_metadata?.contact_number
+      const { error: insertError } = await db.from('patient_accounts').insert({
+        id: user.id,
+        email: user.email,
+        full_name: typeof name === 'string' && name.trim()
+          ? name.trim()
+          : user.email.split('@')[0],
+        contact_number: typeof contact === 'string' ? contact : '',
+      })
+
+      // Two simultaneous requests may both see the missing row. A unique-key
+      // conflict means the other request created it; load that row below.
+      if (insertError && insertError.code !== '23505') throw insertError
+
+      const { data: repaired, error: reloadError } = await db
+        .from('patient_accounts')
+        .select('id, full_name, email, contact_number')
+        .eq('id', user.id)
+        .single()
+
+      if (reloadError) throw reloadError
+      account = repaired
     }
 
     req.patient = {

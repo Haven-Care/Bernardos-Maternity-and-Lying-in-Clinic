@@ -233,4 +233,36 @@ describe.skipIf(!up)('authorization', () => {
       expect(data).toBeNull()
     })
   })
+
+  describe('patient account recovery', () => {
+    it('repairs a confirmed patient whose account row is missing', async () => {
+      const email = uniqueEmail('recovered-patient')
+      const { token, userId } = await signUpPatient(
+        email,
+        'Sup3rSecret!',
+        'Recovered Patient',
+      )
+      const db = getSupabaseClient()
+
+      const { error } = await db.from('patient_accounts').delete().eq('id', userId)
+      expect(error).toBeNull()
+
+      const first = await request(app)
+        .get('/api/me/account')
+        .set('Authorization', `Bearer ${token}`)
+
+      expect(first.status).toBe(200)
+      expect(first.body).toMatchObject({
+        id: userId,
+        email,
+        fullName: 'Recovered Patient',
+      })
+
+      const second = await request(app)
+        .get('/api/me/account')
+        .set('Authorization', `Bearer ${token}`)
+
+      expect(second.status).toBe(200)
+    })
+  })
 })
