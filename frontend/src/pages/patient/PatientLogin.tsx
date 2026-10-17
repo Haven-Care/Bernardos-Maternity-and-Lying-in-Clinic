@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import * as api from '../../api'
 import { Button } from '../../components/ui/Button'
-import { TextField } from '../../components/ui/fields'
+import { PasswordField, TextField } from '../../components/ui/fields'
 import { AuthShell } from '../auth/AuthShell'
 
 /**
@@ -80,9 +80,8 @@ export function PatientLogin() {
         />
 
         <div>
-          <TextField
+          <PasswordField
             label="Password"
-            type="password"
             value={password}
             onChange={setPassword}
             placeholder="Enter your password"
