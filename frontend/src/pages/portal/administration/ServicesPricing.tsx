@@ -13,6 +13,7 @@ import { AsyncBoundary, EmptyState } from '../../../components/ui/states'
 import { useToast } from '../../../components/ui/toast-context'
 import { formatPeso } from '../../../lib/format'
 import type { Service, ServiceInput } from '../../../types/service'
+import { clinicServices, clinicServiceGroups } from '../../../lib/clinicServices'
 
 export function ServicesPricing() {
   const services = useAsync(() => api.services.listServices())
@@ -20,6 +21,7 @@ export function ServicesPricing() {
 
   const [editing, setEditing] = useState<Service | null>(null)
   const [adding, setAdding] = useState(false)
+  const [draft, setDraft] = useState<Pick<ServiceInput, 'name' | 'category'> | null>(null)
 
   async function toggleActive(service: Service, active: boolean) {
     await api.services.setServiceActive(service.id, active)
@@ -110,13 +112,50 @@ export function ServicesPricing() {
         </AsyncBoundary>
       </Card>
 
+      {services.data && <Card className="p-4">
+        <h2 className="text-sm font-semibold text-gray-900">Clinic’s printed service list</h2>
+        <p className="mt-1 text-xs text-gray-500">
+          {clinicServices.length} services appear on the clinic poster. Set a price to add a service to online booking; saving makes it bookable immediately.
+        </p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {clinicServiceGroups.map((group) => (
+            <div key={group.category}>
+              <h3 className="text-xs font-semibold text-brand-700">{group.category}</h3>
+              <ul className="mt-2 space-y-2">
+                {group.services.map(({ name }) => {
+                  const configured = services.data?.find((service) => service.name.toLowerCase() === name.toLowerCase())
+                  return (
+                    <li key={name} className="flex items-center justify-between gap-2 text-xs text-gray-700">
+                      <span>{name}</span>
+                      {configured ? (
+                        <span className="shrink-0 text-gray-400">{configured.active ? 'Bookable' : 'Configured'}</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => { setDraft({ name, category: group.category }); setAdding(true) }}
+                          className="shrink-0 font-semibold text-brand-600 hover:underline"
+                        >
+                          Set up
+                        </button>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </Card>}
+
       {(adding || editing) && (
         <ServiceModal
           service={editing ?? undefined}
+          initial={draft ?? undefined}
           open={adding || editing !== null}
           onClose={() => {
             setAdding(false)
             setEditing(null)
+            setDraft(null)
           }}
           onSaved={() => {
             services.reload()
@@ -133,18 +172,20 @@ export function ServicesPricing() {
 
 function ServiceModal({
   service,
+  initial,
   open,
   onClose,
   onSaved,
 }: {
   service?: Service
+  initial?: Pick<ServiceInput, 'name' | 'category'>
   open: boolean
   onClose: () => void
   onSaved: () => void
 }) {
   const [form, setForm] = useState<ServiceInput>({
-    name: service?.name ?? '',
-    category: service?.category ?? '',
+    name: service?.name ?? initial?.name ?? '',
+    category: service?.category ?? initial?.category ?? '',
     price: service?.price ?? 0,
   })
   const [saving, setSaving] = useState(false)

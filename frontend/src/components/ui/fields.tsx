@@ -115,16 +115,31 @@ export function PasswordField({
           autoComplete={autoComplete}
           aria-invalid={error ? true : undefined}
           onChange={(e) => onChange(e.target.value)}
-          className={`${CONTROL} pr-16`}
+          className={`${CONTROL} pr-12`}
         />
         <button
           type="button"
           onClick={() => setVisible((v) => !v)}
           aria-label={visible ? 'Hide password' : 'Show password'}
+          aria-pressed={visible}
           aria-controls={id}
-          className="absolute inset-y-0 right-0 flex items-center px-3 text-xs font-medium text-gray-500 transition-colors hover:text-gray-800"
+          className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-md text-gray-500 transition-colors hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
         >
-          {visible ? 'Hide' : 'Show'}
+          <svg className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            {visible ? (
+              <>
+                <path d="M3 3l18 18" />
+                <path d="M10.6 5.2a10.7 10.7 0 0 1 1.4-.1c5 0 8.7 4.2 10 6.9a12.8 12.8 0 0 1-3.1 4.1" />
+                <path d="M6.4 6.4C4.3 7.8 2.8 9.8 2 12c1.3 2.7 5 6.9 10 6.9 1.3 0 2.5-.3 3.6-.8" />
+                <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+              </>
+            ) : (
+              <>
+                <path d="M2 12s3.7-7 10-7 10 7 10 7-3.7 7-10 7S2 12 2 12Z" />
+                <circle cx="12" cy="12" r="3" />
+              </>
+            )}
+          </svg>
         </button>
       </div>
       <Error message={error} />

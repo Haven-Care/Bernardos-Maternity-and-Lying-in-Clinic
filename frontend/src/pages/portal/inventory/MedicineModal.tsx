@@ -129,6 +129,16 @@ export function MedicineModal({
     >
       <div className="flex flex-col gap-5">
         <Section title="Basic Medicine Details">
+          <figure className="sm:col-span-2">
+            <img
+              src="/images/medicine-placeholder.png"
+              alt="Generic, unbranded medicine packaging"
+              className="h-40 w-full rounded-lg border border-border object-cover object-center"
+            />
+            <figcaption className="mt-1.5 text-xs text-gray-500">
+              Example image — product photo not added yet.
+            </figcaption>
+          </figure>
           <TextField
             label="Generic Name"
             required

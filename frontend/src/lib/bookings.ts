@@ -16,12 +16,12 @@ export const ACTIONABLE: ReadonlySet<AppointmentStatus> = new Set([
   'rescheduled',
 ])
 
-export type BookingFilter = 'all' | 'upcoming' | 'past' | 'cancelled'
+export type BookingFilter = 'all' | 'upcoming' | 'completed' | 'cancelled'
 
 export const BOOKING_FILTERS: { id: BookingFilter; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'upcoming', label: 'Upcoming' },
-  { id: 'past', label: 'Past' },
+  { id: 'completed', label: 'Completed' },
   { id: 'cancelled', label: 'Cancelled' },
 ]
 
@@ -37,8 +37,8 @@ export function isBookingFilter(value: string | null): value is BookingFilter {
  *
  * Decided by calendar day, not by the minute: an appointment stays upcoming
  * for the whole of its day, so a patient running late still finds it there.
- * A live booking whose day has gone without being marked completed counts as
- * past — it happened, or it didn't, but it is not coming up.
+ * A live booking whose day has gone without being marked completed stays in
+ * All. Only staff-confirmed completed visits appear in Completed.
  *
  * `today` is `YYYY-MM-DD`, passed in so the filter is a pure function.
  */
@@ -51,11 +51,8 @@ export function filterBookings(
     switch (filter) {
       case 'upcoming':
         return ACTIONABLE.has(b.status) && b.scheduledDate >= today
-      case 'past':
-        return (
-          b.status === 'completed' ||
-          (ACTIONABLE.has(b.status) && b.scheduledDate < today)
-        )
+      case 'completed':
+        return b.status === 'completed'
       case 'cancelled':
         return b.status === 'cancelled'
       case 'all':

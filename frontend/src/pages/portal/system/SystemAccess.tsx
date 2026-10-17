@@ -5,7 +5,7 @@ import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
 import { Card } from '../../../components/ui/Card'
 import { Modal } from '../../../components/ui/Modal'
-import { SelectField, TextField } from '../../../components/ui/fields'
+import { PasswordField, SelectField, TextField } from '../../../components/ui/fields'
 import { Table, type Column } from '../../../components/ui/Table'
 import { AsyncBoundary, EmptyState } from '../../../components/ui/states'
 import { useToast } from '../../../components/ui/toast-context'
@@ -266,9 +266,8 @@ function AddStaffModal({
             { value: 'administrator', label: 'Administrator' },
           ]}
         />
-        <TextField
+        <PasswordField
           label="Temporary Password"
-          type="password"
           required
           value={form.password}
           onChange={(v) => set('password', v)}

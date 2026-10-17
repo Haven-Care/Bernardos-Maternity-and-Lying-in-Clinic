@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import * as api from '../../api'
 import { Button } from '../../components/ui/Button'
-import { TextField } from '../../components/ui/fields'
+import { PasswordField, TextField } from '../../components/ui/fields'
 import { AuthShell } from './AuthShell'
 
 export function Login() {
@@ -51,9 +51,8 @@ export function Login() {
         />
 
         <div>
-          <TextField
+          <PasswordField
             label="Password"
-            type="password"
             value={password}
             onChange={setPassword}
             placeholder="Enter your password"

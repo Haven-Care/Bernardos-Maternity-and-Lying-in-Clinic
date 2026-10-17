@@ -8,6 +8,7 @@ export function AuthShell({
   children,
   before,
   footer,
+  onLogoClick,
 }: {
   title: string
   subtitle?: string
@@ -15,6 +16,7 @@ export function AuthShell({
   /** Rendered above the logo — the "Back to login" link on the reset screens. */
   before?: ReactNode
   footer?: ReactNode
+  onLogoClick?: () => void
 }) {
   return (
     <div className="flex min-h-full items-center justify-center bg-brand-50/40 p-4">
@@ -22,13 +24,25 @@ export function AuthShell({
         {before}
 
         <div className="flex flex-col items-center gap-2 text-center">
-          <img
-            src="/images/clinic-logo.jpg"
-            alt="Bernardo's Maternity and Lying-in Clinic logo"
-            className="size-20 object-contain"
-            width={80}
-            height={80}
-          />
+          {onLogoClick ? (
+            <button type="button" onClick={onLogoClick} aria-label="Clinic logo" className="rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
+              <img
+                src="/images/clinic-logo.jpg"
+                alt=""
+                className="size-20 object-contain"
+                width={80}
+                height={80}
+              />
+            </button>
+          ) : (
+            <img
+              src="/images/clinic-logo.jpg"
+              alt="Bernardo's Maternity and Lying-in Clinic logo"
+              className="size-20 object-contain"
+              width={80}
+              height={80}
+            />
+          )}
           <p className="text-sm leading-tight font-semibold text-brand-700">
             Bernardo’s Maternity and
             <br />

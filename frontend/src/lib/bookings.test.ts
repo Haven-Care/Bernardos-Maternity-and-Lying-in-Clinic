@@ -49,11 +49,8 @@ describe('filterBookings', () => {
     ])
   })
 
-  it('past: completed, plus live bookings whose day has gone, newest first', () => {
-    expect(ids(filterBookings(ROWS, 'past', TODAY))).toEqual([
-      'missed',
-      'last-week',
-    ])
+  it('completed: only visits marked complete by staff', () => {
+    expect(ids(filterBookings(ROWS, 'completed', TODAY))).toEqual(['last-week'])
   })
 
   it('cancelled: only cancelled ones, whatever their date', () => {
