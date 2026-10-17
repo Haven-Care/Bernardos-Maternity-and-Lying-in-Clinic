@@ -10,6 +10,7 @@ import { formatDate } from '../../../lib/format'
 import type { MedicineListRow } from '../../../types/medicine'
 import { MedicineModal } from './MedicineModal'
 import { StockModal } from './StockModal'
+import { MedicineThumbnail } from './MedicineThumbnail'
 
 export function MedicineList({
   version,
@@ -52,11 +53,14 @@ export function MedicineList({
       key: 'name',
       header: 'Generic Name',
       render: (m) => (
-        <div>
-          <p className="font-medium text-gray-900">{m.genericName}</p>
-          {m.brandName && (
-            <p className="text-xs text-gray-400">{m.brandName}</p>
-          )}
+        <div className="flex items-center gap-3">
+          <MedicineThumbnail name={m.genericName} form={m.dosageForm} />
+          <div>
+            <p className="font-medium text-gray-900">{m.genericName}</p>
+            {m.brandName && (
+              <p className="text-xs text-gray-400">{m.brandName}</p>
+            )}
+          </div>
         </div>
       ),
     },

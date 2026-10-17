@@ -7,6 +7,7 @@ import { formatDateLong, formatTime } from '../../lib/format'
 import { ErrorState, LoadingState } from '../../components/ui/states'
 import { StatusBadge } from '../../components/ui/Badge'
 import { PublicShell } from '../public/PublicShell'
+import { ClinicServiceCatalog } from '../../components/ClinicServiceCatalog'
 
 export function Home() {
   const account = useAsync(() => api.patientAuth.getAccount())
@@ -60,6 +61,8 @@ export function Home() {
           <span className="mt-1 block text-xs text-gray-500">View or manage visits</span>
         </Link>
       </section>
+
+      <div className="mt-7"><ClinicServiceCatalog /></div>
 
       {recent && recent.length > 0 && (
         <section className="mt-7" aria-labelledby="recent-activity">
