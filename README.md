@@ -1,5 +1,7 @@
 # 🏥 HavenCare
 
+For local development against hosted Supabase, follow the [local development guide](docs/LOCAL_DEVELOPMENT.md). It records the verified setup and supersedes the older setup instructions below.
+
 Centralized Management System for **Bernardo's Maternity and Lying-in Clinic**.
 
 One system, two products:
