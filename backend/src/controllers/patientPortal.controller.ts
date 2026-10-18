@@ -144,7 +144,9 @@ const createBookingSchema = z.object({
  * The same function materialises the patient's clinical record on their first
  * booking, in the same transaction as the booking that caused it.
  *
- * Always lands on `pending`. A submission is a *request*; staff confirm it.
+ * Lands on `confirmed`. Submitting the form *is* the booking — every rule the
+ * clinic has was checked inside the function, under the lock, before the row
+ * existed. Staff monitor the schedule rather than admit people to it.
  */
 export async function createMyBooking(req: Request, res: Response) {
   const me = account(req)

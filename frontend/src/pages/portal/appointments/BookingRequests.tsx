@@ -13,12 +13,22 @@ import {
 } from '../../../types/appointment'
 import { BookingDetail } from './BookingDetail'
 
+/**
+ * `pending` is filtered out of the options, not out of the union.
+ *
+ * Bookings are accepted on submission, so nothing produces `pending` any more —
+ * but rows created before that change still carry it, and the status column
+ * still has to render them. A filter option that can only ever match history is
+ * a dead control on a screen staff use every day.
+ */
 const STATUS_OPTIONS = [
   { value: '', label: 'All Status' },
-  ...APPOINTMENT_STATUSES.map((status) => ({
-    value: status,
-    label: status[0].toUpperCase() + status.slice(1),
-  })),
+  ...APPOINTMENT_STATUSES.filter((status) => status !== 'pending').map(
+    (status) => ({
+      value: status,
+      label: status[0].toUpperCase() + status.slice(1),
+    }),
+  ),
 ]
 
 export function BookingRequests() {
@@ -42,13 +52,15 @@ export function BookingRequests() {
             b.serviceName.toLowerCase().includes(term)
           : true,
       )
-      // Pending first, then soonest — staff open this tab to action requests,
-      // not to browse history.
-      .sort((a, b) => {
-        if (a.status === 'pending' && b.status !== 'pending') return -1
-        if (b.status === 'pending' && a.status !== 'pending') return 1
-        return a.scheduledDate.localeCompare(b.scheduledDate)
-      })
+      // Newest submission first.
+      //
+      // This used to float pending requests to the top, which is what staff
+      // needed when the tab was a work queue. Nothing waits for them now, so
+      // the tab is a monitoring view and the question it answers is "what has
+      // come in". Falling back to the old date sort would have been worse than
+      // useless: it ordered ascending across all time, so the top of the list
+      // would be the oldest visit in the clinic's history.
+      .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
   }, [bookings.data, status, date, search])
 
   const columns: Column<BookingRequest>[] = [
@@ -134,8 +146,8 @@ export function BookingRequests() {
           state={bookings}
           empty={
             <EmptyState
-              title="No booking requests yet"
-              description="Requests submitted from the public booking form land here."
+              title="No bookings yet"
+              description="Appointments booked from the public form land here."
             />
           }
         >

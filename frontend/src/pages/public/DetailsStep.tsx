@@ -44,6 +44,11 @@ function validate(contact: Contact): Errors {
  * a Back button: this is the last screen before submitting, and a patient who
  * has to navigate away to check what they picked usually doesn't come back.
  *
+ * That repetition matters more now than it did. Submitting used to open a
+ * request the clinic would confirm by phone, which gave a wrong date a chance
+ * to be caught by a human; it books the slot outright today, so this summary is
+ * the last point at which anyone checks.
+ *
  * Errors surface on submit, not on keystroke — validating a phone number while
  * it is still being typed flags every number as wrong for as long as it takes to
  * enter one.
@@ -180,12 +185,12 @@ export function DetailsStep({
         loading={submitting}
         className="mt-5 w-full justify-center"
       >
-        Request appointment
+        Book appointment
       </Button>
 
       <p className="mt-3 text-center text-xs text-gray-500">
-        This sends a request. The clinic reviews it and confirms by text or
-        email — it isn’t booked until they do.
+        This books the time straight away. You can cancel or ask to move it from
+        My bookings.
       </p>
     </form>
   )

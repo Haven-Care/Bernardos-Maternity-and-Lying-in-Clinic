@@ -42,6 +42,15 @@ group by status;
 -- clinic_today(), not current_date — Today's Schedule is the clinic's today,
 -- and between Manila midnight and UTC midnight those are different days.
 --
+-- Booked Today counts *submissions*, not visits — bookings that arrived today,
+-- whatever day they are for. It replaced a count of pending requests, which
+-- became a permanent zero when bookings started being accepted on submission.
+--
+-- Submissions rather than upcoming visits because this tile answers the
+-- question staff actually have now that nothing waits for them: what came in
+-- while I wasn't looking. Upcoming visits would also duplicate the tile
+-- immediately to its left.
+--
 -- Inventory Alerts is low stock *plus* near expiry, matching the two tabs it
 -- links to. Both halves are spelled the way their tab spells them:
 --
@@ -55,7 +64,7 @@ group by status;
 create function dashboard_stats()
 returns table (
   todays_schedule integer,
-  booking_requests integer,
+  booked_today integer,
   completed_appointments integer,
   inventory_alerts integer
 )
@@ -67,7 +76,13 @@ as $$
       select count(*) from appointments
       where scheduled_date = clinic_today() and status <> 'cancelled'
     )::integer,
-    (select count(*) from appointments where status = 'pending')::integer,
+    (
+      select count(*) from appointments
+      -- submitted_at is a timestamptz and the clinic is UTC+8, so it has to be
+      -- read in Manila before its date is taken. Comparing the raw UTC date
+      -- would move the tile's cutoff to 8 AM local.
+      where (submitted_at at time zone 'Asia/Manila')::date = clinic_today()
+    )::integer,
     (select count(*) from appointments where status = 'completed')::integer,
     (
       (
@@ -115,9 +130,14 @@ as $$
   ])[extract(month from d)::int] || ' ' || extract(day from d)::text;
 $$;
 
--- Only patient-submitted requests. A booking with no account behind it was
--- entered by staff at the desk, and telling the desk what the desk just did is
--- how a notification list becomes something nobody reads.
+-- Only patient-submitted bookings. One with no account behind it was entered by
+-- staff at the desk, and telling the desk what the desk just did is how a
+-- notification list becomes something nobody reads.
+--
+-- This is the whole of the clinic's awareness now. While bookings waited for
+-- confirmation the queue itself was the notice, and the bell was a convenience;
+-- with nothing queued, a booking that writes no notification is a booking the
+-- clinic never hears about until the patient walks in.
 create function notify_booking_submitted() returns trigger
 language plpgsql
 set search_path = public, pg_temp
@@ -125,7 +145,7 @@ as $$
 begin
   insert into notifications (message, href)
   values (
-    new.patient_name || ' requested ' || new.service_name
+    new.patient_name || ' booked ' || new.service_name
       || ' on ' || short_date(new.scheduled_date) || ', ' || new.slot_time,
     '/admin/appointments'
   );
@@ -134,10 +154,14 @@ begin
 end;
 $$;
 
+-- No status clause. It used to read `and new.status = 'pending'`, which stopped
+-- matching anything the moment bookings began arriving confirmed — and a
+-- trigger that silently never fires is the worst possible failure for the one
+-- mechanism telling the clinic a patient is coming.
 create trigger appointments_notify_submitted
   after insert on appointments
   for each row
-  when (new.account_id is not null and new.status = 'pending')
+  when (new.account_id is not null)
   execute function notify_booking_submitted();
 
 create function notify_reschedule_requested() returns trigger

@@ -3,13 +3,18 @@ import { Button } from '../../components/ui/Button'
 import { formatDateLong, formatTime } from '../../lib/format'
 
 /**
- * The terminal screen — a request was accepted, not an appointment booked.
+ * The terminal screen — the appointment is booked.
  *
- * **The wording matters more than the layout here.** `createBooking` always
- * writes `pending`; staff confirm it from Booking Requests. A patient who reads
- * this as "booked" and skips the confirmation text is the no-show the clinic
- * already has a problem with, so the status badge, the heading, and the next
- * steps all say the same thing three times.
+ * **The wording matters more than the layout here.** This screen used to say
+ * the opposite three times over, because a booking was a request that staff
+ * confirmed later and a patient who read it as settled would not expect the
+ * call. `createBooking` writes `confirmed` now, so the seat is held before this
+ * renders and hedging would be the lie.
+ *
+ * What survives the change is the reason that copy was careful: the no-show.
+ * The confirmation call used to double as a reminder and there is no longer one,
+ * so this screen has to make the date stick on its own — hence the plain
+ * statement of when to arrive rather than a generic success message.
  *
  * The reference number is what staff ask for on the phone, so it is the largest
  * thing on the screen.
@@ -39,11 +44,15 @@ export function BookingConfirmed({
       </span>
 
       <h1 className="mt-4 text-lg font-semibold text-gray-900">
-        Request received
+        You’re booked
       </h1>
       <p className="mx-auto mt-1 max-w-sm text-sm text-gray-500">
-        The clinic will review it and confirm by text or email. Your appointment
-        isn’t final until they do.
+        Your appointment is confirmed for{' '}
+        <span className="font-semibold text-gray-700">
+          {formatDateLong(booking.scheduledDate)},{' '}
+          {formatTime(booking.slotTime)}
+        </span>
+        . Please arrive a few minutes early.
       </p>
 
       <div className="mt-5 rounded-card border border-brand-200 bg-brand-50 px-4 py-3">
@@ -62,7 +71,7 @@ export function BookingConfirmed({
         <Row label="Name" value={booking.patientName} />
         <Row label="Service" value={booking.serviceName} />
         <Row
-          label="Requested for"
+          label="When"
           value={`${formatDateLong(booking.scheduledDate)}, ${formatTime(booking.slotTime)}`}
         />
         <Row label="Mobile" value={booking.contactNumber} />

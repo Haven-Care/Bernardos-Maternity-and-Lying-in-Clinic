@@ -10,11 +10,12 @@ import { ScheduleStep } from '../public/ScheduleStep'
  * Ask to move an appointment.
  *
  * **This does not move it.** The proposal goes to a staff queue and the
- * original booking keeps its date and its seat until someone approves — the
- * pitch's line is that the app collects requests and does not book
- * appointments, and a patient silently rewriting a confirmed date would
- * contradict it. The copy says so in as many words, because a patient who
- * assumes the change took effect is a patient who misses their visit.
+ * original booking keeps its date and its seat until someone approves.
+ *
+ * Booking is automatic and this is not, which is a distinction a patient will
+ * not expect — so the copy says it in as many words, twice. Someone who books
+ * instantly and assumes a reschedule works the same way is someone who turns up
+ * on the wrong day, or not at all.
  *
  * The date and time picker is `ScheduleStep`, unchanged from the booking
  * wizard. Proposing a time the clinic does not offer, or one that is already

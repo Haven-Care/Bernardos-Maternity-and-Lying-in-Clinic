@@ -31,9 +31,19 @@ create table appointments (
   scheduled_date date not null,
   slot_time clock_time not null,
 
-  -- Always starts pending. A public submission is a *request*; staff confirm
-  -- it. This is the clinic's schedule, not the patient's.
-  status appointment_status not null default 'pending',
+  -- Accepted on submission. Booking the slot *is* the confirmation — staff
+  -- monitor the schedule rather than gate entry to it.
+  --
+  -- `pending` is retired, not removed: rows created before this change still
+  -- carry it and must keep reading correctly, and the Dashboard pie chart is
+  -- built around exactly five statuses. Nothing produces it any more.
+  --
+  -- With no human step between submission and a held seat, the advisory lock in
+  -- book_appointment is the only thing standing between two patients and the
+  -- same chair. It was always the thing actually enforcing capacity — staff
+  -- confirmation never re-checked it — but there is no longer a second pair of
+  -- eyes behind it.
+  status appointment_status not null default 'confirmed',
   reason_for_visit text not null default '',
 
   submitted_at timestamptz not null default now(),

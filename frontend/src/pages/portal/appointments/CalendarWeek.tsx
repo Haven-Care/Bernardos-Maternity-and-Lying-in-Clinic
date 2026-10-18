@@ -191,8 +191,12 @@ export function CalendarWeek() {
 }
 
 /**
- * Chips carry status as well as identity. Pending is amber so a request still
- * awaiting review is visible on the grid, not just in the requests tab.
+ * Chips carry status as well as identity.
+ *
+ * The amber `pending` entry is kept for rows created before bookings were
+ * accepted on submission. Nothing produces that status now, but the grid still
+ * has to draw the history — and a missing key here would fall through to the
+ * confirmed blue, quietly mislabelling an old unreviewed request as agreed.
  */
 const CHIP: Record<string, string> = {
   pending: 'bg-warning-50 text-warning-700 hover:bg-warning-100',

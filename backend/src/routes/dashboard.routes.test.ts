@@ -64,7 +64,7 @@ describe.skipIf(!up)('dashboard', () => {
 
       expect(res.body).toEqual({
         todaysSchedule: expect.any(Number),
-        bookingRequests: expect.any(Number),
+        bookedToday: expect.any(Number),
         completedAppointments: expect.any(Number),
         inventoryAlerts: expect.any(Number),
       })
@@ -74,21 +74,85 @@ describe.skipIf(!up)('dashboard', () => {
       }
     })
 
-    it('counts Booking Requests as the Booking Requests tab does', async () => {
+    it('counts Booked Today as the Bookings tab does', async () => {
+      const { data: clinicToday } = await getSupabaseClient().rpc('clinic_today')
+
       const [stats, bookings] = await Promise.all([
         request(app).get('/api/dashboard/stats').set(asStaff()).expect(200),
         request(app).get('/api/bookings').set(asStaff()).expect(200),
       ])
 
-      const pending = bookings.body.filter(
-        (b: { status: string }) => b.status === 'pending',
-      ).length
+      // Submissions, not visits — the tile answers "what arrived today",
+      // whatever day those appointments are for. `submittedAt` is an ISO
+      // instant in UTC and the clinic is UTC+8, so it has to be read in Manila
+      // before its date is taken, exactly as dashboard_stats() does.
+      const bookedToday = bookings.body.filter((b: { submittedAt: string }) => {
+        const manila = new Date(b.submittedAt).toLocaleDateString('en-CA', {
+          timeZone: 'Asia/Manila',
+        })
+        return manila === clinicToday
+      }).length
+
       const completed = bookings.body.filter(
         (b: { status: string }) => b.status === 'completed',
       ).length
 
-      expect(stats.body.bookingRequests).toBe(pending)
+      expect(stats.body.bookedToday).toBe(bookedToday)
       expect(stats.body.completedAppointments).toBe(completed)
+    })
+
+    /**
+     * The tile that replaced "Booking Requests".
+     *
+     * That one counted pending bookings and became a permanent zero the moment
+     * bookings started being accepted on submission. A tile stuck at zero looks
+     * like a broken query rather than a quiet day, so this asserts the number
+     * actually moves.
+     */
+    it('moves Booked Today when a patient books', async () => {
+      const before = await request(app)
+        .get('/api/dashboard/stats')
+        .set(asStaff())
+        .expect(200)
+
+      const services = await request(app).get('/api/services').expect(200)
+      const serviceId = services.body.find(
+        (s: { name: string }) => s.name === 'Consultation',
+      ).id
+
+      const { data: today } = await getSupabaseClient().rpc('clinic_today')
+      const date = new Date(`${today}T00:00:00Z`)
+      do {
+        date.setUTCDate(date.getUTCDate() + 1)
+      } while (date.getUTCDay() !== 1)
+      date.setUTCDate(date.getUTCDate() + 10 * 7)
+      const scheduledDate = date.toISOString().slice(0, 10)
+
+      const slots = await request(app)
+        .get(`/api/slots/availability?date=${scheduledDate}`)
+        .expect(200)
+      const slot = slots.body.find((s: { available: boolean }) => s.available)
+
+      await request(app)
+        .post('/api/bookings')
+        .set({ Authorization: `Bearer ${patient.token}` })
+        .send({
+          serviceId,
+          scheduledDate,
+          slotTime: slot.time,
+          reasonForVisit: 'Booked today tile',
+        })
+        .expect(201)
+
+      const after = await request(app)
+        .get('/api/dashboard/stats')
+        .set(asStaff())
+        .expect(200)
+
+      // Greater-than rather than exactly +1: the bookings suite runs in
+      // parallel and books against the same clinic, so the delta is ours plus
+      // whatever theirs did. That it moves at all is the property under test.
+      expect(after.body.bookedToday).toBeGreaterThan(before.body.bookedToday)
     })
 
     it("counts Today's Schedule against the clinic's today, not the server's", async () => {
@@ -146,7 +210,16 @@ describe.skipIf(!up)('dashboard', () => {
           count: expect.any(Number),
           percentage: expect.any(Number),
         })
-        expect(slice.percentage).toBeCloseTo((slice.count / total) * 100, 1)
+        // The server rounds to one decimal, so the true value can sit up to
+        // 0.05 away — inclusive. toBeCloseTo(x, 1) demands strictly under 0.05
+        // and fails on every .x5 boundary (5/16 = 31.25 -> 31.3).
+        //
+        // Measured against `counted`, the overview's own total, not the
+        // bookings list fetched alongside it: the bookings suite runs in
+        // parallel, and a booking landing between the two requests would
+        // otherwise skew every percentage.
+        const exact = (slice.count / counted) * 100
+        expect(Math.abs(slice.percentage - exact)).toBeLessThanOrEqual(0.05 + 1e-9)
       }
     })
 
@@ -241,20 +314,135 @@ describe.skipIf(!up)('dashboard', () => {
       expect(alerted).toEqual(listed)
     })
 
-    it('raises one booking alert naming the pending count', async () => {
-      const [alerts, stats] = await Promise.all([
-        request(app).get('/api/dashboard/alerts').set(asStaff()).expect(200),
-        request(app).get('/api/dashboard/stats').set(asStaff()).expect(200),
-      ])
+    /**
+     * `booking_review` now means the reschedule queue.
+     *
+     * It used to count bookings awaiting confirmation, which under
+     * auto-acceptance is permanently zero — so the alert could never fire
+     * again. The reschedule queue inherited the problem it was solving: it is
+     * the only thing left that waits on a human, and it had no Dashboard
+     * presence at all.
+     *
+     * Driven end to end rather than asserted against the seed, because the seed
+     * has no open requests and a queue-derived alert is only worth anything if
+     * it appears *and* disappears.
+     */
+    it('raises a reschedule alert that clears when the queue is worked', async () => {
+      const db = getSupabaseClient()
 
-      const booking = alerts.body.filter(
+      /**
+       * How many open requests the alert is currently reporting.
+       *
+       * Read as a baseline rather than asserted to be zero: the bookings suite
+       * runs in parallel against the same clinic and opens reschedule requests
+       * of its own, so the only stable facts are that our request adds one and
+       * declining it takes one away.
+       */
+      const openCount = async (): Promise<number> => {
+        const res = await request(app)
+          .get('/api/dashboard/alerts')
+          .set(asStaff())
+          .expect(200)
+
+        const alert = res.body.find(
+          (a: { kind: string }) => a.kind === 'booking_review',
+        )
+        if (!alert) return 0
+
+        return Number(/^(\d+)/.exec(alert.subject)?.[1] ?? 0)
+      }
+
+      const baseline = await openCount()
+
+      // A booking of our own to propose moving, kept well clear of the seeded
+      // range so it cannot collide with another suite's slots.
+      const services = await request(app).get('/api/services').expect(200)
+      const serviceId = services.body.find(
+        (s: { name: string }) => s.name === 'Consultation',
+      ).id
+
+      const { data: today } = await getSupabaseClient().rpc('clinic_today')
+      const pick = (weeks: number) => {
+        const d = new Date(`${today}T00:00:00Z`)
+        do {
+          d.setUTCDate(d.getUTCDate() + 1)
+        } while (d.getUTCDay() !== 1)
+        d.setUTCDate(d.getUTCDate() + weeks * 7)
+        return d.toISOString().slice(0, 10)
+      }
+
+      const scheduledDate = pick(11)
+      const proposedDate = pick(12)
+
+      const avail = await request(app)
+        .get(`/api/slots/availability?date=${scheduledDate}`)
+        .expect(200)
+      const slot = avail.body.find((s: { available: boolean }) => s.available)
+
+      const booking = await request(app)
+        .post('/api/bookings')
+        .set({ Authorization: `Bearer ${patient.token}` })
+        .send({
+          serviceId,
+          scheduledDate,
+          slotTime: slot.time,
+          reasonForVisit: 'Reschedule alert',
+        })
+        .expect(201)
+
+      const proposedAvail = await request(app)
+        .get(`/api/slots/availability?date=${proposedDate}`)
+        .expect(200)
+      const proposedSlot = proposedAvail.body.find(
+        (s: { available: boolean }) => s.available,
+      )
+
+      await request(app)
+        .post(`/api/me/bookings/${booking.body.id}/reschedule-request`)
+        .set({ Authorization: `Bearer ${patient.token}` })
+        .send({ proposedDate, proposedTime: proposedSlot.time })
+        .expect(201)
+
+      expect(await openCount()).toBe(baseline + 1)
+
+      const raised = await request(app)
+        .get('/api/dashboard/alerts')
+        .set(asStaff())
+        .expect(200)
+
+      const alert = raised.body.filter(
         (a: { kind: string }) => a.kind === 'booking_review',
       )
 
-      expect(booking).toHaveLength(1)
-      expect(booking[0].subject).toContain(String(stats.body.bookingRequests))
-      // Never "-2 days ago", whatever the seeded submitted_at values are.
-      expect(booking[0].detail).not.toMatch(/-\d/)
+      // One alert, not one per request — the feed is a fixed-height panel.
+      expect(alert).toHaveLength(1)
+      expect(alert[0].subject).toMatch(/^\d+ reschedule requests?$/)
+      expect(alert[0].message).toBe('awaiting approval')
+      expect(alert[0].href).toContain('tab=reschedules')
+      expect(alert[0].severity).toBe('info')
+      // Every open request was made during this run, so the oldest is from
+      // today. Asserted exactly because the label once sliced the UTC date and
+      // read "yesterday" for anything asked between midnight and 8 AM Manila.
+      expect(alert[0].detail).toBe('Oldest asked today')
+
+      // Working the queue clears it.
+      const queue = await request(app)
+        .get('/api/reschedule-requests')
+        .set(asStaff())
+        .expect(200)
+
+      const mine = queue.body.find(
+        (r: { bookingId: string }) => r.bookingId === booking.body.id,
+      )
+
+      await request(app)
+        .post(`/api/reschedule-requests/${mine.id}/decline`)
+        .set(asStaff())
+        .expect(200)
+
+      expect(await openCount()).toBe(baseline)
+
+      await db.from('appointments').delete().eq('id', booking.body.id)
     })
 
     it('is derived, not stored — dispensing stock moves the count', async () => {
@@ -392,7 +580,9 @@ describe.skipIf(!up)('dashboard', () => {
         .set(asStaff())
         .expect(200)
 
-      expect(mine(before.body)).toHaveLength(0)
+      // A baseline, not zero: earlier tests in this file book and reschedule as
+      // the same patient, and each of those wrote a notification of its own.
+      const beforeCount = mine(before.body).length
 
       await request(app)
         .post('/api/bookings')
@@ -412,15 +602,17 @@ describe.skipIf(!up)('dashboard', () => {
 
       const written = mine(after.body)
 
-      expect(written).toHaveLength(1)
+      expect(written).toHaveLength(beforeCount + 1)
+      // Newest first, so ours is at the head.
       expect(written[0]).toMatchObject({
         message: expect.stringContaining('Consultation'),
         read: false,
       })
-      // "… requested Consultation on Nov 17, 09:00" — the month name comes from
+      // "… booked Consultation on Nov 17, 09:00" — "booked", not "requested",
+      // since bookings are accepted on submission. The month name comes from
       // short_date(), not to_char(), so it cannot follow the server's locale.
       expect(written[0].message).toMatch(
-        new RegExp(`^${patientName} requested .+ on [A-Z][a-z]{2} \\d{1,2}, \\d{2}:\\d{2}$`),
+        new RegExp(`^${patientName} booked .+ on [A-Z][a-z]{2} \\d{1,2}, \\d{2}:\\d{2}$`),
       )
     })
   })

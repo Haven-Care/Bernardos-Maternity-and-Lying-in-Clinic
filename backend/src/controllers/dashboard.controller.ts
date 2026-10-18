@@ -15,8 +15,8 @@ import { daysBetween, toMedicineListRow } from '../mappers/inventory.js'
  *
  * What is computed where is a deliberate split:
  *
- *   in SQL       the counts, because the Booking Requests tab and the Low Stock
- *                tab count the same things and two implementations would drift
+ *   in SQL       the counts, because the Bookings tab and the Low Stock tab
+ *                count the same things and two implementations would drift
  *   here         the alert sentences, because they are UI copy
  *
  * Nothing on this screen is stored. Confirm a booking or dispense stock and
@@ -58,7 +58,7 @@ export async function getStats(_req: Request, res: Response) {
 
   res.json({
     todaysSchedule: row.todays_schedule,
-    bookingRequests: row.booking_requests,
+    bookedToday: row.booked_today,
     completedAppointments: row.completed_appointments,
     inventoryAlerts: row.inventory_alerts,
   })
@@ -116,7 +116,7 @@ export async function getUrgentAlerts(_req: Request, res: Response) {
   cutoff.setUTCDate(cutoff.getUTCDate() + window)
   const cutoffDate = cutoff.toISOString().slice(0, 10)
 
-  const [medicines, batches, pending] = await Promise.all([
+  const [medicines, batches, reschedules] = await Promise.all([
     db
       .from('medicine_stock')
       .select('*')
@@ -128,11 +128,13 @@ export async function getUrgentAlerts(_req: Request, res: Response) {
       .gt('quantity', 0)
       .lte('expires_at', cutoffDate)
       .order('expires_at'),
+    // Open reschedule requests — note this is `reschedule_request_status`, a
+    // different enum from the appointment one. This `pending` is still real.
     db
-      .from('appointments')
-      .select('submitted_at', { count: 'exact' })
+      .from('reschedule_requests')
+      .select('requested_at', { count: 'exact' })
       .eq('status', 'pending')
-      .order('submitted_at')
+      .order('requested_at')
       .limit(1),
   ])
 
@@ -179,20 +181,30 @@ export async function getUrgentAlerts(_req: Request, res: Response) {
     })
   }
 
-  if (pending.error) throw dbError(pending.error)
+  if (reschedules.error) throw dbError(reschedules.error)
 
-  const pendingCount = pending.count ?? 0
-  if (pendingCount > 0) {
-    const oldest = pending.data?.[0]?.submitted_at
+  /**
+   * Open reschedule requests.
+   *
+   * This slot used to hold "N booking requests awaiting review". Bookings are
+   * accepted on submission now, so that alert could never fire again — but the
+   * reschedule queue inherited the problem it was solving: it is the one thing
+   * left that waits on a human, and it had no presence on the Dashboard at all.
+   * A queue nobody opens is a queue nobody works, and the patient is the one
+   * who sits waiting on a decision that was never seen.
+   */
+  const openCount = reschedules.count ?? 0
+  if (openCount > 0) {
+    const oldest = reschedules.data?.[0]?.requested_at
 
     alerts.push({
-      id: 'alert-bookings',
+      id: 'alert-reschedules',
       kind: 'booking_review',
       severity: 'info',
-      subject: `${pendingCount} booking request${pendingCount === 1 ? '' : 's'}`,
-      message: 'awaiting review',
-      detail: oldest ? `Oldest submitted ${sinceLabel(oldest, today)}` : '',
-      href: '/admin/appointments',
+      subject: `${openCount} reschedule request${openCount === 1 ? '' : 's'}`,
+      message: 'awaiting approval',
+      detail: oldest ? `Oldest asked ${sinceLabel(oldest, today)}` : '',
+      href: '/admin/appointments?tab=reschedules',
     })
   }
 
@@ -205,15 +217,21 @@ export async function getUrgentAlerts(_req: Request, res: Response) {
 /**
  * "2 days ago", against the clinic's calendar rather than the server's clock.
  *
- * A request submitted at 23:00 Manila is "today" to staff who see it at 09:00
- * the next morning only if the comparison is made in calendar days in the
+ * Something that happened at 23:00 Manila is "yesterday" to staff who see it at
+ * 09:00 the next morning only if the comparison is made in calendar days in the
  * clinic's own timezone — which is the whole reason clinic_today() exists.
  */
-function sinceLabel(submittedAt: string, today: string): string {
-  const days = daysBetween(submittedAt.slice(0, 10), today)
+function sinceLabel(occurredAt: string, today: string): string {
+  // Read the instant in Manila before taking its date. Slicing the ISO string
+  // takes the *UTC* date, which is a day behind the clinic from midnight to
+  // 8 AM local — so a request made at 07:55 read "yesterday".
+  const occurredOn = new Date(occurredAt).toLocaleDateString('en-CA', {
+    timeZone: 'Asia/Manila',
+  })
+  const days = daysBetween(occurredOn, today)
 
-  // Seeded requests can carry a submitted_at ahead of today; so can a booking
-  // made from a device with a skewed clock. Neither should render "-2 days ago".
+  // A clock-skewed device can put an event slightly ahead of the clinic's
+  // today. That should read "today", never "-2 days ago".
   if (days <= 0) return 'today'
   if (days === 1) return 'yesterday'
   return `${days} days ago`

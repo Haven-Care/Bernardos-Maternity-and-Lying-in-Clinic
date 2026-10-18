@@ -18,7 +18,7 @@ export function Appointments() {
   )
 
   const tabs: Tab[] = [
-    { id: 'requests', label: 'Booking Requests' },
+    { id: 'requests', label: 'Bookings' },
     { id: 'reschedules', label: 'Reschedules', badge: pending.data?.length },
     { id: 'calendar', label: 'Calendar' },
   ]

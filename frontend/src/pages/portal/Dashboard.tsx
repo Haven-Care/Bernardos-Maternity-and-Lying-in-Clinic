@@ -43,7 +43,7 @@ export function Dashboard() {
         ) : (
           <>
             <StatTile label="Today's Schedule" value={stats.data.todaysSchedule} />
-            <StatTile label="Booking Requests" value={stats.data.bookingRequests} />
+            <StatTile label="Booked Today" value={stats.data.bookedToday} />
             <StatTile
               label="Completed Appointment"
               value={stats.data.completedAppointments}

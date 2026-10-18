@@ -111,7 +111,7 @@ export function MyAccount() {
             <div className="flex flex-col divide-y divide-border">
               <Row
                 title="Email Notifications"
-                detail="Booking requests, reminders, and system alerts."
+                detail="New bookings, reminders, and system alerts."
                 control={
                   <Toggle
                     checked={p.emailNotifications}
@@ -140,7 +140,7 @@ export function MyAccount() {
               />
               <Row
                 title="New Booking Alerts"
-                detail="Notify me when a patient submits a request."
+                detail="Notify me when a patient books an appointment."
                 control={
                   <Toggle
                     checked={p.newBookingAlerts}

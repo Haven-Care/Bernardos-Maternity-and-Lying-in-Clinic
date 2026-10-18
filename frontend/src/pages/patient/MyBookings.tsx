@@ -37,7 +37,7 @@ export function MyBookings() {
         <div>
           <h1 className="text-lg font-semibold text-gray-900">My bookings</h1>
           <p className="mt-0.5 text-sm text-gray-500">
-            Your appointment requests and their status.
+            Your appointments and their status.
           </p>
         </div>
         <Link
@@ -54,7 +54,7 @@ export function MyBookings() {
           empty={
             <EmptyState
               title="No bookings yet"
-              description="When you request an appointment it will show up here."
+              description="When you book an appointment it will show up here."
             />
           }
         >
@@ -62,7 +62,7 @@ export function MyBookings() {
             rows.length === 0 ? (
               <EmptyState
                 title="No bookings yet"
-                description="When you request an appointment it will show up here."
+                description="When you book an appointment it will show up here."
               />
             ) : (
               <ul className="flex flex-col gap-3">
@@ -92,8 +92,11 @@ export function MyBookings() {
  * Which actions a booking still allows.
  *
  * A completed or cancelled visit is history — offering Cancel on it would be
- * offering something the server will refuse. `pending` is included because a
- * request the clinic has not reviewed is the one most likely to be withdrawn.
+ * offering something the server will refuse.
+ *
+ * `pending` is kept only for rows created before bookings were accepted on
+ * submission. Nothing produces it now, but an old one is still a live
+ * appointment its owner may want to drop, and the server will still act on it.
  */
 const ACTIONABLE = new Set(['pending', 'confirmed', 'rescheduled'])
 
@@ -147,11 +150,12 @@ function BookingCard({
         <StatusBadge status={booking.status} />
       </div>
 
-      {booking.status === 'pending' && (
-        <p className="mt-3 text-xs text-gray-500">
-          The clinic is reviewing this. It isn’t booked until they confirm.
-        </p>
-      )}
+      {/*
+        No "we're reviewing this" line any more — a booking is confirmed the
+        moment it is made, and the badge above already says so. The `pending`
+        message that used to sit here would only ever have shown on rows created
+        before that change.
+      */}
 
       {openRequest && (
         <div className="mt-3 rounded-card border border-warning-500/30 bg-warning-50 p-3 text-xs text-warning-700">

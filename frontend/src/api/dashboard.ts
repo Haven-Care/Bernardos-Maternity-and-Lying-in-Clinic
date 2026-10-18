@@ -25,7 +25,8 @@ export async function getAppointmentsOverview(): Promise<
 }
 
 /**
- * Low stock, near expiry and pending bookings, in one severity-ordered feed.
+ * Low stock, near expiry and open reschedule requests, in one severity-ordered
+ * feed.
  *
  * Derived per request rather than read from a table: an alert is a condition
  * that stops being true the moment someone restocks the medicine, and a stored

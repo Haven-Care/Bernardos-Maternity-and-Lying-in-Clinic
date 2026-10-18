@@ -135,7 +135,12 @@ begin
     p_patient_name, p_contact_number, p_email,
     v_service.id, v_service.name,
     p_scheduled_date, p_slot_time,
-    'pending', coalesce(p_reason_for_visit, '')
+    -- Stated here rather than left to the column default, because every rule
+    -- this function enforces has already passed by the time we reach this
+    -- line: the date is not in the past, the service is offered, the slot is
+    -- open, and the seat was counted under the lock. That is the whole of what
+    -- confirmation used to mean.
+    'confirmed', coalesce(p_reason_for_visit, '')
   )
   returning * into v_appointment;
 
