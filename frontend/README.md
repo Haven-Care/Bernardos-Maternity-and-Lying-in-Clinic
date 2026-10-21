@@ -61,7 +61,7 @@ copy .env.example .env
 ```powershell
 npm run dev
 ```
-5. Open the URL shown in the terminal (usually `http://localhost:5173`) in your browser.
+5. Open the URL shown in the terminal (usually `http://localhost:6100`) in your browser.
 
 **Recommended:** Open the whole repo folder in VS Code (`code .` from the repo root). If a popup appears asking to install recommended extensions, accept it — this installs the correct tooling automatically (ESLint, Prettier, Tailwind IntelliSense, etc).
 
@@ -122,7 +122,7 @@ cp .env.example .env   # if this file exists
 npm run dev
 ```
 
-Open the URL shown in the terminal (usually `http://localhost:5173`) in your browser.
+Open the URL shown in the terminal (usually `http://localhost:6100`) in your browser.
 
 **Recommended:** Open the whole repo folder in VS Code (`code .` from the repo root). If a popup appears asking to install recommended extensions, accept it.
 
@@ -134,7 +134,7 @@ Open the URL shown in the terminal (usually `http://localhost:5173`) in your bro
 |---|---|
 | `npm install` fails with permission errors (Linux) | Don't use `sudo npm install`. Use nvm (above) so npm doesn't need root. |
 | Wrong Node version | Run `nvm use` in `frontend/` if a `.nvmrc` exists. |
-| Port 5173 already in use | Stop whatever's using it, or Vite will auto-pick the next free port — check the terminal output. |
+| Port 6100 already in use | Choose another PORT in frontend/.env and update backend CORS_ORIGIN to match; Vite stops if the port is occupied. |
 | `.env` missing and app errors on start | Copy `.env.example` to `.env` as shown above, then fill in required values. |
 
 ---

@@ -1,9 +1,9 @@
-const BOOKING_STEPS = ['Service', 'Schedule', 'Your details'] as const
+const BOOKING_STEPS = ['Service', 'Schedule', 'Your details', 'Review'] as const
 
-export type BookingStep = 0 | 1 | 2
+export type BookingStep = 0 | 1 | 2 | 3
 
 /**
- * Progress across the three booking steps.
+ * Progress across the four booking steps.
  *
  * Completed steps are clickable so a patient can go back and change a service
  * without losing the rest of the form; steps ahead are not, because each one
@@ -38,7 +38,7 @@ export function Stepper({
                 }`}
               />
               <span
-                className={`truncate text-xs font-medium ${
+                className={`text-[10px] leading-tight font-medium sm:text-xs ${
                   active
                     ? 'text-brand-700'
                     : done

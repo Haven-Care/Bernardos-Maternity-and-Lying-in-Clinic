@@ -49,7 +49,7 @@ export function MyBookings() {
     <PublicShell>
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-gray-900">My bookings</h1>
+          <h1 className="text-lg font-semibold text-gray-900">Booking history</h1>
           <p className="mt-0.5 text-sm text-gray-500">
             Your appointments and their status.
           </p>
@@ -110,9 +110,9 @@ const EMPTY: Record<BookingFilter, { title: string; description: string }> = {
     title: 'Nothing coming up',
     description: 'Book again to see your next visit here.',
   },
-  past: {
-    title: 'No past visits',
-    description: 'Appointments move here once their day has gone.',
+  completed: {
+    title: 'No completed visits',
+    description: 'Appointments move here after the clinic marks them complete.',
   },
   cancelled: {
     title: 'No cancelled bookings',

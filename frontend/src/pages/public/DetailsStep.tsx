@@ -38,11 +38,10 @@ function validate(contact: Contact): Errors {
 }
 
 /**
- * Step 3 — who is booking, and the submit.
+ * Step 3 — who is booking. Submission follows on the review screen.
  *
  * The chosen service and time are repeated at the top rather than hidden behind
- * a Back button: this is the last screen before submitting, and a patient who
- * has to navigate away to check what they picked usually doesn't come back.
+ * a Back button, so a patient can catch a wrong choice before review.
  *
  * That repetition matters more now than it did. Submitting used to open a
  * request the clinic would confirm by phone, which gave a wrong date a chance
@@ -59,21 +58,14 @@ export function DetailsStep({
   service,
   scheduledDate,
   slotTime,
-  onSubmit,
-  submitting,
-  error,
-  onPickAnotherTime,
+  onContinue,
 }: {
   value: Contact
   onChange: (patch: Partial<Contact>) => void
   service: Service
   scheduledDate: string
   slotTime: string
-  onSubmit: () => void
-  submitting: boolean
-  /** A rejected submission — most often the slot filling up mid-form. */
-  error?: string
-  onPickAnotherTime: () => void
+  onContinue: () => void
 }) {
   const [errors, setErrors] = useState<Errors>({})
 
@@ -82,14 +74,14 @@ export function DetailsStep({
 
     const found = validate(value)
     setErrors(found)
-    if (Object.keys(found).length === 0) onSubmit()
+    if (Object.keys(found).length === 0) onContinue()
   }
 
   return (
     <form onSubmit={handleSubmit} noValidate>
       <h1 className="text-lg font-semibold text-gray-900">Your details</h1>
       <p className="mt-1 text-sm text-gray-500">
-        The clinic uses these to confirm your appointment.
+        The clinic uses these to contact you about your appointment.
       </p>
 
       <dl className="mt-4 rounded-card border border-brand-200 bg-brand-50 p-4 text-sm">
@@ -149,7 +141,7 @@ export function DetailsStep({
             {value.email}
           </p>
           <p className="mt-1 text-xs text-gray-400">
-            The clinic sends confirmations here. Change it in your account.
+            The clinic sends appointment emails to your account address.
           </p>
         </div>
 
@@ -164,33 +156,15 @@ export function DetailsStep({
         />
       </div>
 
-      {error && (
-        <div
-          role="alert"
-          className="mt-5 rounded-card border border-danger-500/30 bg-danger-50 p-3 text-sm text-danger-700"
-        >
-          <p>{error}</p>
-          <button
-            type="button"
-            onClick={onPickAnotherTime}
-            className="mt-1.5 font-semibold underline underline-offset-2"
-          >
-            Choose another time
-          </button>
-        </div>
-      )}
-
       <Button
         type="submit"
-        loading={submitting}
         className="mt-5 w-full justify-center"
       >
-        Book appointment
+        Review booking
       </Button>
 
       <p className="mt-3 text-center text-xs text-gray-500">
-        This books the time straight away. You can cancel or ask to move it from
-        My bookings.
+        You can check every detail before booking.
       </p>
     </form>
   )

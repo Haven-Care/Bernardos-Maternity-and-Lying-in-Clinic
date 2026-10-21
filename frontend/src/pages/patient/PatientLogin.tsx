@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import * as api from '../../api'
 import { Button } from '../../components/ui/Button'
-import { TextField } from '../../components/ui/fields'
+import { PasswordField, TextField } from '../../components/ui/fields'
 import { AuthShell } from '../auth/AuthShell'
 
 /**
@@ -21,11 +21,17 @@ export function PatientLogin() {
   const navigate = useNavigate()
   const location = useLocation()
   const from = (location.state as { from?: string } | null)?.from
+  const logoClicks = useRef(0)
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string>()
+  const [error, setError] = useState<string | undefined>((location.state as { accessError?: string } | null)?.accessError)
   const [submitting, setSubmitting] = useState(false)
+
+  function onLogoClick() {
+    logoClicks.current += 1
+    if (logoClicks.current === 10) navigate('/login')
+  }
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -34,9 +40,12 @@ export function PatientLogin() {
 
     try {
       await api.patientAuth.login(email, password)
-      navigate(from ?? '/patient/bookings', { replace: true })
+      // Supabase accepts both staff and patient credentials. Check the patient
+      // API before navigating so a staff account cannot bounce back here.
+      await api.patientAuth.getAccount()
+      navigate(from ?? '/patient/home', { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign in failed')
+      setError(api.patientAuth.patientAccessMessage(err))
     } finally {
       setSubmitting(false)
     }
@@ -46,6 +55,7 @@ export function PatientLogin() {
     <AuthShell
       title="Sign in"
       subtitle="Sign in to book an appointment and see your bookings."
+      onLogoClick={onLogoClick}
       footer={
         <p className="text-center text-xs text-gray-500">
           New here?{' '}
@@ -70,9 +80,8 @@ export function PatientLogin() {
         />
 
         <div>
-          <TextField
+          <PasswordField
             label="Password"
-            type="password"
             value={password}
             onChange={setPassword}
             placeholder="Enter your password"

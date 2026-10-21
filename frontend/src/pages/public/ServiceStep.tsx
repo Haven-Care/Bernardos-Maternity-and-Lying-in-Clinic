@@ -5,6 +5,7 @@ import { useAsync } from '../../hooks/useAsync'
 import { AsyncBoundary, EmptyState } from '../../components/ui/states'
 import { formatPeso } from '../../lib/format'
 import { groupServicesByCategory } from '../../lib/services'
+import { ClinicServiceCatalog } from '../../components/ClinicServiceCatalog'
 
 /**
  * Step 1 — pick a service.
@@ -47,6 +48,7 @@ export function ServiceStep({
           {(rows) => <ServiceGroups rows={rows} value={value} onPick={onPick} />}
         </AsyncBoundary>
       </div>
+      <div className="mt-6"><ClinicServiceCatalog /></div>
     </div>
   )
 }

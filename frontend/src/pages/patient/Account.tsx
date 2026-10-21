@@ -1,95 +1,129 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import * as api from '../../api'
+import type { PatientAccount } from '../../types/patientAccount'
 import { useAsync } from '../../hooks/useAsync'
 import { Button } from '../../components/ui/Button'
+import { TextField } from '../../components/ui/fields'
+import { AsyncBoundary } from '../../components/ui/states'
+import { Toggle } from '../../components/ui/Toggle'
 import { useToast } from '../../components/ui/toast-context'
 import { ChangePasswordFields } from '../../components/ChangePasswordFields'
-import {
-  EMPTY_PASSWORD_CHANGE,
-  isPasswordChangeReady,
-  type PasswordChange,
-} from '../../lib/password'
+import { EMPTY_PASSWORD_CHANGE, isPasswordChangeReady, type PasswordChange } from '../../lib/password'
+import { isPhMobile } from '../../lib/validate'
 import { PublicShell } from '../public/PublicShell'
 
-/**
- * The patient's account page, at `/patient/account`.
- *
- * Only Change Password for now. The email is shown but not editable — changing
- * it changes where sign-in and password resets go, which needs a confirmation
- * round trip rather than a text field (see `updateAccount`).
- */
 export function Account() {
   const account = useAsync(() => api.patientAuth.getAccount())
+
+  return (
+    <PublicShell>
+      <h1 className="text-xl font-semibold text-gray-900">Your profile</h1>
+      <p className="mt-1 text-sm text-gray-500">Manage your contact details and account settings.</p>
+      <div className="mt-5">
+        <AsyncBoundary state={account}>{(data) => <AccountContent account={data} />}</AsyncBoundary>
+      </div>
+    </PublicShell>
+  )
+}
+
+function AccountContent({ account }: { account: PatientAccount }) {
+  const navigate = useNavigate()
   const toast = useToast()
-
+  const clinic = useAsync(() => api.clinic.getClinicInfo())
+  const [fullName, setFullName] = useState(account.fullName)
+  const [contactNumber, setContactNumber] = useState(account.contactNumber)
+  const [emailNotifications, setEmailNotifications] = useState(account.emailNotifications)
   const [form, setForm] = useState<PasswordChange>(EMPTY_PASSWORD_CHANGE)
-  const [error, setError] = useState<string>()
-  const [saving, setSaving] = useState(false)
+  const [profileError, setProfileError] = useState<string>()
+  const [passwordError, setPasswordError] = useState<string>()
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [savingPassword, setSavingPassword] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
 
-  const ready = isPasswordChangeReady(form)
-
-  async function onSubmit(event: React.FormEvent) {
+  async function saveProfile(event: React.FormEvent) {
     event.preventDefault()
-    if (!ready) return
-
-    setSaving(true)
-    setError(undefined)
-
+    if (fullName.trim().length < 2) { setProfileError('Enter your full name.'); return }
+    if (!isPhMobile(contactNumber)) { setProfileError('Enter a valid mobile number, e.g. 0917 123 4567.'); return }
+    setSavingProfile(true)
+    setProfileError(undefined)
     try {
-      await api.patientAuth.changePassword({
-        currentPassword: form.current,
-        newPassword: form.next,
-      })
-      setForm(EMPTY_PASSWORD_CHANGE)
-      toast.success(
-        'Password changed',
-        'Use your new password the next time you sign in.',
-      )
+      await api.patientAuth.updateAccount({ fullName, contactNumber, emailNotifications })
+      toast.success('Profile saved', 'Your details are up to date.')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not change password')
+      setProfileError(err instanceof Error ? err.message : 'Could not save your profile.')
     } finally {
-      setSaving(false)
+      setSavingProfile(false)
+    }
+  }
+
+  async function changePassword(event: React.FormEvent) {
+    event.preventDefault()
+    if (!isPasswordChangeReady(form)) return
+    setSavingPassword(true)
+    setPasswordError(undefined)
+    try {
+      await api.patientAuth.changePassword({ currentPassword: form.current, newPassword: form.next })
+      setForm(EMPTY_PASSWORD_CHANGE)
+      toast.success('Password changed', 'Use your new password the next time you sign in.')
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : 'Could not change password.')
+    } finally {
+      setSavingPassword(false)
+    }
+  }
+
+  async function logOut() {
+    setLoggingOut(true)
+    try {
+      await api.patientAuth.logout()
+      navigate('/patient/login', { replace: true })
+      window.location.reload()
+    } catch (err) {
+      toast.error('Could not log out', err instanceof Error ? err.message : 'Please try again.')
+      setLoggingOut(false)
     }
   }
 
   return (
-    <PublicShell>
-      <div>
-        <h1 className="text-lg font-semibold text-gray-900">Account</h1>
-        <p className="mt-0.5 text-sm text-gray-500">
-          {account.data
-            ? `Signed in as ${account.data.email}`
-            : 'Your sign-in details.'}
-        </p>
-      </div>
-
-      <form
-        className="mt-4 rounded-card border border-border bg-surface p-5"
-        onSubmit={onSubmit}
-      >
-        <h2 className="text-base font-semibold text-gray-900">
-          Change password
-        </h2>
-
-        <div className="mt-4">
-          <ChangePasswordFields value={form} onChange={setForm} />
+    <div className="space-y-5">
+      <form onSubmit={saveProfile} className="rounded-2xl border border-border bg-white p-5 shadow-sm">
+        <h2 className="text-base font-semibold text-gray-900">Personal information</h2>
+        <div className="mt-4 space-y-4">
+          <TextField label="Full name" required value={fullName} onChange={setFullName} autoComplete="name" />
+          <TextField label="Mobile number" required type="tel" value={contactNumber} onChange={setContactNumber} autoComplete="tel" />
+          <div>
+            <p className="mb-1.5 text-xs font-medium text-gray-700">Email address</p>
+            <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">{account.email}</p>
+          </div>
         </div>
-
-        {error && (
-          <p role="alert" className="mt-4 text-sm text-danger-700">
-            {error}
-          </p>
-        )}
-
-        <Button
-          type="submit"
-          loading={saving}
-          disabled={!ready}
-          className="mt-5 w-full justify-center"
-        >
-          Update password
-        </Button>
+        <div className="mt-5 flex items-center justify-between gap-4 border-t border-border pt-4">
+          <div>
+            <p className="text-sm font-medium text-gray-900">Email notifications</p>
+            <p className="text-xs text-gray-500">Receive appointment emails from the clinic.</p>
+          </div>
+          <Toggle checked={emailNotifications} onChange={setEmailNotifications} label="Email notifications" />
+        </div>
+        {profileError && <p role="alert" className="mt-3 text-sm text-danger-700">{profileError}</p>}
+        <Button type="submit" loading={savingProfile} className="mt-5 w-full justify-center">Save changes</Button>
       </form>
-    </PublicShell>
+
+      <form onSubmit={changePassword} className="rounded-2xl border border-border bg-white p-5 shadow-sm">
+        <h2 className="text-base font-semibold text-gray-900">Change password</h2>
+        <div className="mt-4"><ChangePasswordFields value={form} onChange={setForm} /></div>
+        {passwordError && <p role="alert" className="mt-3 text-sm text-danger-700">{passwordError}</p>}
+        <Button type="submit" loading={savingPassword} disabled={!isPasswordChangeReady(form)} className="mt-5 w-full justify-center">Update password</Button>
+      </form>
+
+      <section className="rounded-2xl border border-border bg-white p-5 shadow-sm" aria-labelledby="contact-clinic">
+        <h2 id="contact-clinic" className="text-base font-semibold text-gray-900">Contact the clinic</h2>
+        <p className="mt-1 text-sm text-gray-500">Need help with your appointment or account?</p>
+        {clinic.data?.mobile && <a href={`tel:${clinic.data.mobile.replace(/[^+\d]/g, '')}`} className="mt-4 block text-sm font-semibold text-brand-700">Call {clinic.data.mobile}</a>}
+        {clinic.data?.email && <a href={`mailto:${clinic.data.email}`} className="mt-2 block text-sm font-semibold text-brand-700">Email {clinic.data.email}</a>}
+        {clinic.error && <p className="mt-3 text-sm text-gray-500">Clinic contact details are temporarily unavailable.</p>}
+      </section>
+
+      <Button variant="secondary" onClick={() => void logOut()} loading={loggingOut} className="w-full justify-center">Log out</Button>
+    </div>
   )
 }

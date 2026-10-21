@@ -4,6 +4,7 @@ import type {
   PatientSignupInput,
 } from '../types/patientAccount'
 import { apiFetch } from './client'
+import { ApiError } from '../lib/api'
 import { supabase } from '../lib/supabase'
 
 /**
@@ -61,6 +62,19 @@ export async function logout(): Promise<void> {
 
 export async function getAccount(): Promise<PatientAccount> {
   return apiFetch<PatientAccount>('/me/account')
+}
+
+/** Give a signed-in staff user a useful route out of the patient sign-in form. */
+export function patientAccessMessage(error: unknown): string {
+  if (
+    error instanceof ApiError &&
+    error.status === 403 &&
+    error.message === 'You do not have access to this.'
+  ) {
+    return 'This sign-in is not a patient account. Use a different email or create a patient account.'
+  }
+
+  return error instanceof Error ? error.message : 'Could not open your patient account.'
 }
 
 /**

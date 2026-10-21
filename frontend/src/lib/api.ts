@@ -1,6 +1,15 @@
 import { getAccessToken } from './supabase'
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api'
+// Vercel previews are protected separately from the backend preview. Route
+// their API calls through this frontend's same-origin proxy to the public API,
+// so a patient session is not blocked by the backend preview's SSO or CORS.
+const isVercelFrontend =
+  window.location.hostname.startsWith('havencare-frontend-') &&
+  window.location.hostname.endsWith('.vercel.app')
+
+const API_URL = isVercelFrontend
+  ? '/api'
+  : import.meta.env.VITE_API_URL ?? 'http://localhost:6101/api'
 
 /**
  * A response the API actually sent, with its status.

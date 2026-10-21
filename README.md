@@ -1,5 +1,7 @@
 # 🏥 HavenCare
 
+For hosted Supabase setup and the custom local ports, follow the [local development guide](docs/LOCAL_DEVELOPMENT.md).
+
 Centralized Management System for **Bernardo's Maternity and Lying-in Clinic**.
 
 One system, two products:
@@ -112,9 +114,9 @@ cd backend && npm install && cp .env.example .env
 Fill in `backend/.env`:
 
 ```env
-PORT=4000
+PORT=6101
 NODE_ENV=development
-CORS_ORIGIN=http://localhost:5173
+CORS_ORIGIN=http://localhost:6100
 
 # Project Settings > API in your Supabase dashboard
 SUPABASE_URL=
@@ -129,10 +131,10 @@ Start it:
 npm run dev
 ```
 
-API is at `http://localhost:4000`. Confirm with:
+API is at `http://localhost:6101`. Confirm with:
 
 ```bash
-curl http://localhost:4000/api/health
+curl http://localhost:6101/api/health
 ```
 
 ### 3. Frontend
@@ -146,14 +148,16 @@ cd frontend && npm install && cp .env.example .env
 `frontend/.env`:
 
 ```env
-VITE_API_URL=http://localhost:4000/api
+VITE_API_URL=http://localhost:6101/api
 ```
 
 ```bash
 npm run dev
 ```
 
-App is at `http://localhost:5173`.
+App is at `http://localhost:6100`.
+
+The frontend uses port 6100 and the backend uses 6101. To customize them, set `PORT` in each package's `.env`, then update frontend `VITE_API_URL` and backend `CORS_ORIGIN` to match. Restart both servers after changes. Vite stops if its port is occupied.
 
 Both processes must be running — the frontend calls the backend directly (no Vite proxy configured), so `CORS_ORIGIN` on the backend must match the frontend's origin.
 
@@ -180,12 +184,12 @@ There is **no `test` script in either package** — see [Current State](#-curren
 
 | Variable | Side | Required | Notes |
 |---|---|---|---|
-| `PORT` | backend | no | Defaults to `4000` |
+| `PORT` | backend | no | Defaults to `6101` |
 | `NODE_ENV` | backend | no | Defaults to `development` |
-| `CORS_ORIGIN` | backend | no | Defaults to `http://localhost:5173` |
+| `CORS_ORIGIN` | backend | no | Defaults to `http://localhost:6100` |
 | `SUPABASE_URL` | backend | **yes** | Throws on first use if missing |
 | `SUPABASE_SERVICE_ROLE_KEY` | backend | **yes** | Secret. Server-side only |
-| `VITE_API_URL` | frontend | no | Defaults to `http://localhost:4000/api` |
+| `VITE_API_URL` | frontend | no | Defaults to `http://localhost:6101/api` |
 
 The two Supabase vars are lazy getters in [`config/env.ts`](backend/src/config/env.ts) — the server **starts fine without them** and only throws when a Supabase call is first made. Hit `/api/health/db` to verify credentials.
 
