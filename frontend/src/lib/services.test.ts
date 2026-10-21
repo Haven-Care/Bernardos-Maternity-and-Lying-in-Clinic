@@ -22,15 +22,15 @@ describe('groupServicesByCategory', () => {
     ])
   })
 
-  it('puts blank categories under Other, and Other last', () => {
+  it('puts blank categories under Services, and Services last', () => {
     const groups = groupServicesByCategory([
       service('Walk-in', ''),
-      service('Anything else', 'Other'),
+      service('Anything else', 'Services'),
       service('Hearing Test', 'Newborn'),
       service('Untrimmed', '   '),
     ])
 
-    expect(groups.map((g) => g.category)).toEqual(['Newborn', 'Other'])
+    expect(groups.map((g) => g.category)).toEqual(['Newborn', 'Services'])
     expect(groups[1].services).toHaveLength(3)
   })
 

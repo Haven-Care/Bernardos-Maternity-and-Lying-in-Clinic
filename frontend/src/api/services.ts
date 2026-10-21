@@ -2,7 +2,7 @@ import type { Service, ServiceInput } from '../types/service'
 import { apiFetch } from './client'
 
 export async function listServices(): Promise<Service[]> {
-  return apiFetch<Service[]>('/services')
+  return (await apiFetch<Service[]>('/services')).filter(isSpecificService)
 }
 
 /**
@@ -13,7 +13,7 @@ export async function listServices(): Promise<Service[]> {
  * not see them even by asking for everything.
  */
 export async function listActiveServices(): Promise<Service[]> {
-  return apiFetch<Service[]>('/services?active=true')
+  return (await apiFetch<Service[]>('/services?active=true')).filter(isSpecificService)
 }
 
 export async function createService(input: ServiceInput): Promise<Service> {
@@ -41,4 +41,8 @@ export async function setServiceActive(
     method: 'PATCH',
     body: JSON.stringify({ active }),
   })
+}
+
+function isSpecificService(service: Service): boolean {
+  return service.name.trim().toLowerCase() !== 'other'
 }

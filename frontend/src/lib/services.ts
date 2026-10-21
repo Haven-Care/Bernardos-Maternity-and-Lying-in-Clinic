@@ -6,13 +6,13 @@ export interface ServiceGroup {
 }
 
 /** The heading for services saved without a category. */
-export const UNCATEGORISED = 'Other'
+export const UNCATEGORISED = 'Services'
 
 /**
  * Services grouped by category, for the booking form's collapsible sections.
  *
  * Categories are free text with no sort column of their own, so they sort
- * alphabetically, with "Other" last because it is the catch-all. Services keep
+ * alphabetically, with uncategorised services last because it is the catch-all. Services keep
  * the order they arrived in, which is by name from the API.
  *
  * Category is trimmed before grouping: "Newborn Care" and "Newborn Care " are

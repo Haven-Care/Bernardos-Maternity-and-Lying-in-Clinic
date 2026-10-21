@@ -45,6 +45,7 @@ export function StockModal({
   const [error, setError] = useState<string>()
 
   const stockIn = direction === 'in'
+  const dirty = batchNo !== '' || batchId !== '' || quantity !== '' || expiresAt !== '' || note !== (stockIn ? '' : 'Dispensed to patient')
 
   // Dispensing draws from a specific lot, so the options carry what's left and
   // how close it is to expiry — staff should be reaching for the oldest stock.
@@ -117,6 +118,8 @@ export function StockModal({
   return (
     <Modal
       open={open}
+      dirty={dirty}
+      busy={saving}
       onClose={onClose}
       size="sm"
       title={stockIn ? 'Record Stock In' : 'Record Stock Out'}

@@ -1,4 +1,5 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, type ReactNode } from 'react'
+import { useUnsavedChanges } from '../../hooks/useUnsavedChanges'
 import { Button } from './Button'
 
 /**
@@ -18,6 +19,8 @@ export function Modal({
   footer,
   size = 'md',
   headerAction,
+  dirty = false,
+  busy = false,
 }: {
   open: boolean
   onClose: () => void
@@ -26,8 +29,14 @@ export function Modal({
   children?: ReactNode
   footer?: ReactNode
   size?: 'sm' | 'md' | 'lg' | 'xl'
+  dirty?: boolean
+  busy?: boolean
   headerAction?: ReactNode
 }) {
+  const confirmDiscard = useUnsavedChanges(open && dirty)
+  const requestClose = useCallback(() => {
+    if (!busy && confirmDiscard()) onClose()
+  }, [busy, confirmDiscard, onClose])
   const ref = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
@@ -42,15 +51,16 @@ export function Modal({
     const dialog = ref.current
     if (!dialog) return
 
-    // Fires for Escape as well as dialog.close(), so this is the one place
-    // that needs to report a close back up.
+    // Only the dialog’s own Escape request should dismiss it. File inputs
+    // also emit cancel when their picker is closed without selecting a file.
     const handleCancel = (event: Event) => {
+      if (event.target !== dialog) return
       event.preventDefault()
-      onClose()
+      requestClose()
     }
     dialog.addEventListener('cancel', handleCancel)
     return () => dialog.removeEventListener('cancel', handleCancel)
-  }, [onClose])
+  }, [requestClose])
 
   const width = {
     sm: 'max-w-sm',
@@ -64,7 +74,7 @@ export function Modal({
       ref={ref}
       // Clicks land on the dialog element itself only when they hit the
       // backdrop — the inner wrapper stops anything inside the panel.
-      onClick={onClose}
+      onClick={requestClose}
       className={`m-auto w-[calc(100%-2rem)] rounded-card border border-border bg-surface p-0 text-gray-900 shadow-xl backdrop:bg-gray-900/40 ${width}`}
     >
       <div onClick={(e) => e.stopPropagation()}>
@@ -78,7 +88,7 @@ export function Modal({
           {headerAction && <div className="ml-auto shrink-0">{headerAction}</div>}
           <button
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             aria-label="Close"
             className="-mr-1 flex size-7 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
           >

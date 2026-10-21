@@ -5,6 +5,7 @@ export interface AsyncState<T> {
   error: Error | undefined
   loading: boolean
   /** Re-run the loader — call after a mutation to pick up the new state. */
+  updateData: React.Dispatch<React.SetStateAction<T | undefined>>
   reload: () => void
 }
 
@@ -73,5 +74,5 @@ export function useAsync<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, nonce])
 
-  return { data, error, loading, reload }
+  return { data, error, loading, reload, updateData: setData }
 }

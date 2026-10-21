@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import * as api from '../../../api'
 import { useAsync } from '../../../hooks/useAsync'
 import { Badge } from '../../../components/ui/Badge'
@@ -23,9 +23,26 @@ export function ServicesPricing() {
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState<Pick<ServiceInput, 'name' | 'category'> | null>(null)
 
-  async function toggleActive(service: Service, active: boolean) {
-    await api.services.setServiceActive(service.id, active)
-    services.reload()
+  const pendingIds = useRef(new Set<string>())
+  const [pending, setPending] = useState<ReadonlySet<string>>(new Set())
+
+  async function toggleActive(service: Service, next: boolean) {
+    if (pendingIds.current.has(service.id)) return
+    pendingIds.current.add(service.id)
+    setPending(new Set(pendingIds.current))
+    const update = (value: boolean) => services.updateData((rows) => rows?.map((row) =>
+      row.id === service.id ? { ...row, active: value } : row,
+    ))
+    update(next)
+    try {
+      await api.services.setServiceActive(service.id, next)
+    } catch (error) {
+      update(service.active)
+      toast.error('Change not saved', error instanceof Error ? error.message : 'Please try again.')
+    } finally {
+      pendingIds.current.delete(service.id)
+      setPending(new Set(pendingIds.current))
+    }
   }
 
   const columns: Column<Service>[] = [
@@ -62,6 +79,7 @@ export function ServicesPricing() {
         <div className="flex items-center justify-end gap-3">
           <Toggle
             checked={s.active}
+            disabled={pending.has(s.id)}
             onChange={(v) => void toggleActive(s, v)}
             label={`${s.name} active`}
             title={
@@ -72,8 +90,9 @@ export function ServicesPricing() {
           />
           <button
             type="button"
+            disabled={pending.has(s.id)}
             onClick={() => setEditing(s)}
-            className="text-xs font-medium text-brand-600 hover:underline"
+            className="text-xs font-medium text-brand-600 hover:underline disabled:opacity-50"
           >
             Edit
           </button>
@@ -189,6 +208,9 @@ function ServiceModal({
     price: service?.price ?? 0,
   })
   const [saving, setSaving] = useState(false)
+  const toast = useToast()
+
+  const dirty = JSON.stringify(form) !== JSON.stringify({ name: service?.name ?? initial?.name ?? '', category: service?.category ?? initial?.category ?? '', price: service?.price ?? 0 })
 
   async function save() {
     setSaving(true)
@@ -197,6 +219,8 @@ function ServiceModal({
       else await api.services.createService(form)
       onSaved()
       onClose()
+    } catch (error) {
+      toast.error('Could not save', error instanceof Error ? error.message : 'Please try again.')
     } finally {
       setSaving(false)
     }
@@ -205,6 +229,8 @@ function ServiceModal({
   return (
     <Modal
       open={open}
+      dirty={dirty}
+      busy={saving}
       onClose={onClose}
       size="sm"
       title={service ? 'Edit Service and Pricing' : 'Add Service and Pricing'}
@@ -212,7 +238,7 @@ function ServiceModal({
         <Button
           onClick={() => void save()}
           loading={saving}
-          disabled={form.name.trim() === '' || form.price <= 0}
+          disabled={!dirty || form.name.trim() === '' || form.price <= 0}
         >
           Save
         </Button>

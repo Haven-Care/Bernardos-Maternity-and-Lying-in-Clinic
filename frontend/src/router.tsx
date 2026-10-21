@@ -20,6 +20,7 @@ import { CheckEmail } from './pages/patient/CheckEmail.tsx'
 import { MyBookings } from './pages/patient/MyBookings.tsx'
 import { Account } from './pages/patient/Account.tsx'
 import { Home } from './pages/patient/Home.tsx'
+import { UnsavedChangesGuard } from './components/UnsavedChangesGuard'
 import { NotFound } from './pages/NotFound.tsx'
 
 /**
@@ -55,7 +56,7 @@ import { NotFound } from './pages/NotFound.tsx'
  * the Details step demands an account, so a patient can see what the clinic
  * offers and when before deciding to register.
  */
-export const router = createBrowserRouter([
+export const router = createBrowserRouter([{ element: <UnsavedChangesGuard />, children: [
   { path: '/', element: <Navigate to="/patient/login" replace /> },
 
   { path: '/book', element: <BookingPage /> },
@@ -108,4 +109,4 @@ export const router = createBrowserRouter([
   },
 
   { path: '*', element: <NotFound /> },
-])
+] }])

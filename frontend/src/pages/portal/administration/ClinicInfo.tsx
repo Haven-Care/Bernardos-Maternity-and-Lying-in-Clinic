@@ -110,10 +110,13 @@ function EditClinicModal({
 }) {
   const [form, setForm] = useState(initial)
   const [saving, setSaving] = useState(false)
+  const toast = useToast()
 
   function set<K extends keyof ClinicInfoType>(key: K, value: ClinicInfoType[K]) {
     setForm((current) => ({ ...current, [key]: value }))
   }
+
+  const dirty = JSON.stringify(form) !== JSON.stringify(initial)
 
   async function save() {
     setSaving(true)
@@ -121,6 +124,8 @@ function EditClinicModal({
       await api.clinic.updateClinicInfo(form)
       onSaved()
       onClose()
+    } catch (error) {
+      toast.error('Could not save', error instanceof Error ? error.message : 'Please try again.')
     } finally {
       setSaving(false)
     }
@@ -129,13 +134,15 @@ function EditClinicModal({
   return (
     <Modal
       open={open}
+      dirty={dirty}
+      busy={saving}
       onClose={onClose}
       title="Edit Clinic Info"
       footer={
         <Button
           onClick={() => void save()}
           loading={saving}
-          disabled={form.name.trim() === ''}
+          disabled={!dirty || form.name.trim() === ''}
         >
           Save
         </Button>

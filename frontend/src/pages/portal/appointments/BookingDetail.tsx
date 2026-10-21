@@ -121,11 +121,11 @@ export function BookingDetail({
                 Reschedule
               </Button>
               <Button
-                variant="secondary"
+                variant="danger"
                 disabled={busy}
                 onClick={() => setConfirmingCancel(true)}
               >
-                Cancel
+                Cancel appointment
               </Button>
             </div>
           )}
