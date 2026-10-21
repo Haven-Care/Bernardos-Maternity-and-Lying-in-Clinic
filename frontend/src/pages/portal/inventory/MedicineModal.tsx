@@ -78,6 +78,8 @@ export function MedicineModal({
     setForm((current) => ({ ...current, [key]: value }))
   }
 
+  const dirty = JSON.stringify(form) !== JSON.stringify(medicine ? toInput(medicine) : EMPTY)
+
   const canSave =
     form.genericName.trim() !== '' &&
     form.dosage.trim() !== '' &&
@@ -113,6 +115,8 @@ export function MedicineModal({
   return (
     <Modal
       open={open}
+      dirty={dirty}
+      busy={saving}
       onClose={onClose}
       size="lg"
       title={editing ? 'Edit Medicine' : 'Add New Medicine'}
@@ -122,7 +126,7 @@ export function MedicineModal({
           : 'Stock and expiry are added separately, through Record Stock In.'
       }
       footer={
-        <Button onClick={() => void save()} loading={saving} disabled={!canSave}>
+        <Button onClick={() => void save()} loading={saving} disabled={!dirty || !canSave}>
           {editing ? 'Save Changes' : 'Add Medicine'}
         </Button>
       }

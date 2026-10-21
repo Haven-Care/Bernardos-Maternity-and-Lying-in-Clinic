@@ -61,11 +61,8 @@ insert into services (id, name, category, price, active) values
   ('5e1c0000-0000-4000-8000-000000000002', 'Consultation',       'Consultation', 200, true),
   ('5e1c0000-0000-4000-8000-000000000003', 'Ultrasound',         'Diagnostic',   500, true),
   ('5e1c0000-0000-4000-8000-000000000004', 'Follow-up',          'Consultation', 200, true),
-  -- The patient booking wizard offers "Other — tell us during session" but
-  -- Services & Pricing has no row for it, so an Other booking would arrive
-  -- pointing at a service that does not exist. Giving it a real row is the
-  -- smaller change; it is priced 0 because the fee is agreed at the visit.
-  ('5e1c0000-0000-4000-8000-000000000005', 'Other',              'Consultation',   0, true);
+  -- Retained for historical references, but no longer offered for booking.
+  ('5e1c0000-0000-4000-8000-000000000005', 'Other',              'Consultation',   0, false);
 
 -- ---------------------------------------------------------------------------
 -- Appointment slots

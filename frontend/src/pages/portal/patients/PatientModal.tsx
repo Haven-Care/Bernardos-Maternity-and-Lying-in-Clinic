@@ -98,6 +98,8 @@ export function PatientModal({
     setForm({ ...values, [key]: value })
   }
 
+  const dirty = values !== null && JSON.stringify(values) !== JSON.stringify(existing.data ? toInput(existing.data) : EMPTY)
+
   const canSave =
     values !== null &&
     values.fullName.trim() !== '' &&
@@ -135,6 +137,8 @@ export function PatientModal({
     <>
     <Modal
       open={open}
+      dirty={dirty}
+      busy={saving}
       onClose={onClose}
       size="lg"
       title={editing ? 'Patient Information' : 'New Patient Record'}
@@ -144,7 +148,7 @@ export function PatientModal({
           : 'Personal, maternity, and supporting documents.'
       }
       footer={
-        <Button onClick={() => void save()} loading={saving} disabled={!canSave}>
+        <Button onClick={() => void save()} loading={saving} disabled={!dirty || !canSave}>
           {editing ? 'Save Changes' : 'Save Patient'}
         </Button>
       }

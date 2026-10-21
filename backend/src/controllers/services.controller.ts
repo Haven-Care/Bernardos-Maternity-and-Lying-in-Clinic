@@ -6,7 +6,8 @@ import { parseBody } from '../lib/validate.js'
 import { toService } from '../mappers/clinic.js'
 
 const serviceInputSchema = z.object({
-  name: z.string().trim().min(1, 'Service name is required.'),
+  name: z.string().trim().min(1, 'Service name is required.')
+    .refine((name) => name.toLowerCase() !== 'other', 'Choose a specific service name.'),
   category: z.string().trim().default(''),
   price: z.number().min(0, 'Price cannot be negative.'),
 })
@@ -43,7 +44,7 @@ export async function listServices(req: Request, res: Response) {
     query = query.eq('active', true)
   }
 
-  res.json(unwrapList(await query).map(toService))
+  res.json(unwrapList(await query).map(toService).filter((service) => service.name.trim().toLowerCase() !== 'other'))
 }
 
 export async function createService(req: Request, res: Response) {

@@ -36,6 +36,7 @@ export function BookingRequests() {
 
   const [status, setStatus] = useState('')
   const [date, setDate] = useState('')
+  const [sort, setSort] = useState('newest')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<BookingRequest | null>(null)
 
@@ -52,16 +53,14 @@ export function BookingRequests() {
             b.serviceName.toLowerCase().includes(term)
           : true,
       )
-      // Newest submission first.
-      //
-      // This used to float pending requests to the top, which is what staff
-      // needed when the tab was a work queue. Nothing waits for them now, so
-      // the tab is a monitoring view and the question it answers is "what has
-      // come in". Falling back to the old date sort would have been worse than
-      // useless: it ordered ascending across all time, so the top of the list
-      // would be the oldest visit in the clinic's history.
-      .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
-  }, [bookings.data, status, date, search])
+      .sort((a, b) => {
+        if (sort === 'oldest') return a.submittedAt.localeCompare(b.submittedAt)
+        if (sort === 'appointment') {
+          return `${a.scheduledDate}T${a.slotTime}`.localeCompare(`${b.scheduledDate}T${b.slotTime}`)
+        }
+        return b.submittedAt.localeCompare(a.submittedAt)
+      })
+  }, [bookings.data, status, date, search, sort])
 
   const columns: Column<BookingRequest>[] = [
     {
@@ -133,11 +132,18 @@ export function BookingRequests() {
               className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 focus:outline-none"
             />
           </div>
+          <div className="w-48">
+            <SelectField label="Sort by" value={sort} onChange={setSort} options={[
+              { value: 'newest', label: 'Newest booking first' },
+              { value: 'oldest', label: 'Oldest booking first' },
+              { value: 'appointment', label: 'Appointment date' },
+            ]} />
+          </div>
           <div className="ml-auto w-full min-w-0 sm:w-80">
             <SearchField
               value={search}
               onChange={setSearch}
-              placeholder="Search appointments..."
+              placeholder="Patient, reference, or service…"
             />
           </div>
         </div>

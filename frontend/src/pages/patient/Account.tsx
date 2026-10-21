@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import * as api from '../../api'
 import type { PatientAccount } from '../../types/patientAccount'
+import { useUnsavedChanges } from '../../hooks/useUnsavedChanges'
 import { useAsync } from '../../hooks/useAsync'
 import { Button } from '../../components/ui/Button'
 import { TextField } from '../../components/ui/fields'
@@ -41,14 +42,21 @@ function AccountContent({ account }: { account: PatientAccount }) {
   const [savingPassword, setSavingPassword] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
 
+  const [savedProfile, setSavedProfile] = useState({ fullName: account.fullName, contactNumber: account.contactNumber, emailNotifications: account.emailNotifications })
+  const profileDirty = fullName !== savedProfile.fullName || contactNumber !== savedProfile.contactNumber || emailNotifications !== savedProfile.emailNotifications
+  const passwordDirty = Object.values(form).some((value) => value !== '')
+  const confirmDiscard = useUnsavedChanges(!loggingOut && (profileDirty || passwordDirty))
+
   async function saveProfile(event: React.FormEvent) {
     event.preventDefault()
+    if (!profileDirty) return
     if (fullName.trim().length < 2) { setProfileError('Enter your full name.'); return }
     if (!isPhMobile(contactNumber)) { setProfileError('Enter a valid mobile number, e.g. 0917 123 4567.'); return }
     setSavingProfile(true)
     setProfileError(undefined)
     try {
       await api.patientAuth.updateAccount({ fullName, contactNumber, emailNotifications })
+      setSavedProfile({ fullName, contactNumber, emailNotifications })
       toast.success('Profile saved', 'Your details are up to date.')
     } catch (err) {
       setProfileError(err instanceof Error ? err.message : 'Could not save your profile.')
@@ -74,6 +82,7 @@ function AccountContent({ account }: { account: PatientAccount }) {
   }
 
   async function logOut() {
+    if (!confirmDiscard()) return
     setLoggingOut(true)
     try {
       await api.patientAuth.logout()
@@ -105,7 +114,7 @@ function AccountContent({ account }: { account: PatientAccount }) {
           <Toggle checked={emailNotifications} onChange={setEmailNotifications} label="Email notifications" />
         </div>
         {profileError && <p role="alert" className="mt-3 text-sm text-danger-700">{profileError}</p>}
-        <Button type="submit" loading={savingProfile} className="mt-5 w-full justify-center">Save changes</Button>
+        <Button type="submit" disabled={!profileDirty} loading={savingProfile} className="mt-5 w-full justify-center">Save changes</Button>
       </form>
 
       <form onSubmit={changePassword} className="rounded-2xl border border-border bg-white p-5 shadow-sm">

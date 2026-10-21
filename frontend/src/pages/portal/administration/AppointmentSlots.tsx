@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import * as api from '../../../api'
 import { useAsync } from '../../../hooks/useAsync'
 import { Badge } from '../../../components/ui/Badge'
@@ -47,9 +47,26 @@ export function AppointmentSlots() {
   const slots = useAsync(() => api.slots.listAvailability(date), [date])
   const toast = useToast()
 
-  async function toggleOpen(slot: SlotAvailability, isOpen: boolean) {
-    await api.slots.setSlotOpen(slot.id, isOpen)
-    slots.reload()
+  const pendingIds = useRef(new Set<string>())
+  const [pending, setPending] = useState<ReadonlySet<string>>(new Set())
+
+  async function toggleOpen(slot: SlotAvailability, next: boolean) {
+    if (pendingIds.current.has(slot.id)) return
+    pendingIds.current.add(slot.id)
+    setPending(new Set(pendingIds.current))
+    const update = (value: boolean) => slots.updateData((rows) => rows?.map((row) =>
+      row.id === slot.id ? { ...row, isOpen: value, available: value && row.booked < row.capacity } : row,
+    ))
+    update(next)
+    try {
+      await api.slots.setSlotOpen(slot.id, next)
+    } catch (error) {
+      update(slot.isOpen)
+      toast.error('Change not saved', error instanceof Error ? error.message : 'Please try again.')
+    } finally {
+      pendingIds.current.delete(slot.id)
+      setPending(new Set(pendingIds.current))
+    }
   }
 
   const columns: Column<SlotAvailability>[] = [
@@ -101,6 +118,7 @@ export function AppointmentSlots() {
       render: (s) => (
         <Toggle
           checked={s.isOpen}
+            disabled={pending.has(s.id)}
           onChange={(v) => void toggleOpen(s, v)}
           label={`${formatTime(s.time)} open`}
         />
@@ -177,6 +195,8 @@ function AddSlotModal({
   const [capacity, setCapacity] = useState<number | ''>(1)
   const [saving, setSaving] = useState(false)
 
+  const dirty = time !== '' || capacity !== 1
+
   async function save() {
     setSaving(true)
     try {
@@ -197,6 +217,8 @@ function AddSlotModal({
   return (
     <Modal
       open={open}
+      dirty={dirty}
+      busy={saving}
       onClose={onClose}
       size="sm"
       title="Add Time Slot"
@@ -205,7 +227,7 @@ function AddSlotModal({
         <Button
           onClick={() => void save()}
           loading={saving}
-          disabled={time === '' || capacity === '' || capacity < 1}
+          disabled={!dirty || time === '' || capacity === '' || capacity < 1}
         >
           Save
         </Button>

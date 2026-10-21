@@ -48,6 +48,8 @@ function AddRecord({ patientId, onClose, onSaved }: { patientId: string; onClose
   const [input, setInput] = useState<historyApi.ClinicalRecordInput>({ occurredAt: '', title: '', findings: '', provider: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const dirty = Object.values(input).some((value) => value !== '')
+  const valid = Object.values(input).every((value) => value.trim() !== '') && !Number.isNaN(Date.parse(input.occurredAt))
   async function save() {
     setSaving(true)
     setError('')
@@ -62,8 +64,8 @@ function AddRecord({ patientId, onClose, onSaved }: { patientId: string; onClose
     finally { setSaving(false) }
   }
   return (
-    <Modal open onClose={onClose} title="Add Clinical Record"
-      footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button loading={saving} onClick={() => void save()}>Save Record</Button></>}>
+    <Modal open dirty={dirty} busy={saving} onClose={onClose} title="Add Clinical Record"
+      footer={<><Button variant="secondary" disabled={saving} onClick={() => { if (!dirty || window.confirm('Discard your unsaved changes?')) onClose() }}>Cancel</Button><Button loading={saving} disabled={!valid || !dirty} onClick={() => void save()}>Save Record</Button></>}>
       <div className="space-y-4">
         <TextField label="Consultation / Scan" required value={input.title} onChange={(title) => setInput({ ...input, title })} />
         <TextField label="Date & Time" type="datetime-local" required value={input.occurredAt} onChange={(occurredAt) => setInput({ ...input, occurredAt })} />
