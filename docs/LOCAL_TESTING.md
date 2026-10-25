@@ -356,7 +356,7 @@ setup if staff seeding failed, leaving their tests unexecuted while Docker runs.
 
 ### Recorded verification — 25 October 2026
 
-On Linux with Node 24 and Docker, the backend completed with **171 passed,
+On Linux with Node 24 and Docker, the backend completed with **176 passed,
 none skipped**, and the frontend completed with **77 passed**. Both apps passed
 lint and build; shared contracts passed synchronization checks. SQL workflow/RLS
 checks passed. Appointment fixtures now use the clinic's current date for

@@ -147,7 +147,7 @@ bookings, reschedules, dashboard, and notifications. See [route mounts](backend/
 CI runs lint/build/tests and contract synchronization. Backend CI currently
 runs without Supabase, so local integration verification is still needed.
 
-The 25 October 2026 local run used Node 24 and Docker: **171 backend tests passed,
+The 25 October 2026 local run used Node 24 and Docker: **176 backend tests passed,
 none skipped**, and all **77 frontend tests passed**. Both apps passed lint and
 build; shared contracts passed synchronization checks. SQL workflow/RLS checks
 passed and rolled back test records. This is a dated result, not a guarantee for
