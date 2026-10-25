@@ -2,33 +2,24 @@ import { useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import * as api from '../../api'
 import type { PatientAccount } from '../../types/patientAccount'
+import { useConfirmLeave } from '../../hooks/useUnsavedChanges'
+import { isSessionError } from '../../lib/api'
 import { useAsync } from '../../hooks/useAsync'
 import { formatTime } from '../../lib/format'
 import { ConfirmModal } from '../../components/ui/Modal'
 import { useToast } from '../../components/ui/toast-context'
 import { CalendarIcon, DashboardIcon, PatientsIcon, SettingsIcon } from '../../components/layout/icons'
 
-/**
- * Chrome for the patient-facing surface.
- *
- * **Mobile-first, unlike the portal.** The staff screens target the clinic's
- * Windows 10 desktops per the feasibility interview; patients book from a phone,
- * so this shell is a single narrow column that merely gets more breathing room
- * on a larger screen, never a second column.
- *
- * Clinic name, address, and hours are read from the API rather than hardcoded —
- * they are editable in Administration → Clinic Info, and a patient seeing stale
- * opening hours is the exact failure that screen exists to prevent.
- */
-export function PublicShell({ children }: { children: ReactNode }) {
+/** Shared patient shell: bottom navigation on phones, wider layouts on desktops. */
+export function PublicShell({ children, narrow = false }: { children: ReactNode; narrow?: boolean }) {
   const clinic = useAsync(() => api.clinic.getClinicInfo())
   const hours = useAsync(() => api.clinic.getOperatingHours())
-  const account = useAsync(() => api.patientAuth.getAccount().catch(() => null))
+  const account = useAsync(() => api.patientAuth.getAccount().catch((error) => { if (isSessionError(error)) return null; throw error }))
 
   return (
     <div className="flex min-h-full flex-col bg-brand-50/40">
       <header className="border-b border-border bg-surface">
-        <div className="mx-auto flex w-full max-w-2xl items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-3">
           <Logo />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm leading-tight font-semibold text-brand-700">
@@ -38,16 +29,16 @@ export function PublicShell({ children }: { children: ReactNode }) {
               Book an appointment
             </p>
           </div>
-          <PatientNav account={account.data} loading={account.loading} />
+          <PatientNav account={account.data} loading={account.loading} error={!!account.error} onRetry={account.reload} />
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-5 pb-28 sm:py-8">
+      <main className={`mx-auto w-full min-w-0 flex-1 px-4 py-5 pb-28 sm:py-8 ${narrow ? 'max-w-4xl' : 'max-w-6xl'}`}>
         {children}
       </main>
 
       <footer className="hidden border-t border-border bg-surface sm:block">
-        <div className="mx-auto w-full max-w-2xl px-4 py-5 text-xs text-gray-500">
+        <div className="mx-auto w-full max-w-6xl px-4 py-5 text-xs text-gray-500">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <p className="mb-1.5 font-semibold text-gray-700">Visit us</p>
@@ -86,22 +77,11 @@ export function PublicShell({ children }: { children: ReactNode }) {
   )
 }
 
-/**
- * Who the visitor is, and the way out.
- *
- * Signed-out, this is the staff-login link the shell has always carried plus a
- * way into the patient surface. Signed-in, it becomes the patient's own
- * navigation — there is no separate patient layout, because the booking form
- * and the bookings list are the same product and a second shell would mean two
- * headers to keep in step.
- *
- * The account is fetched rather than read from a client-side flag, so the
- * header agrees with what the server will actually answer. A failed fetch is
- * simply "signed out", which is the correct reading of an expired session.
- */
-function PatientNav({ account, loading }: { account: PatientAccount | null | undefined; loading: boolean }) {
+/** Account loading failures offer retry rather than pretending the user signed out. */
+function PatientNav({ account, loading, error, onRetry }: { account: PatientAccount | null | undefined; loading: boolean; error: boolean; onRetry: () => void }) {
   const navigate = useNavigate()
   const toast = useToast()
+  const { confirmLeave, cancelLeave } = useConfirmLeave()
   const [confirming, setConfirming] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
 
@@ -109,26 +89,24 @@ function PatientNav({ account, loading }: { account: PatientAccount | null | und
   // in" at someone who is signed in is the more jarring of the two mistakes.
   if (loading) return <span className="w-16 shrink-0" />
 
+  if (error && !account) return <button type="button" onClick={onRetry} className="shrink-0 text-xs text-brand-700 underline">Retry account</button>
+
   if (!account) {
     return (
       <div className="flex shrink-0 items-center gap-3">
         <Link
-          to="/patient/login"
+          to="/login"
           className="text-xs font-medium text-brand-600 transition-colors hover:text-brand-700"
         >
           Sign in
         </Link>
-        <Link
-          to="/login"
-          className="text-xs font-medium text-gray-400 transition-colors hover:text-gray-700"
-        >
-          Staff
-        </Link>
+
       </div>
     )
   }
 
   async function logOut() {
+    if (!confirmLeave()) { setConfirming(false); return }
     setLoggingOut(true)
     try {
       await api.patientAuth.logout()
@@ -138,6 +116,7 @@ function PatientNav({ account, loading }: { account: PatientAccount | null | und
       // stale signed-in fragment on screen after signing out.
       window.location.reload()
     } catch (err) {
+      cancelLeave()
       // Said out loud: a failed sign-out otherwise just closes the spinner and
       // leaves the patient believing they are signed out on a shared phone.
       toast.error(
@@ -151,7 +130,8 @@ function PatientNav({ account, loading }: { account: PatientAccount | null | und
 
   return (
     <div className="hidden shrink-0 items-center gap-3 sm:flex">
-      <Link to="/patient/home" className="text-xs font-medium text-gray-600 hover:text-brand-700">Home</Link>
+      <NavLink to="/patient/home" className="text-sm font-medium text-gray-600 hover:text-brand-700">Home</NavLink>
+      <NavLink to="/book" className="text-sm font-medium text-gray-600 hover:text-brand-700">Book</NavLink>
       <Link
         to="/patient/bookings"
         className="text-xs font-medium text-gray-600 transition-colors hover:text-gray-900"
@@ -197,7 +177,7 @@ function PatientBottomNav() {
 
   return (
     <nav aria-label="Patient navigation" className="fixed inset-x-0 bottom-0 z-30 border-t border-brand-100 bg-white/95 shadow-[0_-4px_18px_rgba(13,93,92,0.08)] backdrop-blur sm:hidden">
-      <div className="mx-auto grid max-w-2xl grid-cols-4 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
+      <div className="mx-auto grid max-w-6xl grid-cols-4 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
         {patientTabs.map(({ to, label, icon: Icon }) => {
           const active = to === '/book' ? location.pathname === to : location.pathname.startsWith(to)
           return (

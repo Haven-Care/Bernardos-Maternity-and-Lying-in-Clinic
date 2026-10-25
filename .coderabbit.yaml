@@ -5,3 +5,5 @@ reviews:
       - "^main$"
       - "^frontend-main$"
       - "^backend-main$"
+      # Frontend review is stacked on the backend feature branch.
+      - "^feat/backend-clinic-workflows$"

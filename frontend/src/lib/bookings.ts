@@ -1,15 +1,6 @@
 import type { AppointmentStatus, BookingRequest } from '../types/appointment'
 
-/**
- * Which actions a booking still allows.
- *
- * A completed or cancelled visit is history — offering Cancel on it would be
- * offering something the server will refuse.
- *
- * `pending` is kept only for rows created before bookings were accepted on
- * submission. Nothing produces it now, but an old one is still a live
- * appointment its owner may want to drop, and the server will still act on it.
- */
+/** Patient cancellation/reschedule are allowed before arrival. */
 export const ACTIONABLE: ReadonlySet<AppointmentStatus> = new Set([
   'pending',
   'confirmed',
@@ -50,7 +41,7 @@ export function filterBookings(
   const matches = rows.filter((b) => {
     switch (filter) {
       case 'upcoming':
-        return ACTIONABLE.has(b.status) && b.scheduledDate >= today
+        return (ACTIONABLE.has(b.status) || b.status === 'arrived') && b.scheduledDate >= today
       case 'completed':
         return b.status === 'completed'
       case 'cancelled':

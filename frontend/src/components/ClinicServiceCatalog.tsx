@@ -17,7 +17,7 @@ export function ClinicServiceCatalog() {
       <p className="mt-1 text-sm text-gray-500">
         Browse all {clinicServices.length} services offered. Contact the clinic for prices and availability.
       </p>
-      <div role="group" aria-label="Service categories" className="-mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-2">
+      <div role="group" aria-label="Service categories" className="-mx-1 mt-4 flex gap-2 overflow-x-auto lg:flex-wrap px-1 pb-2">
         {clinicServiceCategories.map((option) => (
           <button
             key={option}
@@ -30,7 +30,7 @@ export function ClinicServiceCatalog() {
           </button>
         ))}
       </div>
-      <ul aria-label={category} className="mt-2 grid gap-2 sm:grid-cols-2">
+      <ul aria-label={category} className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {visible.map((service) => (
           <li key={service.name} className="rounded-lg border border-border px-3 py-2 text-sm text-gray-700">
             {service.name}

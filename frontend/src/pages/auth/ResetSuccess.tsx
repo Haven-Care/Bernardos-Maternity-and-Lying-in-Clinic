@@ -35,7 +35,7 @@ export function ResetSuccess() {
         </h1>
         <p className="text-sm text-gray-500">
           Your password has been updated. You can now log in with your new
-          credentials{realm.isPatient ? '.' : ' to access the admin portal.'}
+          credentials.
         </p>
 
         <Button

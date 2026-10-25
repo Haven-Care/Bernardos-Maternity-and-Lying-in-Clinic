@@ -12,6 +12,7 @@ export interface Service {
   name: string
   category: string
   price: Peso
+  priceIsTemporary?: boolean
   active: boolean
 }
 
@@ -19,4 +20,5 @@ export interface ServiceInput {
   name: string
   category: string
   price: Peso
+  priceIsTemporary?: boolean
 }

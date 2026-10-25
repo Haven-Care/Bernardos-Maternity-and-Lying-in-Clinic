@@ -1,16 +1,27 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import * as api from '../../api'
 import { Button } from '../../components/ui/Button'
 import { PasswordField, TextField } from '../../components/ui/fields'
+import { loginDestination, loginErrorMessage } from '../../lib/login'
 import { AuthShell } from './AuthShell'
 
 export function Login() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const from = (location.state as { from?: unknown } | null)?.from
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string>()
   const [submitting, setSubmitting] = useState(false)
+  const [googleSubmitting, setGoogleSubmitting] = useState(false)
+
+  async function googleLogin() {
+    setGoogleSubmitting(true)
+    setError(undefined)
+    try { await api.session.loginWithGoogle(from) }
+    catch { setError('Unable to start Google sign-in. Please try again.'); setGoogleSubmitting(false) }
+  }
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -18,17 +29,18 @@ export function Login() {
     setError(undefined)
 
     try {
-      await api.account.login({ identifier, password })
-      navigate('/admin')
+      const identity = await api.session.login({ identifier, password })
+      navigate(loginDestination(identity.role, from), { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign in failed')
+      setError(loginErrorMessage(err))
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <AuthShell title="Welcome Back!" subtitle="Please sign in to access your account.">
+    <AuthShell title="Sign in" subtitle="Access your HavenCare account."
+      footer={<p className="text-center text-xs text-gray-500">New patient? <Link to="/patient/signup" state={typeof from === 'string' ? { from } : undefined} className="font-semibold text-brand-600 hover:underline">Create an account</Link></p>}>
       <form className="flex flex-col gap-4" onSubmit={onSubmit}>
         {/*
           The prototype labels this "username or email". It is email only.
@@ -44,6 +56,7 @@ export function Login() {
         <TextField
           label="Email"
           type="email"
+          required
           value={identifier}
           onChange={setIdentifier}
           placeholder="you@havencare.ph"
@@ -53,6 +66,7 @@ export function Login() {
         <div>
           <PasswordField
             label="Password"
+            required
             value={password}
             onChange={setPassword}
             placeholder="Enter your password"
@@ -74,9 +88,10 @@ export function Login() {
           </p>
         )}
 
-        <Button type="submit" loading={submitting} className="mt-1 w-full">
+        <Button type="submit" loading={submitting} disabled={googleSubmitting || !identifier.trim() || !password} className="mt-1 w-full">
           Log In
         </Button>
+        {api.session.googleLoginEnabled && <Button type="button" variant="secondary" loading={googleSubmitting} disabled={submitting} onClick={() => void googleLogin()} className="w-full">Continue with Google</Button>}
       </form>
     </AuthShell>
   )

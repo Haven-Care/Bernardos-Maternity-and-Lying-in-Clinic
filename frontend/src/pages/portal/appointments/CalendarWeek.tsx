@@ -58,7 +58,10 @@ export function CalendarWeek() {
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
           <h2 className="text-sm font-semibold text-gray-900">{monthLabel}</h2>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="text-xs font-medium text-gray-600">Week of
+              <input type="date" aria-label="Choose calendar week" value={isoDate(anchor)} onInput={(event) => { if (event.currentTarget.value) setAnchor(startOfWeek(new Date(`${event.currentTarget.value}T00:00:00`))) }} onChange={(event) => { if (event.target.value) setAnchor(startOfWeek(new Date(`${event.target.value}T00:00:00`))) }} className="ml-2 rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm" />
+            </label>
             <Button
               size="sm"
               variant="secondary"
@@ -190,16 +193,12 @@ export function CalendarWeek() {
   )
 }
 
-/**
- * Chips carry status as well as identity.
- *
- * The amber `pending` entry is kept for rows created before bookings were
- * accepted on submission. Nothing produces that status now, but the grid still
- * has to draw the history — and a missing key here would fall through to the
- * confirmed blue, quietly mislabelling an old unreviewed request as agreed.
- */
+/** Calendar chips carry status as well as identity. */
+
 const CHIP: Record<string, string> = {
   pending: 'bg-warning-50 text-warning-700 hover:bg-warning-100',
+  arrived: 'bg-success-50 text-success-700 hover:bg-success-100',
+  no_show: 'bg-gray-100 text-gray-600 hover:bg-gray-200',
   confirmed: 'bg-brand-50 text-brand-700 hover:bg-brand-100',
   rescheduled: 'bg-blue-50 text-blue-700 hover:bg-blue-100',
   completed: 'bg-gray-100 text-gray-500 hover:bg-gray-200',

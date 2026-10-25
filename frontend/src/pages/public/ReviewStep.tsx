@@ -17,10 +17,10 @@ export function ReviewStep({ service, scheduledDate, slotTime, contact, submitti
   return (
     <div>
       <h1 className="text-lg font-semibold text-gray-900">Review your booking</h1>
-      <p className="mt-1 text-sm text-gray-500">Check the details before confirming your appointment.</p>
+      <p className="mt-1 text-sm text-gray-500">Check the details before reserving your appointment.</p>
       <dl className="mt-5 divide-y divide-border rounded-card border border-border bg-white px-4">
         <Row label="Service" value={service.name} />
-        <Row label="Price" value={formatPeso(service.price)} />
+        <Row label="Price" value={`${formatPeso(service.price)}${service.priceIsTemporary ? ' — temporary; confirm the final rate with the clinic' : ''}`} />
         <Row label="Date" value={formatDateLong(scheduledDate)} />
         <Row label="Time" value={formatTime(slotTime)} />
         <Row label="Patient" value={contact.patientName} />
@@ -36,9 +36,9 @@ export function ReviewStep({ service, scheduledDate, slotTime, contact, submitti
       )}
       <div className="mt-5 flex gap-2">
         <Button variant="secondary" onClick={onBack} disabled={submitting} className="flex-1 justify-center">Edit details</Button>
-        <Button onClick={onSubmit} loading={submitting} className="flex-1 justify-center">Confirm booking</Button>
+        <Button onClick={onSubmit} loading={submitting} className="flex-1 justify-center">Book appointment</Button>
       </div>
-      <p className="mt-3 text-center text-xs text-gray-500">Confirming holds this appointment time immediately. You can cancel or request a new time from History.</p>
+      <p className="mt-3 text-center text-xs text-gray-500">Booking holds this time immediately. The clinic confirms the appointment separately. Track updates, cancel, or request a new time from History.</p>
     </div>
   )
 }

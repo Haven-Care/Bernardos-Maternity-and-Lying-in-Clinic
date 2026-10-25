@@ -59,7 +59,7 @@ export function ServicesPricing() {
       header: 'Price',
       align: 'right',
       render: (s) => (
-        <span className="tabular-nums font-medium">{formatPeso(s.price)}</span>
+        <span className="tabular-nums font-medium">{formatPeso(s.price)}{s.priceIsTemporary && <span className="block text-xs font-normal text-warning-700">Temporary price</span>}</span>
       ),
     },
     {
@@ -104,7 +104,7 @@ export function ServicesPricing() {
   const active = services.data?.filter((s) => s.active).length ?? 0
 
   return (
-    <div className="portal-tab-body flex flex-col gap-4">
+    <div className="portal-settings-body services-settings flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-4 sm:max-w-sm">
         <StatTile label="Total Services" value={services.data?.length ?? '—'} />
         <StatTile label="Active" value={services.data ? active : '—'} />
@@ -206,11 +206,12 @@ function ServiceModal({
     name: service?.name ?? initial?.name ?? '',
     category: service?.category ?? initial?.category ?? '',
     price: service?.price ?? 0,
+    priceIsTemporary: service?.priceIsTemporary ?? false,
   })
   const [saving, setSaving] = useState(false)
   const toast = useToast()
 
-  const dirty = JSON.stringify(form) !== JSON.stringify({ name: service?.name ?? initial?.name ?? '', category: service?.category ?? initial?.category ?? '', price: service?.price ?? 0 })
+  const dirty = JSON.stringify(form) !== JSON.stringify({ name: service?.name ?? initial?.name ?? '', category: service?.category ?? initial?.category ?? '', price: service?.price ?? 0, priceIsTemporary: service?.priceIsTemporary ?? false })
 
   async function save() {
     setSaving(true)
@@ -267,6 +268,10 @@ function ServiceModal({
           suffix="₱"
           placeholder="e.g. 300"
         />
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input type="checkbox" checked={form.priceIsTemporary ?? false} onChange={(event) => setForm({ ...form, priceIsTemporary: event.target.checked })} />
+          Temporary price — awaiting the clinic’s final rate
+        </label>
       </div>
     </Modal>
   )

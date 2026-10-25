@@ -139,6 +139,7 @@ function ServiceGroups({
                       </span>
                       <span className="shrink-0 text-sm font-semibold text-brand-700">
                         {formatPeso(service.price)}
+                        {service.priceIsTemporary && <span className="block text-xs font-normal text-warning-700">Temporary price</span>}
                       </span>
                     </button>
                   </li>

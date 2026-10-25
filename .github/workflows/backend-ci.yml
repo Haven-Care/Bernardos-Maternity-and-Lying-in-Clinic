@@ -15,10 +15,14 @@ on:
     branches:
       - main
       - backend-main
+      - frontend-main
+      - feat/backend-clinic-workflows
   push:
     branches:
       - main
       - backend-main
+      - frontend-main
+      - feat/backend-clinic-workflows
 
 jobs:
   backend-ci:

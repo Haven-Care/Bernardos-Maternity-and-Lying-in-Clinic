@@ -44,17 +44,6 @@ export async function signUp(input: PatientSignupInput): Promise<void> {
   if (error) throw new Error(error.message)
 }
 
-export async function login(email: string, password: string): Promise<void> {
-  const { error } = await supabase.auth.signInWithPassword({
-    email: email.trim().toLowerCase(),
-    password,
-  })
-
-  // GoTrue says "Email not confirmed" distinctly from bad credentials, which
-  // is worth passing through — it is the one case the patient can act on.
-  if (error) throw new Error(error.message)
-}
-
 export async function logout(): Promise<void> {
   const { error } = await supabase.auth.signOut()
   if (error) throw new Error(error.message)
@@ -64,17 +53,12 @@ export async function getAccount(): Promise<PatientAccount> {
   return apiFetch<PatientAccount>('/me/account')
 }
 
-/** Give a signed-in staff user a useful route out of the patient sign-in form. */
+/** Avoid exposing account roles in patient access errors. */
 export function patientAccessMessage(error: unknown): string {
-  if (
-    error instanceof ApiError &&
-    error.status === 403 &&
-    error.message === 'You do not have access to this.'
-  ) {
-    return 'This sign-in is not a patient account. Use a different email or create a patient account.'
+  if (error instanceof ApiError && [401, 403, 404].includes(error.status)) {
+    return 'Please sign in to continue.'
   }
-
-  return error instanceof Error ? error.message : 'Could not open your patient account.'
+  return 'Unable to load your account. Please try again.'
 }
 
 /**
@@ -93,12 +77,7 @@ export async function updateAccount(
   })
 }
 
-export async function requestPasswordReset(email: string): Promise<void> {
-  const { error } = await supabase.auth.resetPasswordForEmail(
-    email.trim().toLowerCase(),
-  )
-  if (error) throw new Error(error.message)
-}
+export { requestPasswordReset } from './account'
 
 /**
  * Change password from the patient Account page.

@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import * as api from '../../api'
+import { useConfirmLeave } from '../../hooks/useUnsavedChanges'
 import { useAsync } from '../../hooks/useAsync'
 import { ConfirmModal } from '../ui/Modal'
 import { useToast } from '../ui/toast-context'
@@ -32,6 +33,7 @@ const NAV = [
  */
 export function PortalLayout() {
   const navigate = useNavigate()
+  const { confirmLeave, cancelLeave } = useConfirmLeave()
   const toast = useToast()
   const clinic = useAsync(() => api.clinic.getClinicInfo())
   const profile = useAsync(() => api.account.getProfile())
@@ -40,11 +42,13 @@ export function PortalLayout() {
   const [loggingOut, setLoggingOut] = useState(false)
 
   async function handleLogout() {
+    if (!confirmLeave()) { setConfirmLogout(false); return }
     setLoggingOut(true)
     try {
       await api.account.logout()
       navigate('/login', { replace: true })
     } catch (err) {
+      cancelLeave()
       toast.error('Could not log out', err instanceof Error ? err.message : 'Please try again.')
     } finally {
       setLoggingOut(false)

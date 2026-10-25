@@ -77,7 +77,7 @@ export function MyBookings() {
             if (shown.length === 0) return <EmptyState {...EMPTY[filter]} />
 
             return (
-              <ul className="flex flex-col gap-3">
+              <ul className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {shown.map((booking) => (
                   <BookingCard
                     key={booking.id}
@@ -155,7 +155,7 @@ function BookingCard({
   }
 
   return (
-    <li className="rounded-card border border-border bg-surface p-4">
+    <li className="min-w-0 rounded-card border border-border bg-surface p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-semibold text-gray-900">{booking.serviceName}</p>
@@ -170,12 +170,7 @@ function BookingCard({
         <StatusBadge status={booking.status} />
       </div>
 
-      {/*
-        No "we're reviewing this" line any more — a booking is confirmed the
-        moment it is made, and the badge above already says so. The `pending`
-        message that used to sit here would only ever have shown on rows created
-        before that change.
-      */}
+      {booking.status === 'pending' && <p className="mt-3 text-xs text-gray-500">Your slot is reserved. The clinic has yet to confirm this appointment.</p>}
 
       {openRequest && (
         <div className="mt-3 rounded-card border border-warning-500/30 bg-warning-50 p-3 text-xs text-warning-700">

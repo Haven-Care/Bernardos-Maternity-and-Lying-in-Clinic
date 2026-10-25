@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.18"
-  }
   public: {
     Tables: {
       appointment_slots: {
@@ -43,6 +38,48 @@ export type Database = {
           weekday?: Database["public"]["Enums"]["weekday"]
         }
         Relationships: []
+      }
+      appointment_status_events: {
+        Row: {
+          actor_id: string | null
+          booking_id: string
+          id: string
+          next_status: Database["public"]["Enums"]["appointment_status"]
+          occurred_at: string
+          previous_status: Database["public"]["Enums"]["appointment_status"]
+        }
+        Insert: {
+          actor_id?: string | null
+          booking_id: string
+          id?: string
+          next_status: Database["public"]["Enums"]["appointment_status"]
+          occurred_at?: string
+          previous_status: Database["public"]["Enums"]["appointment_status"]
+        }
+        Update: {
+          actor_id?: string | null
+          booking_id?: string
+          id?: string
+          next_status?: Database["public"]["Enums"]["appointment_status"]
+          occurred_at?: string
+          previous_status?: Database["public"]["Enums"]["appointment_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_status_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_status_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       appointments: {
         Row: {
@@ -285,6 +322,39 @@ export type Database = {
             foreignKeyName: "medicine_batches_medicine_id_fkey"
             columns: ["medicine_id"]
             isOneToOne: false
+            referencedRelation: "medicines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      medicine_photos: {
+        Row: {
+          medicine_id: string
+          storage_path: string
+          updated_at: string
+        }
+        Insert: {
+          medicine_id: string
+          storage_path: string
+          updated_at?: string
+        }
+        Update: {
+          medicine_id?: string
+          storage_path?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medicine_photos_medicine_id_fkey"
+            columns: ["medicine_id"]
+            isOneToOne: true
+            referencedRelation: "medicine_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medicine_photos_medicine_id_fkey"
+            columns: ["medicine_id"]
+            isOneToOne: true
             referencedRelation: "medicines"
             referencedColumns: ["id"]
           },
@@ -711,6 +781,7 @@ export type Database = {
           id: string
           name: string
           price: number
+          price_is_temporary: boolean
           updated_at: string
         }
         Insert: {
@@ -720,6 +791,7 @@ export type Database = {
           id?: string
           name: string
           price: number
+          price_is_temporary?: boolean
           updated_at?: string
         }
         Update: {
@@ -729,6 +801,7 @@ export type Database = {
           id?: string
           name?: string
           price?: number
+          price_is_temporary?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -1048,6 +1121,36 @@ export type Database = {
           weekday: Database["public"]["Enums"]["weekday"]
         }[]
       }
+      transition_appointment: {
+        Args: {
+          p_actor: string
+          p_booking_id: string
+          p_next: Database["public"]["Enums"]["appointment_status"]
+        }
+        Returns: {
+          account_id: string | null
+          contact_number: string
+          email: string
+          id: string
+          patient_id: string | null
+          patient_name: string
+          reason_for_visit: string
+          reference_no: string
+          scheduled_date: string
+          service_id: string
+          service_name: string
+          slot_time: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          submitted_at: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "appointments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       weekday_of: {
         Args: { d: string }
         Returns: Database["public"]["Enums"]["weekday"]
@@ -1060,6 +1163,8 @@ export type Database = {
         | "rescheduled"
         | "cancelled"
         | "completed"
+        | "arrived"
+        | "no_show"
       blood_type: "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "O+" | "O-"
       civil_status: "single" | "married" | "widowed" | "separated"
       dosage_form: "Tablet" | "Capsule" | "Syrup" | "Injection" | "Ointment"
@@ -1226,6 +1331,8 @@ export const Constants = {
         "rescheduled",
         "cancelled",
         "completed",
+        "arrived",
+        "no_show",
       ],
       blood_type: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
       civil_status: ["single", "married", "widowed", "separated"],

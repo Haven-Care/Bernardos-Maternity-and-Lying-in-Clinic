@@ -33,13 +33,14 @@ export function ForgotPassword() {
   return (
     <AuthShell
       title="Reset Password"
-      subtitle="Enter your registered email and we’ll send you a 6-digit code to verify it’s you."
+      subtitle="Enter your email to receive a recovery code or password reset link."
       before={<BackToLogin to={realm.loginPath} />}
     >
       <form className="flex flex-col gap-4" onSubmit={onSubmit}>
         <TextField
           label="Email Address"
           type="email"
+          required
           value={email}
           onChange={setEmail}
           placeholder="Enter your email"
@@ -47,7 +48,7 @@ export function ForgotPassword() {
           error={error}
         />
 
-        <Button type="submit" loading={submitting} className="w-full">
+        <Button type="submit" loading={submitting} disabled={!email.trim()} className="w-full">
           Send
         </Button>
       </form>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges'
 import { Button } from './Button'
 
@@ -33,10 +33,14 @@ export function Modal({
   busy?: boolean
   headerAction?: ReactNode
 }) {
-  const confirmDiscard = useUnsavedChanges(open && dirty)
+  useUnsavedChanges(open && dirty)
+  const titleId = useId()
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false)
   const requestClose = useCallback(() => {
-    if (!busy && confirmDiscard()) onClose()
-  }, [busy, confirmDiscard, onClose])
+    if (busy) return
+    if (dirty) setConfirmingDiscard(true)
+    else onClose()
+  }, [busy, dirty, onClose])
   const ref = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
@@ -70,8 +74,9 @@ export function Modal({
   }[size]
 
   return (
-    <dialog
+    <><dialog
       ref={ref}
+      aria-labelledby={titleId}
       // Clicks land on the dialog element itself only when they hit the
       // backdrop — the inner wrapper stops anything inside the panel.
       onClick={requestClose}
@@ -80,7 +85,7 @@ export function Modal({
       <div onClick={(e) => e.stopPropagation()}>
         <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-3.5">
           <div>
-            <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+            <h2 id={titleId} className="text-base font-semibold text-gray-900">{title}</h2>
             {description && (
               <p className="mt-0.5 text-sm text-gray-500">{description}</p>
             )}
@@ -115,6 +120,15 @@ export function Modal({
         )}
       </div>
     </dialog>
+      {confirmingDiscard && <ConfirmModal
+        open={open}
+        onClose={() => setConfirmingDiscard(false)}
+        onConfirm={() => { setConfirmingDiscard(false); onClose() }}
+        title="Discard unsaved changes?"
+        message="Your unsaved changes will be lost."
+        confirmLabel="Discard changes"
+      />}
+    </>
   )
 }
 
@@ -144,9 +158,10 @@ export function ConfirmModal({
       onClose={onClose}
       title={title}
       size="sm"
+      busy={loading}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
           <Button variant={tone} onClick={onConfirm} loading={loading}>

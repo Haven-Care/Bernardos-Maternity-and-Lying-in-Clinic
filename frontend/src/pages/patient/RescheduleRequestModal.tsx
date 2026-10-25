@@ -43,8 +43,10 @@ export function RescheduleRequestModal({
     [],
   )
 
+  const dirty = !!proposed.slotTime && (proposed.scheduledDate !== booking.scheduledDate || proposed.slotTime !== booking.slotTime)
+
   async function submit() {
-    if (!proposed.slotTime) return
+    if (!dirty) return
 
     setSubmitting(true)
     setError(undefined)
@@ -70,6 +72,8 @@ export function RescheduleRequestModal({
   return (
     <Modal
       open={open}
+      dirty={dirty}
+      busy={submitting}
       onClose={onClose}
       title="Request a different time"
       description={`Currently ${formatDateLong(booking.scheduledDate)}, ${formatTime(booking.slotTime)}`}
@@ -77,7 +81,7 @@ export function RescheduleRequestModal({
         <Button
           onClick={() => void submit()}
           loading={submitting}
-          disabled={!proposed.slotTime}
+          disabled={!dirty}
         >
           Send request
         </Button>
