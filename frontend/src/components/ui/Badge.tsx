@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { APPOINTMENT_LABELS } from '../../lib/visits'
 import type { AppointmentStatus } from '../../types/appointment'
 import type { StockStatus } from '../../types/medicine'
 
@@ -35,15 +36,11 @@ const APPOINTMENT_TONES: Record<AppointmentStatus, Tone> = {
   rescheduled: 'brand',
   cancelled: 'danger',
   completed: 'success',
+  arrived: 'brand',
+  no_show: 'neutral',
 }
 
-const APPOINTMENT_LABELS: Record<AppointmentStatus, string> = {
-  pending: 'Pending',
-  confirmed: 'Confirmed',
-  rescheduled: 'Rescheduled',
-  cancelled: 'Cancelled',
-  completed: 'Completed',
-}
+
 
 export function StatusBadge({ status }: { status: AppointmentStatus }) {
   return (

@@ -20,6 +20,7 @@ export function Appointments() {
 
   const tabs: Tab[] = [
     { id: 'requests', label: 'Appointments' },
+    { id: 'visits', label: 'Visit management' },
     { id: 'reschedules', label: 'Reschedules', badge: pending.data?.length },
     { id: 'calendar', label: 'Calendar' },
   ]
@@ -27,7 +28,7 @@ export function Appointments() {
   const active = useActiveTab(tabs)
 
   return (
-    <div className={`appointments-page flex w-full min-w-0 flex-col gap-4 ${active === 'requests' ? 'appointments-page--list' : ''}`}>
+    <div className={`appointments-page flex w-full min-w-0 flex-col gap-4 ${['requests', 'visits'].includes(active) ? 'appointments-page--list' : ''}`}>
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">
           Appointment Management
@@ -39,7 +40,8 @@ export function Appointments() {
 
       <Tabs tabs={tabs} />
 
-      {active === 'requests' && <BookingRequests />}
+      {active === 'requests' && <BookingRequests onChanged={pending.reload} />}
+      {active === 'visits' && <BookingRequests visits onChanged={pending.reload} />}
       {active === 'reschedules' && (
         // Approving moves a booking, so the badge beside this tab is stale the
         // moment a decision lands.

@@ -6,6 +6,9 @@ import { PasswordField } from '../../components/ui/fields'
 import { PasswordRules } from '../../components/ui/PasswordRules'
 import { meetsPasswordRules } from '../../lib/password'
 import { AuthShell, BackToLogin } from './AuthShell'
+import { useAsync } from '../../hooks/useAsync'
+import { ErrorState, LoadingState } from '../../components/ui/states'
+import { useUnsavedChanges } from '../../hooks/useUnsavedChanges'
 import { useAuthRealm } from './realm'
 
 export function ResetPassword() {
@@ -13,15 +16,21 @@ export function ResetPassword() {
   const location = useLocation()
   const realm = useAuthRealm()
   const email = (location.state as { email?: string } | null)?.email
+  const recovery = useAsync(() => api.account.recoveryEmail())
 
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState<string>()
   const [submitting, setSubmitting] = useState(false)
 
+  useUnsavedChanges((password !== '' || confirm !== '') && !submitting)
+
+  if (recovery.loading) return <LoadingState label="Checking recovery session…" />
+  if (recovery.error) return <ErrorState error={recovery.error} onRetry={recovery.reload} />
+
   // Landing here without a verified code — restart rather than let someone set
   // a password on an unverified address.
-  if (!email) return <Navigate to={realm.forgotPath} replace />
+  if (!recovery.data || (email && email.toLowerCase() !== recovery.data.toLowerCase())) return <Navigate to={realm.forgotPath} replace />
 
   const allPassed = meetsPasswordRules(password)
   const matches = password.length > 0 && password === confirm
@@ -29,7 +38,7 @@ export function ResetPassword() {
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault()
 
-    if (!matches) {
+    if (!allPassed || !matches) {
       setError('Passwords don’t match')
       return
     }

@@ -140,9 +140,8 @@ const createBookingSchema = z.object({
  * The same function materialises the patient's clinical record on their first
  * booking, in the same transaction as the booking that caused it.
  *
- * Lands on `confirmed`. Submitting the form *is* the booking — every rule the
- * clinic has was checked inside the function, under the lock, before the row
- * existed. Staff monitor the schedule rather than admit people to it.
+ * Returns a Booked (`pending`) appointment with its seat already reserved.
+ * Staff record confirmation, arrival, and completion separately.
  */
 export async function createMyBooking(req: Request, res: Response) {
   const me = account(req)
@@ -180,8 +179,8 @@ export async function cancelMyBooking(req: Request, res: Response) {
   const id = parseBody(idSchema, req.params.id)
   const booking = await ownBooking(req, id)
 
-  if (booking.status === 'completed') {
-    throw new HttpError(409, 'That appointment has already happened.')
+  if (['completed', 'arrived', 'no_show'].includes(booking.status)) {
+    throw new HttpError(409, 'This visit can now only be managed by clinic staff.')
   }
 
   if (booking.status === 'cancelled') {
@@ -198,7 +197,7 @@ export async function cancelMyBooking(req: Request, res: Response) {
     .from('appointments')
     .update({ status: 'cancelled' })
     .eq('id', id)
-    .not('status', 'in', '(completed,cancelled)')
+    .in('status', ['pending', 'confirmed', 'rescheduled'])
     .select('*')
     .maybeSingle()
 
@@ -231,7 +230,7 @@ export async function requestReschedule(req: Request, res: Response) {
   const input = parseBody(requestRescheduleSchema, req.body)
   const booking = await ownBooking(req, id)
 
-  if (booking.status === 'cancelled' || booking.status === 'completed') {
+  if (!['pending', 'confirmed', 'rescheduled'].includes(booking.status)) {
     throw new HttpError(
       409,
       `A ${booking.status} appointment cannot be rescheduled.`,

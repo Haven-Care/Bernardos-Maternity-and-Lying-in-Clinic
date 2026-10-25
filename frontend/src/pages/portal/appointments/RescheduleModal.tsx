@@ -56,7 +56,10 @@ export function RescheduleModal({
     }
   })
 
+  const dirty = date !== booking.scheduledDate || time !== booking.slotTime
+
   async function save() {
+    if (!dirty || !time) return
     setSaving(true)
     setError(undefined)
 
@@ -78,6 +81,8 @@ export function RescheduleModal({
   return (
     <Modal
       open={open}
+      dirty={dirty}
+      busy={saving}
       onClose={onClose}
       title="Reschedule Appointment"
       description={`${booking.referenceNo} · ${booking.patientName}`}
@@ -86,7 +91,7 @@ export function RescheduleModal({
         <Button
           onClick={() => void save()}
           loading={saving}
-          disabled={!time || noSlots}
+          disabled={!dirty || !time || noSlots || availability.loading || !!availability.error}
         >
           Save
         </Button>

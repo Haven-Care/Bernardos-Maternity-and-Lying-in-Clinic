@@ -2,7 +2,9 @@ import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
 import { dbError, definedOnly, unwrap, unwrapList } from '../lib/db.js'
-import { isoDate, parseBody } from '../lib/validate.js'
+import { isoDate, parseBody, parseQuery } from '../lib/validate.js'
+import { afterClinicDay, datedListQuery } from '../lib/dateRange.js'
+import { batchNumberSchema } from '../lib/batchNumber.js'
 import { HttpError } from '../middleware/errorHandler.js'
 import {
   daysBetween,
@@ -144,18 +146,14 @@ export async function listBatches(req: Request, res: Response) {
   res.json(rows.map(toBatch))
 }
 
-export async function listMovements(_req: Request, res: Response) {
-  const rows = unwrapList(
-    await getSupabaseClient()
-      .from('stock_movements')
-      .select('*, profiles(full_name)')
-      .order('occurred_at', { ascending: false })
-      .limit(500),
-  )
-
-  res.json(
-    rows.map((row) => toMovement(row, row.profiles?.full_name ?? 'System')),
-  )
+export async function listMovements(req: Request, res: Response) {
+  const { from, to, offset, limit } = parseQuery(datedListQuery, req.query)
+  let query = getSupabaseClient().from('stock_movements').select('*, profiles(full_name)')
+    .order('occurred_at', { ascending: false }).order('id')
+  if (from) query = query.gte('occurred_at', `${from}T00:00:00+08:00`)
+  if (to) query = query.lt('occurred_at', afterClinicDay(to))
+  const rows = unwrapList(await query.range(offset, offset + limit - 1))
+  res.json(rows.map((row) => toMovement(row, row.profiles?.full_name ?? 'System')))
 }
 
 export async function listLowStock(_req: Request, res: Response) {
@@ -290,7 +288,7 @@ export async function updateMedicine(req: Request, res: Response) {
 
 const stockInSchema = z.object({
   medicineId: z.string().uuid('Choose a medicine.'),
-  batchNo: z.string().trim().min(1, 'A batch or lot number is required.'),
+  batchNo: batchNumberSchema,
   quantity: z.number().int().positive('Quantity must be at least 1.'),
   expiresAt: isoDate('Enter an expiry date.'),
   note: z.string().trim().default(''),

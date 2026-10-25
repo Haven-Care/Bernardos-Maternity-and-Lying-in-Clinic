@@ -14,3 +14,5 @@ export * as rescheduleRequests from './rescheduleRequests'
 export * as services from './services'
 export * as slots from './slots'
 export * as system from './system'
+
+export * as session from './session'

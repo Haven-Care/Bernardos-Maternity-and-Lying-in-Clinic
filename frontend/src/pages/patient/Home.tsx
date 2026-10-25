@@ -18,13 +18,14 @@ export function Home() {
 
   return (
     <PublicShell>
-      <div className="rounded-2xl bg-gradient-to-br from-brand-700 to-brand-500 px-5 py-7 text-white shadow-sm">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-2">
+      <div className="lg:col-span-2 rounded-2xl bg-gradient-to-br from-brand-700 to-brand-500 px-5 py-7 text-white shadow-sm">
         <p className="text-sm text-brand-100">Welcome back</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">Hello, {firstName}!</h1>
         <p className="mt-2 max-w-sm text-sm text-brand-50">Your appointments and clinic services, all in one place.</p>
       </div>
 
-      <section className="mt-6" aria-labelledby="next-appointment">
+      <section className="min-w-0" aria-labelledby="next-appointment">
         <div className="mb-3 flex items-center justify-between gap-2">
           <h2 id="next-appointment" className="text-base font-semibold text-gray-900">Next appointment</h2>
           <Link to="/patient/bookings?tab=upcoming" className="text-sm font-semibold text-brand-700">View all</Link>
@@ -49,7 +50,7 @@ export function Home() {
         )}
       </section>
 
-      <section className="mt-6 grid grid-cols-2 gap-3" aria-label="Quick actions">
+      <section className="grid grid-cols-2 gap-3" aria-label="Quick actions">
         <Link to="/book" className="rounded-2xl bg-brand-600 p-4 text-white shadow-sm transition-colors hover:bg-brand-700">
           <span className="text-2xl" aria-hidden="true">＋</span>
           <span className="mt-3 block text-sm font-semibold">Book appointment</span>
@@ -62,10 +63,10 @@ export function Home() {
         </Link>
       </section>
 
-      <div className="mt-7"><ClinicServiceCatalog /></div>
+      <div className="min-w-0 lg:col-span-2"><ClinicServiceCatalog /></div>
 
       {recent && recent.length > 0 && (
-        <section className="mt-7" aria-labelledby="recent-activity">
+        <section className="min-w-0 lg:col-span-2" aria-labelledby="recent-activity">
           <h2 id="recent-activity" className="mb-3 text-base font-semibold text-gray-900">Recent activity</h2>
           <ul className="divide-y divide-border rounded-2xl border border-border bg-white px-4">
             {recent.map((booking) => (
@@ -80,6 +81,7 @@ export function Home() {
           </ul>
         </section>
       )}
+      </div>
     </PublicShell>
   )
 }

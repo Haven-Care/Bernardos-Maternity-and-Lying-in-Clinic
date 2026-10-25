@@ -1,9 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useId } from 'react'
 
-export const UnsavedChangesContext = createContext<(id: string, dirty: boolean) => void>(() => {})
+export const UnsavedChangesContext = createContext({
+  register: (_id: string, _dirty: boolean) => { void _id; void _dirty },
+  confirmLeave: (): boolean => true,
+  cancelLeave: () => {},
+})
+export function useConfirmLeave() { return useContext(UnsavedChangesContext) }
 
 export function useUnsavedChanges(dirty: boolean) {
-  const register = useContext(UnsavedChangesContext)
+  const { register } = useContext(UnsavedChangesContext)
   const id = useId()
   useEffect(() => {
     register(id, dirty)

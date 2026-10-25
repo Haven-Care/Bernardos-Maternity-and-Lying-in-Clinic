@@ -6,6 +6,8 @@ import { Card } from '../../../components/ui/Card'
 import { SearchField, SelectField } from '../../../components/ui/fields'
 import { Table, type Column } from '../../../components/ui/Table'
 import { AsyncBoundary, EmptyState } from '../../../components/ui/states'
+import { DateRangeFields } from '../../../components/ui/DateRangeFields'
+import { clinicDate, dateRangeError, withinDateRange } from '../../../lib/dateRange'
 import type { StockMovement } from '../../../types/medicine'
 
 /**
@@ -16,7 +18,8 @@ import type { StockMovement } from '../../../types/medicine'
  * so renaming a medicine doesn't leave stale names scattered through history.
  */
 export function StockMovements({ version }: { version: number }) {
-  const movements = useAsync(() => api.inventory.listMovements(), [version])
+  const [dates, setDates] = useState({ from: '', to: '' })
+  const movements = useAsync(() => dateRangeError(dates) ? Promise.resolve([]) : api.inventory.listMovements(dates), [version, dates.from, dates.to])
   const medicines = useAsync(() => api.inventory.listMedicines(), [version])
 
   const [type, setType] = useState('')
@@ -30,6 +33,7 @@ export function StockMovements({ version }: { version: number }) {
   const rows = useMemo(() => {
     const term = search.trim().toLowerCase()
     return (movements.data ?? [])
+      .filter((m) => withinDateRange(clinicDate(m.occurredAt), dates))
       .filter((m) => (type ? m.type === type : true))
       .filter((m) => {
         if (!term) return true
@@ -39,7 +43,7 @@ export function StockMovements({ version }: { version: number }) {
           m.note.toLowerCase().includes(term)
         )
       })
-  }, [movements.data, type, search, byId])
+  }, [movements.data, type, search, byId, dates])
 
   const columns: Column<StockMovement>[] = [
     {
@@ -48,6 +52,7 @@ export function StockMovements({ version }: { version: number }) {
       render: (m) => (
         <span className="whitespace-nowrap">
           {new Date(m.occurredAt).toLocaleDateString('en-PH', {
+            timeZone: 'Asia/Manila',
             year: 'numeric',
             month: 'short',
             day: 'numeric',
@@ -61,6 +66,7 @@ export function StockMovements({ version }: { version: number }) {
       render: (m) => (
         <span className="whitespace-nowrap text-gray-500">
           {new Date(m.occurredAt).toLocaleTimeString('en-PH', {
+            timeZone: 'Asia/Manila',
             hour: 'numeric',
             minute: '2-digit',
           })}
@@ -135,6 +141,7 @@ export function StockMovements({ version }: { version: number }) {
             ]}
           />
         </div>
+        <DateRangeFields value={dates} onChange={setDates} />
         <div className="ml-auto w-full sm:w-64">
           <SearchField
             value={search}

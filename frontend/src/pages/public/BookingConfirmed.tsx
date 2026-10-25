@@ -2,27 +2,7 @@ import type { BookingRequest } from '../../types/appointment'
 import { Button } from '../../components/ui/Button'
 import { formatDateLong, formatTime } from '../../lib/format'
 
-/**
- * The terminal screen — the appointment is booked.
- *
- * **The wording matters more than the layout here.** This screen used to say
- * the opposite three times over, because a booking was a request that staff
- * confirmed later and a patient who read it as settled would not expect the
- * call. `createBooking` writes `confirmed` now, so the seat is held before this
- * renders and hedging would be the lie.
- *
- * What survives the change is the reason that copy was careful: the no-show.
- * The confirmation call used to double as a reminder and there is no longer one,
- * so this screen has to make the date stick on its own — hence the plain
- * statement of when to arrive rather than a generic success message.
- *
- * The reference number is what staff ask for on the phone, so it is the largest
- * thing on the screen.
- *
- * The summary repeats only what the patient chose or typed. Email is left out:
- * it comes from the account rather than the form, so showing it back reads as
- * something they entered and might need to check.
- */
+/** A saved booking holds its slot while awaiting staff confirmation. */
 export function BookingConfirmed({
   booking,
   onBookAnother,
@@ -51,12 +31,12 @@ export function BookingConfirmed({
         You’re booked
       </h1>
       <p className="mx-auto mt-1 max-w-sm text-sm text-gray-500">
-        Your appointment is confirmed for{' '}
+        Your slot is reserved for{' '}
         <span className="font-semibold text-gray-700">
           {formatDateLong(booking.scheduledDate)},{' '}
           {formatTime(booking.slotTime)}
         </span>
-        . Please arrive a few minutes early.
+        . The clinic will confirm your appointment. Check History for status updates and bring your reference number when you arrive.
       </p>
 
       <div className="mt-5 rounded-card border border-brand-200 bg-brand-50 px-4 py-3">

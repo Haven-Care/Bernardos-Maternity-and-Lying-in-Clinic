@@ -15,10 +15,12 @@ on:
     branches:
       - main
       - backend-main
+      - frontend-main
   push:
     branches:
       - main
       - backend-main
+      - frontend-main
 
 jobs:
   backend-ci:

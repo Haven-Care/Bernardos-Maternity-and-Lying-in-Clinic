@@ -1,49 +1,11 @@
 import type {
   ChangePasswordInput,
-  LoginInput,
   NotificationPrefs,
   ProfileInput,
   StaffProfile,
 } from '../types/account'
 import { apiFetch } from './client'
-import { supabase } from '../lib/supabase'
-
-/**
- * Sign in.
- *
- * Two steps, deliberately. GoTrue proves the credentials and issues a token;
- * Express then says who that token actually belongs to. The JWT only asserts
- * "some authenticated user" — the role, status and employee number that the
- * portal renders all come from the `profiles` row.
- *
- * **Email only.** The prototype's field reads "username or email", but GoTrue
- * authenticates on email, and resolving a username would need an
- * unauthenticated lookup endpoint — which is an oracle telling anyone who asks
- * whether a given username exists. With a handful of provisioned accounts a
- * username buys nothing, so the label was changed to match. See the plan's open
- * items if the clinic wants it back.
- */
-export async function login(input: LoginInput): Promise<StaffProfile> {
-  const { error } = await supabase.auth.signInWithPassword({
-    email: input.identifier.trim().toLowerCase(),
-    password: input.password,
-  })
-
-  // GoTrue says "Invalid login credentials" without distinguishing a wrong
-  // password from an unknown address, which is the correct behaviour — do not
-  // improve on it.
-  if (error) throw new Error(error.message)
-
-  // GoTrue has already stored a session by now. If Express will not accept it
-  // — a patient on the staff login, a deactivated account, no profile row —
-  // that session has to go too, or every guard after this reads it as signed in.
-  try {
-    return await apiFetch<StaffProfile>('/account/me')
-  } catch (e) {
-    await supabase.auth.signOut()
-    throw e
-  }
-}
+import { RECOVERY_USER_KEY, supabase } from '../lib/supabase'
 
 export async function logout(): Promise<void> {
   const { error } = await supabase.auth.signOut()
@@ -103,10 +65,8 @@ export async function changePassword(
 /**
  * Sends the six-digit code.
  *
- * This only works because the recovery email template emits `{{ .Token }}`
- * instead of the default `{{ .ConfirmationURL }}` — see supabase/config.toml.
- * With the stock template the mail contains a link, `verifyResetCode` below has
- * nothing to check, and the Verify Code screen is unreachable.
+ * The local template emits `{{ .Token }}` for code entry. Hosted projects may
+ * use either that template or a recovery link to /auth/recovery.
  *
  * Resolves even for an address with no account. Reporting "no such user" here
  * would let anyone enumerate the clinic's staff addresses.
@@ -114,6 +74,7 @@ export async function changePassword(
 export async function requestPasswordReset(email: string): Promise<void> {
   const { error } = await supabase.auth.resetPasswordForEmail(
     email.trim().toLowerCase(),
+    { redirectTo: `${window.location.origin}/auth/recovery` },
   )
 
   if (error) throw new Error(error.message)
@@ -129,18 +90,29 @@ export async function verifyResetCode(
   email: string,
   code: string,
 ): Promise<void> {
-  const { error } = await supabase.auth.verifyOtp({
+  const { data, error } = await supabase.auth.verifyOtp({
     email: email.trim().toLowerCase(),
     token: code.trim(),
     type: 'recovery',
   })
 
-  if (error) throw new Error('That code is incorrect or has expired.')
+  if (error || !data.user) throw new Error('That code is incorrect or has expired.')
+  sessionStorage.setItem(RECOVERY_USER_KEY, data.user.id)
+}
+
+export async function recoveryEmail(): Promise<string | null> {
+  const { data, error } = await supabase.auth.getUser()
+  if (error && ![400, 401, 403].includes(error.status ?? 0)) throw new Error('Unable to verify your recovery session. Check your connection and try again.')
+  if (error || !data.user || sessionStorage.getItem(RECOVERY_USER_KEY) !== data.user.id) return null
+  return data.user.email ?? null
 }
 
 export async function resetPassword(newPassword: string): Promise<void> {
+  if (!await recoveryEmail()) throw new Error('Your recovery session has expired. Request a new code or email link.')
   const { error } = await supabase.auth.updateUser({ password: newPassword })
   if (error) throw new Error(error.message)
+  sessionStorage.removeItem(RECOVERY_USER_KEY)
+  await supabase.auth.signOut({ scope: 'local' })
 }
 
 // --- Preferences -----------------------------------------------------------

@@ -1,303 +1,165 @@
 # 🏥 HavenCare
 
-For hosted Supabase setup and the custom local ports, follow the [local development guide](docs/LOCAL_DEVELOPMENT.md).
-
 Centralized Management System for **Bernardo's Maternity and Lying-in Clinic**.
 
-One system, two products:
-
-| Product | Users | What it does |
+| Product | Users | Features |
 |---|---|---|
-| **Command center** (desktop) | Clinic staff | Daily schedules, inventory movements, patient records, service configuration |
-| **Booking app** (mobile) | Patients | Book from home against the slots staff opened; no phone call, no walk-in |
+| Staff portal | Staff and administrators | Dashboard, appointments/visits, inventory, patient records, clinic configuration |
+| Patient web app | Patients on mobile or desktop | Registration, sign-in, booking, history, cancellation, rescheduling, account settings |
 
-Five modules: **Dashboard · Appointments · Inventory · Patient Records · Administration**.
+The frontend calls a live Express API backed by Supabase. Database migrations,
+seed data, authentication, validation, and automated tests are included.
+See [the UI audit](docs/figma-ui-audit.md) for visual acceptance work.
 
-React (TypeScript) frontend, Express (TypeScript) API, Supabase for data.
+## Run the system
 
-> **Status:** 🚧 Building the UI layer first, against mock data.
->
-> The [Figma prototype](https://www.figma.com/design/HN1MtjiHtwzJKvBLXCjWqC/HavenCare-Prototype)
-> is complete and high-fidelity; the backend is not — **controllers are stubs and
-> no database schema exists yet.** So screens are being built against fixtures
-> behind a typed `src/api/` seam, and the backend is implemented afterward
-> against the types that produces.
->
-> See [Current State](#-current-state) before picking up work.
+**Start with the [Windows and Linux local setup/testing guide](docs/LOCAL_TESTING.md).**
+It covers Node 24, Docker, local Supabase, actual local keys, staff seeding,
+the frontend/backend development servers, tests, and troubleshooting.
 
----
+| Setup | Guide | Database |
+|---|---|---|
+| Local development and integration tests | [Windows / Linux + Docker](docs/LOCAL_TESTING.md) | Disposable local Supabase containers |
+| Local apps with hosted development data | [Hosted Supabase guide](docs/LOCAL_DEVELOPMENT.md) | Shared hosted development project |
 
-## 🛠️ Tech Stack
+Use local Docker for integration tests: they create, update, and delete records.
+
+## Technology
 
 | Layer | Stack |
 |---|---|
+| Runtime | Node.js **24.x** and npm; `.nvmrc` pins 24 |
 | Frontend | React 19, TypeScript, Vite 8, Tailwind CSS v4, React Router 7 |
-| Backend | Node.js, Express 5, TypeScript (`tsx` dev / `tsc` build) |
-| Database | Supabase (`@supabase/supabase-js`) |
-| Tooling | ESLint 10, typescript-eslint, GitHub Actions |
+| Backend | Express 5, TypeScript, `tsx watch` for development |
+| Data and identity | Supabase PostgreSQL, Auth, and private Storage |
+| Checks | ESLint, TypeScript, Vitest, Supertest, SQL assertions, GitHub Actions |
 
-Frontend uses the native `fetch` API (`src/lib/api.ts`) — no Axios.
+Vite serves the frontend. Express runs as a separate backend process. The
+Supabase CLI manages Docker using `supabase/config.toml`; frontend/backend
+npm processes run on the host.
 
----
+## Local addresses
 
-## 📁 Project Structure
+| Service | Address |
+|---|---|
+| Frontend | <http://localhost:6100> |
+| Backend API | <http://localhost:6101/api> |
+| API liveness | <http://localhost:6101/api/health> |
+| Database readiness | <http://localhost:6101/api/health/db> |
+| Supabase API | <http://127.0.0.1:54321> |
+| PostgreSQL | `127.0.0.1:54322` |
+| Supabase Studio | <http://127.0.0.1:54323> |
+| Local test email inbox | <http://127.0.0.1:54324> |
+
+`/health` checks Express. `/health/db` queries the `services` table and returns
+HTTP 503 if the configured database cannot be reached.
+
+## Project structure
 
 ```text
-Bernardo's Maternity and Lying-in Clinic/
-├── backend/
-│   ├── src/
-│   │   ├── config/
-│   │   │   ├── env.ts              # env parsing, required-var guards
-│   │   │   └── supabase.ts         # lazy singleton Supabase client
-│   │   ├── controllers/            # ⚠️ all stubs — see Current State
-│   │   ├── middleware/
-│   │   │   └── errorHandler.ts     # HttpError, notFoundHandler, errorHandler
-│   │   ├── routes/
-│   │   │   ├── index.ts            # /health, /health/db, mounts sub-routers
-│   │   │   ├── booking.routes.ts
-│   │   │   └── inventory.routes.ts
-│   │   ├── types/
-│   │   ├── app.ts                  # createApp() — cors, json, routes, handlers
-│   │   └── server.ts               # listen()
-│   ├── .env.example
-│   └── package.json
-│
-├── frontend/
-│   ├── src/
-│   │   ├── components/layout/
-│   │   ├── lib/api.ts              # apiFetch<T>() wrapper
-│   │   ├── pages/                  # Home, Booking, Inventory, NotFound
-│   │   ├── types/
-│   │   ├── App.tsx
-│   │   ├── router.tsx
-│   │   └── main.tsx
-│   ├── .env.example
-│   └── package.json
-│
-├── .github/
-│   ├── workflows/                  # backend-ci.yml, frontend-ci.yml
-│   ├── CODEOWNERS
-│   └── PULL_REQUEST_TEMPLATE.md
-├── CONTRIBUTING.md
-└── README.md
+backend/src/
+  config/          # environment and Supabase client
+  contract/        # generated copy of frontend API contract types
+  controllers/     # API handlers
+  db/types.ts      # generated PostgreSQL types
+  middleware/      # authentication, authorization, errors, rate limits
+  routes/          # domain routes and integration tests
+  scripts/         # staff-account provisioning
+  app.ts           # Express app and Vercel entry point
+  server.ts        # local listening socket
+frontend/src/
+  api/             # typed backend calls and Supabase Auth operations
+  components/      # shared UI, layouts, route guards
+  pages/           # booking, patient, auth, and staff pages
+  types/           # API contract source
+  router.tsx
+supabase/
+  config.toml
+  migrations/
+  seed.sql
+  templates/       # confirmation and recovery email templates
+  tests/           # SQL workflow assertions
+scripts/           # contract synchronization
+docs/              # local/hosted setup and UI audit
+.github/workflows/ # frontend/backend CI
 ```
 
----
+## Commands
 
-## ✅ Prerequisites
+Run from the repository root containing `frontend/`, `backend/`, and `supabase/`.
+On Windows, use `npm.cmd` if PowerShell blocks `npm.ps1`.
 
-- **Node.js 20.x** — CI pins Node 20; match it locally to avoid build drift
-- **npm** (bundled with Node)
-- **Git**
-- A **Supabase project** — you need `SUPABASE_URL` and the `service_role` key
-
----
-
-## 🚀 Getting Started
-
-### 1. Clone
-
-```bash
-git clone git@github.com:Haven-Care/Haven-Care-Website.git
-```
-
-```bash
-cd "Haven-Care-Website/Bernardo's Maternity and Lying-in Clinic"
-```
-
-### 2. Backend
-
-```bash
-cd backend && npm install && cp .env.example .env
-```
-
-Fill in `backend/.env`:
-
-```env
-PORT=6101
-NODE_ENV=development
-CORS_ORIGIN=http://localhost:6100
-
-# Project Settings > API in your Supabase dashboard
-SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
-```
-
-> **Never commit `.env`, and never put the `service_role` key in the frontend.** It bypasses row-level security. Only `.env.example` is tracked.
-
-Start it:
-
-```bash
-npm run dev
-```
-
-API is at `http://localhost:6101`. Confirm with:
-
-```bash
-curl http://localhost:6101/api/health
-```
-
-### 3. Frontend
-
-New terminal:
-
-```bash
-cd frontend && npm install && cp .env.example .env
-```
-
-`frontend/.env`:
-
-```env
-VITE_API_URL=http://localhost:6101/api
-```
-
-```bash
-npm run dev
-```
-
-App is at `http://localhost:6100`.
-
-The frontend uses port 6100 and the backend uses 6101. To customize them, set `PORT` in each package's `.env`, then update frontend `VITE_API_URL` and backend `CORS_ORIGIN` to match. Restart both servers after changes. Vite stops if its port is occupied.
-
-Both processes must be running — the frontend calls the backend directly (no Vite proxy configured), so `CORS_ORIGIN` on the backend must match the frontend's origin.
-
----
-
-## 📦 Scripts
-
-| Where | Command | What it does |
-|---|---|---|
-| `backend` | `npm run dev` | `tsx watch src/server.ts` — hot reload |
-| `backend` | `npm run build` | `tsc -b` → `dist/` |
-| `backend` | `npm start` | Run compiled `dist/server.js` |
-| `backend` | `npm run lint` | ESLint |
-| `frontend` | `npm run dev` | Vite dev server |
-| `frontend` | `npm run build` | `tsc -b && vite build` |
-| `frontend` | `npm run preview` | Serve the production build locally |
-| `frontend` | `npm run lint` | ESLint |
-
-There is **no `test` script in either package** — see [Current State](#-current-state).
-
----
-
-## 🔐 Environment Variables
-
-| Variable | Side | Required | Notes |
-|---|---|---|---|
-| `PORT` | backend | no | Defaults to `6101` |
-| `NODE_ENV` | backend | no | Defaults to `development` |
-| `CORS_ORIGIN` | backend | no | Defaults to `http://localhost:6100` |
-| `SUPABASE_URL` | backend | **yes** | Throws on first use if missing |
-| `SUPABASE_SERVICE_ROLE_KEY` | backend | **yes** | Secret. Server-side only |
-| `VITE_API_URL` | frontend | no | Defaults to `http://localhost:6101/api` |
-
-The two Supabase vars are lazy getters in [`config/env.ts`](backend/src/config/env.ts) — the server **starts fine without them** and only throws when a Supabase call is first made. Hit `/api/health/db` to verify credentials.
-
----
-
-## 🔌 API Reference
-
-Base path: `/api`
-
-| Method | Endpoint | Current behavior |
-|---|---|---|
-| `GET` | `/health` | ✅ `{ status: "ok" }` |
-| `GET` | `/health/db` | ⚠️ Only checks that Supabase env vars are set — see note below |
-| `GET` | `/bookings` | ⚠️ Returns `[]` (hardcoded) |
-| `GET` | `/bookings/:id` | ⚠️ Always `404` |
-| `POST` | `/bookings` | ⚠️ `501 Not Implemented` |
-| `PATCH` | `/bookings/:id` | ⚠️ `501 Not Implemented` |
-| `DELETE` | `/bookings/:id` | ⚠️ `501 Not Implemented` |
-| `GET` | `/inventory` | ⚠️ Returns `[]` (hardcoded) |
-| `GET` | `/inventory/:id` | ⚠️ Always `404` |
-| `POST` | `/inventory` | ⚠️ `501 Not Implemented` |
-| `PATCH` | `/inventory/:id` | ⚠️ `501 Not Implemented` |
-| `DELETE` | `/inventory/:id` | ⚠️ `501 Not Implemented` |
-
-Errors are uniform: `{ "error": "message" }`.
-
-> **`/health/db` does not currently reach the database.** It calls `supabase.auth.getSession()`, which reads local session state — and with `persistSession: false` there is none, so no network request is made. It returns `ok` even with a wrong URL, a revoked key, or an empty database. All it really proves is that the env-var getters in `config/env.ts` didn't throw. A real check needs a query against an actual table, e.g. `.from('bookings').select('id').limit(1)`.
-
-### Data shapes
-
-```ts
-interface Booking {
-  id: string
-  patientName: string
-  service: string
-  startsAt: string                                  // ISO 8601
-  status: 'pending' | 'confirmed' | 'cancelled'
-}
-
-interface InventoryItem {
-  id: string
-  name: string
-  quantity: number
-  unit: string
-  reorderThreshold: number
-}
-```
-
-These are **TypeScript types only** — there are no matching Supabase tables in the repo.
-
----
-
-## 📊 Current State
-
-### What works
-
-- Express app wiring — CORS, JSON body parsing, router mounting, 404 + error middleware
-- Env config with required-variable guards
-- Lazy singleton Supabase client
-- Liveness health check (`/api/health`) — note `/api/health/db` is not a real DB check yet
-- Frontend routing across Home / Booking / Inventory / NotFound with a shared layout
-- Typed `apiFetch<T>()` helper
-- Lint + build CI on PRs into `main`, `backend-main`, `frontend-main`
-
-### Not implemented yet
-
-| Gap | Impact |
+| Command | Purpose |
 |---|---|
-| **Database schema** | No SQL migrations, no `supabase/` directory. Tables must be hand-created in the dashboard, and nothing is reproducible or reviewable. |
-| **Controller logic** | No controller imports `getSupabaseClient()`. Every write returns `501`; reads return empty arrays. The API is a shell. |
-| **Authentication** | No auth middleware, no protected routes, no RLS policies in repo — despite this handling patient data. |
-| **Tests** | Neither `package.json` has a `test` script, so CI's `npm test --if-present` silently passes. **Green CI does not mean tested.** |
-| **Docker** | No `Dockerfile` (either side), no `docker-compose.yml`, no `.dockerignore`. Setup is manual-only. |
-| **Deployment** | CI runs on `pull_request` only — no build-on-merge, no deploy workflow, no hosting target chosen. |
-| **Request validation** | No schema validation (Zod or similar) on any request body. |
-| **Shared types** | `booking.ts` and `inventory.ts` are byte-identical in `backend/src/types/` and `frontend/src/types/`. They will drift. Superseded once `supabase gen types` lands. |
+| `npm ci` | Install the locked Supabase CLI tooling |
+| `npm --prefix backend ci` | Install backend dependencies |
+| `npm --prefix frontend ci` | Install frontend dependencies |
+| `npm run db:start` | Start local Supabase containers |
+| `npm run db:status` | Display local endpoints and keys |
+| `npm run db:reset` | **Erase/rebuild the local database**, then apply migrations and seed |
+| `npm run db:stop` | Stop local Supabase and retain data volumes |
+| `npm --prefix backend run seed:staff` | Provision staff; use local credentials for tests |
+| `npm --prefix backend run dev` | Start Express on port 6101 |
+| `npm --prefix frontend run dev` | Start Vite on port 6100 |
+| `npm --prefix backend test` | Run backend unit and integration tests |
+| `npm --prefix frontend test` | Run frontend tests |
+| `npm --prefix backend run lint` | Lint the backend |
+| `npm --prefix frontend run lint` | Lint the frontend |
+| `npm --prefix backend run build` | Compile backend TypeScript |
+| `npm --prefix frontend run build` | Type-check and build the frontend |
+| `npm run sync:types:check` | Check frontend/backend API contracts match |
+| `npm run sync:types` | Copy frontend contract types to the backend |
+| `npm run db:types` | Regenerate database types from local PostgreSQL |
 
-> **Note on CODEOWNERS:** [`.github/CODEOWNERS`](.github/CODEOWNERS) now points at
-> `@Haven-Care/*` teams. Those teams must actually exist and have write access —
-> GitHub silently ignores unresolvable owners, which would mean the PM/QA
-> approval rule in `CONTRIBUTING.md` isn't enforced at all. Verify in branch
-> protection settings.
+Load [the local environment](docs/LOCAL_TESTING.md#4-load-local-credentials)
+before seeding, starting either server, or running backend integration tests.
+The root package is not a workspace: install dependencies separately in all
+three folders. Both application packages have a `test` script. Database suites
+skip when Supabase is unavailable; skipped suites are incomplete verification.
 
----
+## Environment and API
 
-## 🧑‍💻 Development Workflow
+| Variable | Used by | Local value or source |
+|---|---|---|
+| `PORT` | Each server | Backend `6101`; frontend `6100` |
+| `NODE_ENV` | Backend | `development`, or `test` for tests |
+| `CORS_ORIGIN` | Backend | `http://localhost:6100` |
+| `SUPABASE_URL` | Backend/tests | `http://127.0.0.1:54321` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Backend/tests | Local CLI `SERVICE_ROLE_KEY`; privileged |
+| `SUPABASE_ANON_KEY` | Backend tests | Local CLI `ANON_KEY` |
+| `SEED_STAFF_PASSWORD` | Staff seed/tests | Matching local test password |
+| `VITE_API_URL` | Frontend | `http://localhost:6101/api` |
+| `VITE_SUPABASE_URL` | Frontend | Same Supabase project as the backend |
+| `VITE_SUPABASE_ANON_KEY` | Frontend | Local `ANON_KEY`; public browser key |
+| `VITE_GOOGLE_LOGIN_ENABLED` | Frontend | `false` until OAuth is configured |
 
-**Terminal 1**
+The guide uses terminal-scoped variables so existing hosted `.env` files stay
+intact. Every new terminal needs environment initialization. Keep privileged
+service-role/secret keys out of `VITE_` variables and version control.
 
-```bash
-cd backend && npm run dev
-```
+API routes under `/api` cover account/session, staff access, services, slots,
+clinic configuration, patients/documents, inventory, bookings, patient-owned
+bookings, reschedules, dashboard, and notifications. See [route mounts](backend/src/routes/index.ts),
+[shared types](frontend/src/types), and [the API guide](frontend/src/api/README.md).
 
-**Terminal 2**
+## Verification
 
-```bash
-cd frontend && npm run dev
-```
+CI runs lint/build/tests and contract synchronization. Backend CI currently
+runs without Supabase, so local integration verification is still needed.
 
-Branch off your team's integration branch (`frontend-main` / `backend-main`), never off `main`. Naming, commit format, and PR requirements are in **[CONTRIBUTING.md](CONTRIBUTING.md)**.
+The 25 October 2026 local run used Node 24 and Docker: **171 backend tests passed,
+none skipped**, and all **77 frontend tests passed**. Both apps passed lint and
+build; shared contracts passed synchronization checks. SQL workflow/RLS checks
+passed and rolled back test records. This is a dated result, not a guarantee for
+later revisions.
 
-Before opening a PR:
+Hosted email, OAuth, deployment, and UI acceptance need separate checks. See
+[the hosted guide](docs/LOCAL_DEVELOPMENT.md) and [UI audit](docs/figma-ui-audit.md).
 
-```bash
-npm run lint && npm run build
-```
+## Contributing
 
----
+Follow [CONTRIBUTING.md](CONTRIBUTING.md) for branch, commit, review, and merge
+requirements. Check your branch with `git branch --show-current` before editing.
 
 ## 👥 Team
 
