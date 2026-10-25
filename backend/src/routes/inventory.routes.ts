@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { requireStaff } from '../middleware/auth.js'
+import { createMedicinePhotoUpload, getMedicinePhoto, saveMedicinePhoto } from '../controllers/medicinePhotos.controller.js'
 import {
   createMedicine,
   getInventoryStats,
@@ -31,6 +32,9 @@ inventoryRouter.post('/medicines', createMedicine)
 inventoryRouter.get('/medicines/:id', getMedicine)
 inventoryRouter.patch('/medicines/:id', updateMedicine)
 inventoryRouter.get('/medicines/:id/batches', listBatches)
+inventoryRouter.get('/medicines/:id/photo', getMedicinePhoto)
+inventoryRouter.post('/medicines/:id/photo/upload-url', createMedicinePhotoUpload)
+inventoryRouter.put('/medicines/:id/photo', saveMedicinePhoto)
 
 inventoryRouter.get('/movements', listMovements)
 inventoryRouter.get('/low-stock', listLowStock)

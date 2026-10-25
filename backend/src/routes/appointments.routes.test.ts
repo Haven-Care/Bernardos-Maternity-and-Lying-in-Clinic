@@ -14,6 +14,12 @@ import {
 const app = createApp()
 const up = await stackIsUp()
 
+async function clinicToday(): Promise<string> {
+  const { data, error } = await getSupabaseClient().rpc('clinic_today')
+  if (error || !data) throw new Error(error?.message ?? 'Clinic date is unavailable.')
+  return data
+}
+
 /**
  * A Monday far enough out to be empty, as YYYY-MM-DD.
  *
@@ -24,8 +30,7 @@ const up = await stackIsUp()
  * untouched week so they cannot fill each other's slots.
  */
 async function clinicDate(offsetWeeks = 0): Promise<string> {
-  const { data } = await getSupabaseClient().rpc('clinic_today')
-  const d = new Date(`${data}T00:00:00Z`)
+  const d = new Date(`${await clinicToday()}T00:00:00Z`)
 
   do {
     d.setUTCDate(d.getUTCDate() + 1)
@@ -115,11 +120,9 @@ describe.skipIf(!up)('bookings', () => {
         })
         .expect(201)
 
-      // `confirmed`, not `pending` — this is the assertion that says bookings
-      // are accepted on submission. Every rule the clinic has was checked
-      // inside book_appointment, under the lock, before the row existed.
+      // New bookings reserve a seat while awaiting staff confirmation.
       expect(first.body).toMatchObject({
-        status: 'confirmed',
+        status: 'pending',
         serviceName: 'Consultation',
         patientName: 'Alice A',
       })
@@ -148,16 +151,7 @@ describe.skipIf(!up)('bookings', () => {
       expect(count).toBe(1)
     })
 
-    /**
-     * The notify trigger, with nothing pending.
-     *
-     * It used to fire `when (… and new.status = 'pending')`. Bookings arrive
-     * confirmed now, so that clause would never match again — and a trigger
-     * that silently stops firing is the worst possible failure for the one
-     * mechanism that tells the clinic a patient is coming. Nothing else would
-     * have caught it: the endpoint still returns 201 either way.
-     */
-    it('tells the desk about a booking even though nothing is pending', async () => {
+    it('tells the desk about a newly reserved booking', async () => {
       const db = getSupabaseClient()
       const date = await clinicDate(9)
 
@@ -176,7 +170,7 @@ describe.skipIf(!up)('bookings', () => {
         })
         .expect(201)
 
-      expect(booking.body.status).toBe('confirmed')
+      expect(booking.body.status).toBe('pending')
 
       const after = await db
         .from('notifications')
@@ -416,8 +410,12 @@ describe.skipIf(!up)('bookings', () => {
         })
         .expect(201)
 
+      const { error: updateError } = await getSupabaseClient().from('appointments')
+        .update({ status: 'arrived', scheduled_date: await clinicToday() }).eq('id', booking.body.id)
+      expect(updateError).toBeNull()
+
       const [cancel, complete] = await Promise.all([
-        request(app).delete(`/api/me/bookings/${booking.body.id}`).set(asAlice()),
+        request(app).delete(`/api/bookings/${booking.body.id}`).set(asStaff()),
         request(app)
           .post(`/api/bookings/${booking.body.id}/complete`)
           .set(asStaff()),
@@ -723,16 +721,8 @@ describe.skipIf(!up)('bookings', () => {
       bookingId = res.body.id
     })
 
-    /**
-     * Confirming is not part of the booking flow any more.
-     *
-     * The booking arrives `confirmed`, so `POST /confirm` is a no-op the
-     * transition guard rejects — `allowedFrom` is `['pending','rescheduled']`
-     * and `confirmed` is neither. Asserting the 409 is what pins the behaviour:
-     * without it, a future change reintroducing a confirmation step would pass
-     * this file silently.
-     */
-    it('refuses to confirm a booking that arrived confirmed', async () => {
+    it('confirms a booked appointment once and rejects a duplicate confirmation', async () => {
+      await request(app).post(`/api/bookings/${bookingId}/confirm`).set(asStaff()).expect(200)
       const res = await request(app)
         .post(`/api/bookings/${bookingId}/confirm`)
         .set(asStaff())
@@ -741,7 +731,13 @@ describe.skipIf(!up)('bookings', () => {
       expect(res.body.error).toMatch(/confirmed appointment cannot be marked/i)
     })
 
-    it('completes straight from confirmed', async () => {
+    it('records same-day arrival before completing a confirmed visit', async () => {
+      await request(app).post(`/api/bookings/${bookingId}/complete`).set(asStaff()).expect(409)
+      // clinicDate() deliberately chooses a future Monday; attendance needs today.
+      const { error: updateError } = await getSupabaseClient()
+        .from('appointments').update({ scheduled_date: await clinicToday() }).eq('id', bookingId)
+      expect(updateError).toBeNull()
+      await request(app).post(`/api/bookings/${bookingId}/arrive`).set(asStaff()).expect(200)
       const completed = await request(app)
         .post(`/api/bookings/${bookingId}/complete`)
         .set(asStaff())

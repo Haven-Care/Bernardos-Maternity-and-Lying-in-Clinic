@@ -6,12 +6,7 @@ import type { AppointmentsOverviewSlice } from '../../types/dashboard'
  * Appointments Overview donut.
  *
  * Hand-rolled SVG rather than a charting dependency — it is one part-to-whole
- * figure with five slices, and Recharts would add ~90 kB gzipped for it.
- *
- * Palette: validated with the dataviz validator against both the light and dark
- * surfaces. All six checks pass in both modes; worst adjacent pair is
- * confirmed↔completed at ΔE 19.3 deutan / 11.1 tritan. **Do not substitute
- * colours by eye** — re-run the validator if these change.
+ * figure with a small fixed status set, and Recharts would add ~90 kB gzipped for it.
  *
  * Colour is never the only encoding: every slice is also named in the legend
  * with its count and percentage, so the figure survives greyscale and CVD.
@@ -22,14 +17,18 @@ const SLICE_COLORS: Record<AppointmentStatus, string> = {
   pending: '#C77700',
   rescheduled: '#9061F9',
   cancelled: '#E5484D',
+  arrived: '#14756A',
+  no_show: '#64748B',
 }
 
 const LABELS: Record<AppointmentStatus, string> = {
   completed: 'Completed',
   confirmed: 'Confirmed',
-  pending: 'Pending',
+  pending: 'Booked',
   rescheduled: 'Rescheduled',
   cancelled: 'Cancelled',
+  arrived: 'Arrived',
+  no_show: 'No-show',
 }
 
 const SIZE = 200
@@ -81,7 +80,7 @@ export function AppointmentsPie({
   }
 
   // Each slice's start is derived from the counts before it rather than a
-  // running mutable cursor — O(n²) over at most five slices, and it keeps the
+  // running mutable cursor — O(n²) over the small status set, and it keeps the
   // render pure.
   const arcs = slices.map((slice, i) => {
     const before = slices

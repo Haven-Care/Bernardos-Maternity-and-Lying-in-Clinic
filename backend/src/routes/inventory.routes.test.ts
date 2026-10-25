@@ -226,6 +226,38 @@ describe.skipIf(!up)('inventory', () => {
       expect(batches.body[0].quantity).toBe(150)
     })
 
+    it('keeps concurrent receipts with different expiry dates in separate outcomes', async () => {
+      const batchNo = `RACE-${crypto.randomUUID()}`
+      const deliveries = [
+        { quantity: 7, expiresAt: '2028-01-01' },
+        { quantity: 13, expiresAt: '2029-01-01' },
+      ]
+      const results = await Promise.all(deliveries.map(delivery => request(app)
+        .post('/api/inventory/stock-in').set(auth())
+        .send({ medicineId, batchNo, ...delivery, note: 'Concurrent expiry validation' })))
+      expect(results.map(result => result.status).sort()).toEqual([201, 409])
+      const winner = results.findIndex(result => result.status === 201)
+      const db = getSupabaseClient()
+      try {
+        const { data: batch, error } = await db.from('medicine_batches').select('*')
+          .eq('medicine_id', medicineId).eq('batch_no', batchNo).single()
+        expect(error).toBeNull()
+        expect(batch).toMatchObject({ quantity: deliveries[winner]!.quantity, expires_at: deliveries[winner]!.expiresAt })
+        const { data: movements, error: movementError } = await db.from('stock_movements')
+          .select('quantity').eq('batch_id', batch!.id)
+        expect(movementError).toBeNull()
+        expect(movements).toEqual([{ quantity: deliveries[winner]!.quantity }])
+      } finally {
+        // Later stock assertions concern only the original T-001 receipt.
+        const { data: batch } = await db.from('medicine_batches').select('id')
+          .eq('medicine_id', medicineId).eq('batch_no', batchNo).maybeSingle()
+        if (batch) {
+          await db.from('stock_movements').delete().eq('batch_id', batch.id)
+          await db.from('medicine_batches').delete().eq('id', batch.id)
+        }
+      }
+    })
+
     it('leaves fields a PATCH does not mention alone', async () => {
       const updated = await request(app)
         .patch(`/api/inventory/medicines/${medicineId}`)

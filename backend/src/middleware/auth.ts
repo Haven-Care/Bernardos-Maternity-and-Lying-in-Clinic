@@ -282,3 +282,25 @@ export async function requirePatient(
     next(err)
   }
 }
+
+/** Resolve a shared login using current database roles, never editable metadata. */
+export async function getSessionIdentity(req: Request, res: Response, next: NextFunction) {
+  try {
+    const user = await verify(req)
+    const { data: profile, error } = await getSupabaseClient()
+      .from('profiles').select('role, status').eq('id', user.id).maybeSingle()
+    if (error) throw error
+    if (profile) {
+      if (profile.status !== 'active') throw new HttpError(403, 'Account unavailable.')
+      res.json({ role: profile.role })
+      return
+    }
+    // Reuse the confirmed-patient guard, including legacy account recovery.
+    // A missing/inactive staff profile must never grant patient access.
+    if (user.app_metadata?.user_type === 'staff') throw new HttpError(403, 'Account unavailable.')
+    await requirePatient(req, res, (error) => {
+      if (error) next(error)
+      else res.json({ role: 'patient' })
+    })
+  } catch (error) { next(error) }
+}

@@ -1,6 +1,8 @@
+import type { PostgrestError } from '@supabase/supabase-js'
 import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
+import { afterClinicDay } from '../lib/dateRange.js'
 import { dbError, unwrapList } from '../lib/db.js'
 import { parseQuery } from '../lib/validate.js'
 import { HttpError } from '../middleware/errorHandler.js'
@@ -45,28 +47,54 @@ async function nearExpiryDays(): Promise<number> {
 }
 
 /**
- * `?range=` for the tiles and the pie. Only the key crosses the wire; the dates
- * are worked out in SQL from clinic_today() — see dashboard_range().
+ * Presets resolve in SQL from clinic_today(). Custom ranges carry explicit
+ * calendar dates, validated here and interpreted in the clinic timezone.
  *
  * `today` when omitted, which is what the tiles counted before there was a
  * range to choose.
  */
-const rangeQuerySchema = z.object({
-  range: z.enum(DASHBOARD_RANGES).default('today'),
+export const rangeQuerySchema = z.object({
+  range: z.enum([...DASHBOARD_RANGES, 'custom']).default('today'),
+  from: z.string().date().optional(),
+  to: z.string().date().optional(),
+}).superRefine((value, context) => {
+  if (value.range === 'custom' && (!value.from || !value.to || value.from > value.to)) {
+    context.addIssue({ code: 'custom', message: 'Custom range requires valid start and end dates in order.' })
+  }
 })
+
+async function exactCount(query: PromiseLike<{ count: number | null; error: PostgrestError | null }>): Promise<number> {
+  const { count, error } = await query
+  if (error) throw dbError(error)
+  if (count === null) throw new HttpError(500, 'Appointment count unavailable.')
+  return count
+}
+
 
 /**
  * GET /api/dashboard/stats?range=
  *
- * One round trip. The four tiles are four counts over three tables, and pulling
- * them apart into separate queries would let them disagree with each other
- * across a booking that lands between two of them.
+ * Presets use the existing aggregate RPC. Custom ranges use exact filtered
+ * counts so they work without changing the hosted database functions; inventory
+ * alerts remain a current-stock count.
  */
 export async function getStats(req: Request, res: Response) {
-  const { range } = parseQuery(rangeQuerySchema, req.query)
-  const rows = unwrapList(
-    await getSupabaseClient().rpc('dashboard_stats', { p_range: range }),
-  )
+  const { range, from, to } = parseQuery(rangeQuerySchema, req.query)
+  const db = getSupabaseClient()
+  if (range === 'custom') {
+    // Exact HEAD counts avoid PostgREST's row limit and keep submitted dates in Manila.
+    const [scheduled, submitted, completed, current] = await Promise.all([
+      exactCount(db.from('appointments').select('id', { count: 'exact', head: true }).gte('scheduled_date', from!).lte('scheduled_date', to!).neq('status', 'cancelled')),
+      exactCount(db.from('appointments').select('id', { count: 'exact', head: true }).gte('submitted_at', `${from}T00:00:00+08:00`).lt('submitted_at', afterClinicDay(to!))),
+      exactCount(db.from('appointments').select('id', { count: 'exact', head: true }).gte('scheduled_date', from!).lte('scheduled_date', to!).eq('status', 'completed')),
+      db.rpc('dashboard_stats', { p_range: 'today' }),
+    ])
+    const currentRow = unwrapList(current)[0]
+    if (!currentRow) throw new HttpError(500, 'dashboard_stats returned no rows.')
+    res.json({ todaysSchedule: scheduled, bookedToday: submitted, completedAppointments: completed, inventoryAlerts: currentRow.inventory_alerts })
+    return
+  }
+  const rows = unwrapList(await db.rpc('dashboard_stats', { p_range: range }))
   const row = rows[0]
 
   // A function with a single unconditional SELECT always returns a row;
@@ -92,14 +120,19 @@ export async function getStats(req: Request, res: Response) {
  * not change colour from one load to the next when two statuses swap rank.
  */
 export async function getAppointmentsOverview(req: Request, res: Response) {
-  const { range } = parseQuery(rangeQuerySchema, req.query)
-  const rows = unwrapList(
-    await getSupabaseClient().rpc('appointment_status_counts', {
-      p_range: range,
-    }),
-  )
+  const { range, from, to } = parseQuery(rangeQuerySchema, req.query)
+  let counts: Map<string, number>
+  if (range === 'custom') {
+    const db = getSupabaseClient()
+    const pairs = await Promise.all(APPOINTMENT_STATUSES.map(async (status) => [status, await exactCount(
+      db.from('appointments').select('id', { count: 'exact', head: true }).gte('scheduled_date', from!).lte('scheduled_date', to!).eq('status', status),
+    )] as const))
+    counts = new Map(pairs)
+  } else {
+    const rows = unwrapList(await getSupabaseClient().rpc('appointment_status_counts', { p_range: range }))
+    counts = new Map(rows.map((row) => [row.status, Number(row.count ?? 0)]))
+  }
 
-  const counts = new Map(rows.map((r) => [r.status, Number(r.count ?? 0)]))
   const total = [...counts.values()].reduce((sum, n) => sum + n, 0)
 
   const slices: AppointmentsOverviewSlice[] = APPOINTMENT_STATUSES.filter(
