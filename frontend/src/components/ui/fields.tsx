@@ -66,6 +66,7 @@ export function TextField({
         disabled={disabled}
         autoComplete={autoComplete}
         aria-invalid={error ? true : undefined}
+        onInput={['date', 'datetime-local', 'time'].includes(type) ? (event) => onChange(event.currentTarget.value) : undefined}
         onChange={(e) => onChange(e.target.value)}
         className={CONTROL}
       />

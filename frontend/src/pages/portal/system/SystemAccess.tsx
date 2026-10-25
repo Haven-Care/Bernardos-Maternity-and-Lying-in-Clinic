@@ -193,6 +193,7 @@ function AddStaffModal({
     setForm({ ...form, [key]: value })
   }
 
+  const dirty = JSON.stringify(form) !== JSON.stringify(EMPTY)
   const canSave =
     form.email.includes('@') &&
     form.password.length >= 8 &&
@@ -216,6 +217,8 @@ function AddStaffModal({
   return (
     <Modal
       open={open}
+      dirty={dirty}
+      busy={saving}
       onClose={onClose}
       size="sm"
       title="Add Staff Account"
@@ -223,7 +226,7 @@ function AddStaffModal({
         <Button
           onClick={() => void save()}
           loading={saving}
-          disabled={!canSave}
+          disabled={!dirty || !canSave}
         >
           Create Account
         </Button>

@@ -2,6 +2,7 @@ import type {
   AppNotification,
   AppointmentsOverviewSlice,
   DashboardRange,
+  DashboardDateRange,
   DashboardStats,
   UrgentAlert,
 } from '../types/dashboard'
@@ -16,18 +17,19 @@ import { apiFetch } from './client'
  */
 
 /**
- * The tiles and the pie take the same range. Only the key is sent — the server
- * works out the dates from the clinic's today, not this browser's clock.
+ * Presets use the clinic clock. Custom ranges send explicit start/end dates,
+ * and both endpoints interpret them in the clinic timezone.
  */
-export async function getStats(range: DashboardRange): Promise<DashboardStats> {
-  return apiFetch<DashboardStats>(`/dashboard/stats?range=${range}`)
+export async function getStats(range: DashboardRange, dates?: DashboardDateRange): Promise<DashboardStats> {
+  return apiFetch<DashboardStats>(`/dashboard/stats?${rangeQuery(range, dates)}`)
 }
 
 export async function getAppointmentsOverview(
   range: DashboardRange,
+  dates?: DashboardDateRange,
 ): Promise<AppointmentsOverviewSlice[]> {
   return apiFetch<AppointmentsOverviewSlice[]>(
-    `/dashboard/appointments-overview?range=${range}`,
+    `/dashboard/appointments-overview?${rangeQuery(range, dates)}`,
   )
 }
 
@@ -46,4 +48,10 @@ export async function getUrgentAlerts(): Promise<UrgentAlert[]> {
 /** The header dropdown. Events that happened, not conditions that hold. */
 export async function listNotifications(): Promise<AppNotification[]> {
   return apiFetch<AppNotification[]>('/notifications')
+}
+
+function rangeQuery(range: DashboardRange, dates?: DashboardDateRange): string {
+  const query = new URLSearchParams({ range })
+  if (range === 'custom' && dates) { query.set('from', dates.from); query.set('to', dates.to) }
+  return query.toString()
 }

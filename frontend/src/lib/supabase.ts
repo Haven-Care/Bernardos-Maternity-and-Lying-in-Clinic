@@ -31,9 +31,8 @@ export const supabase = createClient(url, anonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    // The reset flow uses a six-digit code typed into a form, not a link the
-    // browser follows, so there is no callback URL to parse.
-    detectSessionInUrl: false,
+    // Support both recovery email links and manually entered OTP codes.
+    detectSessionInUrl: true,
   },
 })
 
@@ -42,3 +41,10 @@ export async function getAccessToken(): Promise<string | null> {
   const { data } = await supabase.auth.getSession()
   return data.session?.access_token ?? null
 }
+
+// The marker identifies a server-verified recovery session, never a password or token.
+export const RECOVERY_USER_KEY = 'havencare:recovery-user'
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'PASSWORD_RECOVERY' && session) sessionStorage.setItem(RECOVERY_USER_KEY, session.user.id)
+  if (event === 'SIGNED_OUT') sessionStorage.removeItem(RECOVERY_USER_KEY)
+})

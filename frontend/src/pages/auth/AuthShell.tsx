@@ -20,7 +20,7 @@ export function AuthShell({
 }) {
   return (
     <div className="flex min-h-full items-center justify-center bg-brand-50/40 p-4">
-      <div className="w-full max-w-sm rounded-card border border-border bg-surface p-7 shadow-sm">
+      <div className="w-full max-w-md rounded-card border border-border bg-surface p-5 sm:p-7 shadow-sm">
         {before}
 
         <div className="flex flex-col items-center gap-2 text-center">
@@ -69,11 +69,7 @@ export function AuthShell({
   )
 }
 
-/**
- * `to` rather than a hardcoded `/login`: the reset sequence is mounted twice,
- * once per realm, and a patient resetting their password must not be sent back
- * to the staff portal's sign-in screen. See `useAuthRealm`.
- */
+/** Recovery screens return to the shared login page. */
 export function BackToLogin({ to = '/login' }: { to?: string }) {
   return (
     <Link

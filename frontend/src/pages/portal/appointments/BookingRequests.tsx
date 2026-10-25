@@ -11,32 +11,27 @@ import {
   APPOINTMENT_STATUSES,
   type BookingRequest,
 } from '../../../types/appointment'
+import { DateRangeFields } from '../../../components/ui/DateRangeFields'
+import { clinicDate, dateRangeError, withinDateRange } from '../../../lib/dateRange'
 import { BookingDetail } from './BookingDetail'
+import { APPOINTMENT_LABELS } from '../../../lib/visits'
+import { ACTIONABLE } from '../../../lib/bookings'
 
-/**
- * `pending` is filtered out of the options, not out of the union.
- *
- * Bookings are accepted on submission, so nothing produces `pending` any more —
- * but rows created before that change still carry it, and the status column
- * still has to render them. A filter option that can only ever match history is
- * a dead control on a screen staff use every day.
- */
 const STATUS_OPTIONS = [
   { value: '', label: 'All Status' },
-  ...APPOINTMENT_STATUSES.filter((status) => status !== 'pending').map(
+  ...APPOINTMENT_STATUSES.map(
     (status) => ({
       value: status,
-      label: status[0].toUpperCase() + status.slice(1),
+      label: APPOINTMENT_LABELS[status],
     }),
   ),
 ]
 
-export function BookingRequests() {
-  const bookings = useAsync(() => api.appointments.listBookings())
-
-  const [status, setStatus] = useState('')
-  const [date, setDate] = useState('')
-  const [sort, setSort] = useState('newest')
+export function BookingRequests({ visits = false, onChanged }: { visits?: boolean; onChanged?: () => void }) {
+  const [status, setStatus] = useState(visits ? 'active' : '')
+  const [dates, setDates] = useState(() => { const today = clinicDate(new Date().toISOString()); return visits ? { from: today, to: today } : { from: '', to: '' } })
+  const bookings = useAsync(() => dateRangeError(dates) ? Promise.resolve([]) : api.appointments.listBookings(dates), [dates.from, dates.to])
+  const [sort, setSort] = useState(visits ? 'appointment' : 'newest')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<BookingRequest | null>(null)
 
@@ -44,8 +39,8 @@ export function BookingRequests() {
     const term = search.trim().toLowerCase()
 
     return (bookings.data ?? [])
-      .filter((b) => (status ? b.status === status : true))
-      .filter((b) => (date ? b.scheduledDate === date : true))
+      .filter((b) => status === 'active' ? ACTIONABLE.has(b.status) || b.status === 'arrived' : status ? b.status === status : true)
+      .filter((b) => withinDateRange(b.scheduledDate, dates))
       .filter((b) =>
         term
           ? b.patientName.toLowerCase().includes(term) ||
@@ -60,7 +55,7 @@ export function BookingRequests() {
         }
         return b.submittedAt.localeCompare(a.submittedAt)
       })
-  }, [bookings.data, status, date, search, sort])
+  }, [bookings.data, status, dates, search, sort])
 
   const columns: Column<BookingRequest>[] = [
     {
@@ -106,10 +101,11 @@ export function BookingRequests() {
     },
   ]
 
-  const filtered = status !== '' || date !== '' || search !== ''
+  const filtered = status !== '' || dates.from !== '' || dates.to !== '' || search !== ''
 
   return (
     <>
+      {visits && <p className="text-sm text-gray-600">Today’s active visits. Open a booking to confirm, record arrival, complete the visit, or mark a no-show. Change or clear the dates to view other visits.</p>}
       <Card className="appointments-list-card">
         <div className="flex flex-wrap items-end gap-3 border-b border-border p-4">
           <div className="w-40">
@@ -117,21 +113,10 @@ export function BookingRequests() {
               label="Status"
               value={status}
               onChange={setStatus}
-              options={STATUS_OPTIONS}
+              options={visits ? [{ value: 'active', label: 'Active visits' }, ...STATUS_OPTIONS] : STATUS_OPTIONS}
             />
           </div>
-          <div className="w-44">
-            <label className="mb-1.5 block text-xs font-medium text-gray-700">
-              Date
-            </label>
-            <input
-              type="date"
-              value={date}
-              aria-label="Filter by date"
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 focus:outline-none"
-            />
-          </div>
+          <DateRangeFields value={dates} onChange={setDates} />
           <div className="w-48">
             <SelectField label="Sort by" value={sort} onChange={setSort} options={[
               { value: 'newest', label: 'Newest booking first' },
@@ -169,7 +154,7 @@ export function BookingRequests() {
                   title="Nothing matches those filters"
                   description={
                     filtered
-                      ? 'Try clearing the status, date, or search.'
+                      ? 'Try clearing the status, date range, or search.'
                       : undefined
                   }
                 />
@@ -184,7 +169,7 @@ export function BookingRequests() {
           booking={selected}
           open={selected !== null}
           onClose={() => setSelected(null)}
-          onChanged={bookings.reload}
+          onChanged={() => { bookings.reload(); onChanged?.() }}
         />
       )}
     </>

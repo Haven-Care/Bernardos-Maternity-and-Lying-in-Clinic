@@ -12,6 +12,7 @@ import { useToast } from '../../../components/ui/toast-context'
 import { formatDate } from '../../../lib/format'
 import { daysUntil } from '../../../lib/dates'
 import type { MedicineListRow } from '../../../types/medicine'
+import { BATCH_NUMBER_HINT, generateBatchNumber, validBatchNumber } from '../../../lib/batchNumber'
 
 /**
  * Record Stock In / Stock Out.
@@ -36,7 +37,8 @@ export function StockModal({
   const toast = useToast()
   const batches = useAsync(() => api.inventory.listBatches(medicine.id))
 
-  const [batchNo, setBatchNo] = useState('')
+  const [initialBatchNo] = useState(() => direction === 'in' ? generateBatchNumber() : '')
+  const [batchNo, setBatchNo] = useState(initialBatchNo)
   const [batchId, setBatchId] = useState('')
   const [quantity, setQuantity] = useState<number | ''>('')
   const [expiresAt, setExpiresAt] = useState('')
@@ -45,7 +47,8 @@ export function StockModal({
   const [error, setError] = useState<string>()
 
   const stockIn = direction === 'in'
-  const dirty = batchNo !== '' || batchId !== '' || quantity !== '' || expiresAt !== '' || note !== (stockIn ? '' : 'Dispensed to patient')
+  const dirty = batchNo !== initialBatchNo || batchId !== '' || quantity !== '' || expiresAt !== '' || note !== (stockIn ? '' : 'Dispensed to patient')
+  const invalidBatch = stockIn && !validBatchNumber(batchNo)
 
   // Dispensing draws from a specific lot, so the options carry what's left and
   // how close it is to expiry — staff should be reaching for the oldest stock.
@@ -72,7 +75,7 @@ export function StockModal({
   // The form already knows both of these will be rejected, so don't invite the
   // click and then surface the same complaint a second time as a server error.
   const canSave = stockIn
-    ? batchNo.trim() !== '' &&
+    ? !invalidBatch &&
       quantity !== '' &&
       quantity > 0 &&
       expiresAt !== '' &&
@@ -80,6 +83,7 @@ export function StockModal({
     : batchId !== '' && quantity !== '' && quantity > 0 && !overQuantity
 
   async function save() {
+    if (saving || !canSave) return
     setSaving(true)
     setError(undefined)
 
@@ -135,7 +139,7 @@ export function StockModal({
         </Button>
       }
     >
-      <div className="flex flex-col gap-4">
+      <fieldset disabled={saving} className="flex min-w-0 flex-col gap-4">
         {stockIn ? (
           <>
             <TextField
@@ -144,8 +148,10 @@ export function StockModal({
               value={batchNo}
               onChange={setBatchNo}
               placeholder="e.g. B-2091"
-              hint="Reusing an existing batch number tops that lot up instead of opening a duplicate."
+              hint={`${BATCH_NUMBER_HINT} Reuse an existing number to add to that lot.`}
+              error={invalidBatch ? 'Enter a valid batch number.' : undefined}
             />
+            <button type="button" className="self-start text-xs font-semibold text-brand-700 underline" onClick={() => setBatchNo(generateBatchNumber())}>Generate another batch number</button>
             <TextField
               label="Expiration Date"
               type="date"
@@ -206,7 +212,7 @@ export function StockModal({
             {error}
           </p>
         )}
-      </div>
+      </fieldset>
     </Modal>
   )
 }

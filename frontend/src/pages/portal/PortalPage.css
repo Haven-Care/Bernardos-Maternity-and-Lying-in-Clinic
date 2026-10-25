@@ -53,3 +53,8 @@
   padding-bottom: 6px;
   white-space: nowrap;
 }
+/* The printed catalog must not squeeze the configured services table to zero. */
+.services-settings > .portal-table-card {
+  flex: 0 0 auto;
+  min-height: 320px;
+}
