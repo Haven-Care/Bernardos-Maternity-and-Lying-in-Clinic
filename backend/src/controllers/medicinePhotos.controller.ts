@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express'
 import { z } from 'zod'
+import sharp from 'sharp'
 import { getSupabaseClient } from '../config/supabase.js'
 import { dbError, unwrap } from '../lib/db.js'
 import { parseBody } from '../lib/validate.js'
@@ -52,6 +53,24 @@ export async function saveMedicinePhoto(req: Request, res: Response) {
   if (objectError || !object) throw new HttpError(400, 'Upload the photo before saving it.')
   if (!Object.hasOwn(extensions, object.contentType ?? '') || !object.size || object.size > 5242880) {
     throw new HttpError(400, 'Choose a JPG, PNG, or WebP image up to 5 MB.')
+  }
+  const { data: uploaded, error: downloadError } = await bucket.download(storagePath)
+  if (downloadError || !uploaded) throw new HttpError(502, 'Could not validate the uploaded photo. Please try again.')
+  if (!uploaded.size || uploaded.size > 5242880) {
+    throw new HttpError(400, 'Choose a JPG, PNG, or WebP image up to 5 MB.')
+  }
+  try {
+    // Decode the stored bytes: an allowed MIME label does not prove this is an image.
+    const image = sharp(Buffer.from(await uploaded.arrayBuffer()), { limitInputPixels: 25_000_000, failOn: 'warning' })
+    const { format } = await image.metadata()
+    if (!['jpeg', 'png', 'webp'].includes(format ?? '') ||
+        object.contentType !== `image/${format}` ||
+        !fileName.endsWith(`.${format === 'jpeg' ? 'jpg' : format}`)) {
+      throw new Error('Image format does not match its upload ticket.')
+    }
+    await image.raw().toBuffer()
+  } catch {
+    throw new HttpError(400, 'Choose a valid JPG, PNG, or WebP image up to 5 MB and 25 megapixels.')
   }
   const { data: previous, error: readError } = await db.from('medicine_photos')
     .select('storage_path').eq('medicine_id', id).maybeSingle()

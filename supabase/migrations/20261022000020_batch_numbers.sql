@@ -26,25 +26,21 @@ begin
     raise exception 'That medicine does not exist.' using errcode = 'HC400';
   end if;
 
-  -- The header's rule, enforced rather than only described: a differing expiry
-  -- is reported instead of quietly filed under the older date.
-  if exists (
-    select 1 from medicine_batches
-    where medicine_id = p_medicine_id
-      and batch_no = v_batch_no
-      and expires_at <> p_expires_at
-  ) then
+  -- The conflict row is locked before this predicate is evaluated, including
+  -- when a concurrent receipt inserted a row absent from our initial snapshot.
+  insert into medicine_batches (medicine_id, batch_no, quantity, expires_at)
+  values (p_medicine_id, v_batch_no, p_quantity, p_expires_at)
+  on conflict (medicine_id, batch_no) do update
+    set quantity = medicine_batches.quantity + excluded.quantity
+    where medicine_batches.expires_at = excluded.expires_at
+  returning * into v_batch;
+
+  if not found then
     raise exception
       'Batch % already exists with a different expiry date. Check the batch number.',
       v_batch_no
       using errcode = 'HC409';
   end if;
-
-  insert into medicine_batches (medicine_id, batch_no, quantity, expires_at)
-  values (p_medicine_id, v_batch_no, p_quantity, p_expires_at)
-  on conflict (medicine_id, batch_no) do update
-    set quantity = medicine_batches.quantity + excluded.quantity
-  returning * into v_batch;
 
   insert into stock_movements
     (batch_id, medicine_id, type, quantity, note, created_by)
