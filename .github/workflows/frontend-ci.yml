@@ -23,6 +23,7 @@ on:
       - main
       - frontend-main
       - backend-main
+      - feat/backend-clinic-workflows
 
 jobs:
   frontend-ci:
