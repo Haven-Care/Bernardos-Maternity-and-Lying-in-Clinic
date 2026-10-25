@@ -211,7 +211,7 @@ export function BookingPage() {
 
   if (confirmed) {
     return (
-      <PublicShell>
+      <PublicShell narrow>
         <BookingConfirmed booking={confirmed} onBookAnother={reset} />
       </PublicShell>
     )
@@ -222,7 +222,7 @@ export function BookingPage() {
   const current: BookingStep = draftServiceGone ? 0 : step
 
   return (
-    <PublicShell>
+    <PublicShell narrow>
       <Stepper current={current} onJump={setStep} />
 
       <div className="rounded-card border border-border bg-surface p-5">

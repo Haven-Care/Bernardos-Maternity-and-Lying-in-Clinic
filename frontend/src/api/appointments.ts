@@ -3,6 +3,7 @@ import type {
   CreateBookingInput,
   RescheduleBookingInput,
 } from '../types/appointment'
+import { datedList } from './pagination'
 import { apiFetch } from './client'
 
 /**
@@ -14,8 +15,8 @@ import { apiFetch } from './client'
  * suggestion, and two patients racing for the last seat both pass it.
  */
 
-export async function listBookings(): Promise<BookingRequest[]> {
-  return apiFetch<BookingRequest[]>('/bookings')
+export async function listBookings(dates?: { from: string; to: string }): Promise<BookingRequest[]> {
+  return datedList<BookingRequest>('/bookings', dates)
 }
 
 export async function getBooking(id: string): Promise<BookingRequest> {
@@ -39,9 +40,8 @@ export async function getBookingByReference(
  * with a message written for a patient ("That time was just filled"), which
  * `apiFetch` surfaces as-is.
  *
- * Comes back `confirmed`. Submitting the form *is* the booking — that lock and
- * those checks are the whole of what staff confirmation used to mean, and they
- * have already run by the time this resolves.
+ * Comes back Booked (`pending`), with its slot reserved immediately.
+ * Staff confirmation and arrival are recorded separately.
  */
 export async function createBooking(
   input: CreateBookingInput,
@@ -52,14 +52,6 @@ export async function createBooking(
   })
 }
 
-/**
- * Move a booking back to `confirmed`.
- *
- * No longer part of the booking flow — nothing arrives needing confirmation.
- * What it still does is settle a `rescheduled` appointment once the clinic and
- * the patient have agreed on the new time, and accept the handful of `pending`
- * rows that predate auto-acceptance. No screen calls it today.
- */
 export async function confirmBooking(id: string): Promise<BookingRequest> {
   return apiFetch<BookingRequest>(`/bookings/${id}/confirm`, { method: 'POST' })
 }
@@ -89,4 +81,11 @@ export async function rescheduleBooking(
     method: 'PATCH',
     body: JSON.stringify(input),
   })
+}
+
+export function arriveBooking(id: string): Promise<BookingRequest> {
+  return apiFetch(`/bookings/${id}/arrive`, { method: 'POST' })
+}
+export function noShowBooking(id: string): Promise<BookingRequest> {
+  return apiFetch(`/bookings/${id}/no-show`, { method: 'POST' })
 }

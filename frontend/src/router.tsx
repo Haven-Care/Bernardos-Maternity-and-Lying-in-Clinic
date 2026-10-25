@@ -9,6 +9,8 @@ import { Inventory } from './pages/portal/inventory/Inventory.tsx'
 import { PatientRecords } from './pages/portal/patients/PatientRecords.tsx'
 import { Administration } from './pages/portal/administration/Administration.tsx'
 import { BookingPage } from './pages/public/BookingPage.tsx'
+import { RecoveryCallback } from './pages/auth/RecoveryCallback'
+import { OAuthCallback } from './pages/auth/OAuthCallback'
 import { Login } from './pages/auth/Login.tsx'
 import { ForgotPassword } from './pages/auth/ForgotPassword.tsx'
 import { VerifyCode } from './pages/auth/VerifyCode.tsx'
@@ -23,45 +25,16 @@ import { Home } from './pages/patient/Home.tsx'
 import { UnsavedChangesGuard } from './components/UnsavedChangesGuard'
 import { NotFound } from './pages/NotFound.tsx'
 
-/**
- * Two surfaces, one app.
- *
- * `/admin/*` is the staff command center, inside the portal shell. Everything
- * else is public: `/book` is the patient booking form, and the auth screens are
- * the way into the portal.
- *
- * `/` opens patient sign-in. Staff can reach their separate sign-in at `/login`.
- *
- * `/admin/*` sits behind `<RequireStaff>`, which redirects a signed-out visitor
- * to the login page. It decides what renders, not what is permitted — every
- * request the portal makes is authorized again in Express.
- *
- * `/admin/system` is deliberately absent from the sidebar. It provisions staff
- * accounts, which the Figma never designed a screen for, and it is
- * administrator-only both here and in the API.
- *
- * The reset screens carry the email forward in router state, so they are a
- * sequence rather than four independently reachable pages: each redirects back
- * to `/forgot-password` if that state is missing.
- *
- * `/patient/*` is the third surface: the patient's own account. Sign-up and
- * sign-in are open; `/patient/bookings` sits behind `<RequirePatient>`.
- *
- * The reset sequence is mounted **twice**, once per realm, because staff and
- * patients share one GoTrue and one recovery mechanism — only the destinations
- * differ. Each screen reads its realm from the path (`useAuthRealm`) rather
- * than existing as two near-identical copies.
- *
- * `/book` itself stays public. Steps 1 and 2 are browsable signed-out and only
- * the Details step demands an account, so a patient can see what the clinic
- * offers and when before deciding to register.
- */
+/** Shared login routes by server-verified role; legacy patient links stay valid. */
 export const router = createBrowserRouter([{ element: <UnsavedChangesGuard />, children: [
-  { path: '/', element: <Navigate to="/patient/login" replace /> },
+  { path: '/', element: <Navigate to="/login" replace /> },
 
   { path: '/book', element: <BookingPage /> },
 
   { path: '/login', element: <Login /> },
+  { path: '/admin/login', element: <Login /> },
+  { path: '/auth/recovery', element: <RecoveryCallback /> },
+  { path: '/auth/callback', element: <OAuthCallback /> },
   { path: '/forgot-password', element: <ForgotPassword /> },
   { path: '/verify-code', element: <VerifyCode /> },
   { path: '/reset-password', element: <ResetPassword /> },

@@ -11,18 +11,11 @@ import {
 } from '../../../lib/format'
 import type { BookingRequest } from '../../../types/appointment'
 import { RescheduleModal } from './RescheduleModal'
+import { clinicDate } from '../../../lib/dateRange'
+import { ACTIONABLE } from '../../../lib/bookings'
+import { APPOINTMENT_LABELS, visitActions, VISIT_ACTION_LABELS, type VisitAction } from '../../../lib/visits'
 
-/**
- * The booking detail from the prototype.
- *
- * **Two actions, not three.** The prototype's primary path was Confirm, gated
- * on a `pending` status. Bookings are accepted on submission now, so nothing
- * arrives needing confirmation and that button was unreachable — a control that
- * can never fire teaches staff the wrong model of what this screen does.
- *
- * Reschedule and Cancel remain: the clinic still owns its own schedule, and
- * both are things staff decide rather than acknowledge.
- */
+/** Staff appointment details and visit workflow actions. */
 export function BookingDetail({
   booking,
   open,
@@ -38,6 +31,9 @@ export function BookingDetail({
   const [busy, setBusy] = useState(false)
   const [rescheduling, setRescheduling] = useState(false)
   const [confirmingCancel, setConfirmingCancel] = useState(false)
+  const [visitAction, setVisitAction] = useState<VisitAction>()
+  const actions = visitActions(booking, clinicDate(new Date().toISOString()), new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date()))
+  const visitApi = { confirm: api.appointments.confirmBooking, arrive: api.appointments.arriveBooking, complete: api.appointments.completeBooking, 'no-show': api.appointments.noShowBooking }
 
   function finish(title: string, message: string) {
     toast.success(title, message)
@@ -65,11 +61,11 @@ export function BookingDetail({
   }
 
   const resolved =
-    booking.status === 'cancelled' || booking.status === 'completed'
+    booking.status === 'cancelled' || booking.status === 'completed' || booking.status === 'no_show'
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title="Booking" size="sm">
+      <Modal open={open} busy={busy} onClose={onClose} title="Booking" size="sm">
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700">
@@ -94,12 +90,6 @@ export function BookingDetail({
               label="Status"
               value={<StatusBadge status={booking.status} />}
             />
-            {/*
-              "Preferred", before this change, because a pending row carried the
-              patient's requested time rather than an agreed one. The slot is
-              held the moment it is booked now, so this is simply when they are
-              coming.
-            */}
             <Row
               label="Date & Time"
               value={formatDateTime(booking.scheduledDate, booking.slotTime)}
@@ -109,17 +99,18 @@ export function BookingDetail({
 
           {resolved ? (
             <p className="text-center text-xs text-gray-400">
-              This booking is {booking.status} and can no longer be actioned.
+              This booking is {APPOINTMENT_LABELS[booking.status].toLowerCase()} and can no longer be actioned.
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-2">
-              <Button
+              {actions.map((action) => <Button key={action} variant={action === 'no-show' ? 'secondary' : 'primary'} disabled={busy} onClick={() => setVisitAction(action)}>{VISIT_ACTION_LABELS[action]}</Button>)}
+              {ACTIONABLE.has(booking.status) && <Button
                 variant="secondary"
                 disabled={busy}
                 onClick={() => setRescheduling(true)}
               >
                 Reschedule
-              </Button>
+              </Button>}
               <Button
                 variant="danger"
                 disabled={busy}
@@ -131,6 +122,10 @@ export function BookingDetail({
           )}
         </div>
       </Modal>
+      {visitAction && <ConfirmModal open={true} loading={busy} onClose={() => { if (!busy) setVisitAction(undefined) }}
+        title={VISIT_ACTION_LABELS[visitAction]} message={`${VISIT_ACTION_LABELS[visitAction]} for ${booking.patientName} (${booking.referenceNo})?`}
+        tone={visitAction === 'no-show' ? 'danger' : 'primary'} confirmLabel={VISIT_ACTION_LABELS[visitAction]}
+        onConfirm={() => void run(() => visitApi[visitAction](booking.id), 'Visit updated', 'The appointment status has been saved.')} />}
 
       {rescheduling && (
         <RescheduleModal
@@ -153,13 +148,13 @@ export function BookingDetail({
         onClose={() => setConfirmingCancel(false)}
         loading={busy}
         title="Cancel appointment"
-        message={`Cancel ${booking.patientName}'s ${booking.serviceName}? The slot will be freed and the patient notified.`}
+        message={`Cancel ${booking.patientName}'s ${booking.serviceName}? The slot will be freed and their booking history updated.`}
         confirmLabel="Cancel appointment"
         onConfirm={() =>
           void run(
             () => api.appointments.cancelBooking(booking.id),
             'Appointment Cancelled',
-            'The appointment has been cancelled and the patient notified.',
+            'The appointment has been cancelled. The patient can see the update in History.',
           )
         }
       />

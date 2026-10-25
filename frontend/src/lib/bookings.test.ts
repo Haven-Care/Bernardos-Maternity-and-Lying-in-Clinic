@@ -40,6 +40,10 @@ const ROWS = [
 const ids = (rows: BookingRequest[]) => rows.map((b) => b.id)
 
 describe('filterBookings', () => {
+  it('keeps arrivals visible and prevents no-shows from appearing upcoming', () => {
+    const rows = [booking('here', TODAY, 'arrived'), booking('absent', TODAY, 'no_show')]
+    expect(ids(filterBookings(rows, 'upcoming', TODAY))).toEqual(['here'])
+  })
   it('upcoming: live bookings from today on, soonest first', () => {
     expect(ids(filterBookings(ROWS, 'upcoming', TODAY))).toEqual([
       'today-early',

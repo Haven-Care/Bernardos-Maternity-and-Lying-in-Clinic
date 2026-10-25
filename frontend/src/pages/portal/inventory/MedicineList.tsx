@@ -30,7 +30,7 @@ export function MedicineList({
   } | null>(null)
 
   const categories = useMemo(
-    () => [...new Set((medicines.data ?? []).map((m) => m.category))].sort(),
+    () => [...new Set((medicines.data ?? []).map((m) => m.category).filter((category) => category.trim() !== ''))].sort(),
     [medicines.data],
   )
 

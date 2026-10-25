@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import * as api from '../../api'
 import type { PatientAccount } from '../../types/patientAccount'
-import { useUnsavedChanges } from '../../hooks/useUnsavedChanges'
+import { useConfirmLeave, useUnsavedChanges } from '../../hooks/useUnsavedChanges'
 import { useAsync } from '../../hooks/useAsync'
 import { Button } from '../../components/ui/Button'
 import { TextField } from '../../components/ui/fields'
@@ -45,7 +45,8 @@ function AccountContent({ account }: { account: PatientAccount }) {
   const [savedProfile, setSavedProfile] = useState({ fullName: account.fullName, contactNumber: account.contactNumber, emailNotifications: account.emailNotifications })
   const profileDirty = fullName !== savedProfile.fullName || contactNumber !== savedProfile.contactNumber || emailNotifications !== savedProfile.emailNotifications
   const passwordDirty = Object.values(form).some((value) => value !== '')
-  const confirmDiscard = useUnsavedChanges(!loggingOut && (profileDirty || passwordDirty))
+  const { confirmLeave, cancelLeave } = useConfirmLeave()
+  useUnsavedChanges(!loggingOut && (profileDirty || passwordDirty))
 
   async function saveProfile(event: React.FormEvent) {
     event.preventDefault()
@@ -82,28 +83,29 @@ function AccountContent({ account }: { account: PatientAccount }) {
   }
 
   async function logOut() {
-    if (!confirmDiscard()) return
+    if (!confirmLeave()) return
     setLoggingOut(true)
     try {
       await api.patientAuth.logout()
       navigate('/patient/login', { replace: true })
       window.location.reload()
     } catch (err) {
+      cancelLeave()
       toast.error('Could not log out', err instanceof Error ? err.message : 'Please try again.')
       setLoggingOut(false)
     }
   }
 
   return (
-    <div className="space-y-5">
-      <form onSubmit={saveProfile} className="rounded-2xl border border-border bg-white p-5 shadow-sm">
+    <div className="grid min-w-0 gap-5 lg:grid-cols-2">
+      <form onSubmit={saveProfile} className="min-w-0 self-start rounded-2xl border border-border bg-white p-5 shadow-sm">
         <h2 className="text-base font-semibold text-gray-900">Personal information</h2>
         <div className="mt-4 space-y-4">
           <TextField label="Full name" required value={fullName} onChange={setFullName} autoComplete="name" />
           <TextField label="Mobile number" required type="tel" value={contactNumber} onChange={setContactNumber} autoComplete="tel" />
           <div>
             <p className="mb-1.5 text-xs font-medium text-gray-700">Email address</p>
-            <p className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">{account.email}</p>
+            <p className="break-all rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">{account.email}</p>
           </div>
         </div>
         <div className="mt-5 flex items-center justify-between gap-4 border-t border-border pt-4">
@@ -117,14 +119,14 @@ function AccountContent({ account }: { account: PatientAccount }) {
         <Button type="submit" disabled={!profileDirty} loading={savingProfile} className="mt-5 w-full justify-center">Save changes</Button>
       </form>
 
-      <form onSubmit={changePassword} className="rounded-2xl border border-border bg-white p-5 shadow-sm">
+      <form onSubmit={changePassword} className="min-w-0 self-start rounded-2xl border border-border bg-white p-5 shadow-sm">
         <h2 className="text-base font-semibold text-gray-900">Change password</h2>
         <div className="mt-4"><ChangePasswordFields value={form} onChange={setForm} /></div>
         {passwordError && <p role="alert" className="mt-3 text-sm text-danger-700">{passwordError}</p>}
         <Button type="submit" loading={savingPassword} disabled={!isPasswordChangeReady(form)} className="mt-5 w-full justify-center">Update password</Button>
       </form>
 
-      <section className="rounded-2xl border border-border bg-white p-5 shadow-sm" aria-labelledby="contact-clinic">
+      <section className="min-w-0 self-start rounded-2xl border border-border bg-white p-5 shadow-sm" aria-labelledby="contact-clinic">
         <h2 id="contact-clinic" className="text-base font-semibold text-gray-900">Contact the clinic</h2>
         <p className="mt-1 text-sm text-gray-500">Need help with your appointment or account?</p>
         {clinic.data?.mobile && <a href={`tel:${clinic.data.mobile.replace(/[^+\d]/g, '')}`} className="mt-4 block text-sm font-semibold text-brand-700">Call {clinic.data.mobile}</a>}
@@ -132,7 +134,7 @@ function AccountContent({ account }: { account: PatientAccount }) {
         {clinic.error && <p className="mt-3 text-sm text-gray-500">Clinic contact details are temporarily unavailable.</p>}
       </section>
 
-      <Button variant="secondary" onClick={() => void logOut()} loading={loggingOut} className="w-full justify-center">Log out</Button>
+      <Button variant="secondary" onClick={() => void logOut()} loading={loggingOut} className="w-full self-start justify-center lg:col-span-2">Log out</Button>
     </div>
   )
 }

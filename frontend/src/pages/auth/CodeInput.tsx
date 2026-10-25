@@ -77,7 +77,7 @@ export function CodeInput({
   }
 
   return (
-    <div className="flex justify-center gap-2">
+    <div className="flex min-w-0 justify-center gap-1.5 sm:gap-2">
       {Array.from({ length: LENGTH }, (_, index) => (
         <input
           key={index}
@@ -93,7 +93,7 @@ export function CodeInput({
           onChange={(e) => handleInput(index, e.target.value)}
           onKeyDown={(e) => handleKeyDown(index, e)}
           onFocus={(e) => e.target.select()}
-          className="size-11 rounded-md border border-gray-300 text-center text-lg font-semibold text-gray-900 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 focus:outline-none"
+          className="h-11 w-full min-w-0 max-w-11 rounded-md border border-gray-300 text-center text-lg font-semibold text-gray-900 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 focus:outline-none"
         />
       ))}
     </div>

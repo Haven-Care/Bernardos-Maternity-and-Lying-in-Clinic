@@ -9,7 +9,24 @@ import type {
   StockMovement,
   StockOutInput,
 } from '../types/medicine'
+import { datedList } from './pagination'
 import { apiFetch } from './client'
+import { medicinePhotoError } from '../lib/medicinePhoto'
+
+export async function getMedicinePhoto(id: string): Promise<{ url: string | null }> {
+  return apiFetch(`/inventory/medicines/${id}/photo`)
+}
+
+export async function uploadMedicinePhoto(id: string, file: File): Promise<void> {
+  const invalid = medicinePhotoError(file)
+  if (invalid) throw new Error(invalid)
+  const signed = await apiFetch<{ path: string; signedUrl: string }>(`/inventory/medicines/${id}/photo/upload-url`, {
+    method: 'POST', body: JSON.stringify({ contentType: file.type }),
+  })
+  const upload = await fetch(signed.signedUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file })
+  if (!upload.ok) throw new Error('The photo could not be uploaded. Please try again.')
+  await apiFetch(`/inventory/medicines/${id}/photo`, { method: 'PUT', body: JSON.stringify({ storagePath: signed.path }) })
+}
 
 /**
  * Inventory.
@@ -39,8 +56,8 @@ export async function listBatches(medicineId: string): Promise<MedicineBatch[]> 
   return apiFetch<MedicineBatch[]>(`/inventory/medicines/${medicineId}/batches`)
 }
 
-export async function listMovements(): Promise<StockMovement[]> {
-  return apiFetch<StockMovement[]>('/inventory/movements')
+export async function listMovements(dates?: { from: string; to: string }): Promise<StockMovement[]> {
+  return datedList<StockMovement>('/inventory/movements', dates)
 }
 
 export async function listLowStock(): Promise<LowStockRow[]> {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as api from '../../../api'
 import { Button } from '../../../components/ui/Button'
 import { Modal } from '../../../components/ui/Modal'
@@ -8,6 +8,8 @@ import {
   TextField,
 } from '../../../components/ui/fields'
 import { useToast } from '../../../components/ui/toast-context'
+import { useAsync } from '../../../hooks/useAsync'
+import { medicinePhotoError } from '../../../lib/medicinePhoto'
 import type {
   DosageForm,
   MedicineInput,
@@ -73,12 +75,23 @@ export function MedicineModal({
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string>()
+  const [savedMedicine, setSavedMedicine] = useState(medicine)
+  const [baseline, setBaseline] = useState<MedicineInput>(() => medicine ? toInput(medicine) : EMPTY)
+  const [photo, setPhoto] = useState<File>()
+  const [preview, setPreview] = useState<string>()
+  const inFlight = useRef(false)
+  const currentPhoto = useAsync(() => savedMedicine ? api.inventory.getMedicinePhoto(savedMedicine.id) : Promise.resolve({ url: null }), [savedMedicine?.id])
+
+  useEffect(() => {
+    return () => { if (preview) URL.revokeObjectURL(preview) }
+  }, [preview])
 
   function set<K extends keyof MedicineInput>(key: K, value: MedicineInput[K]) {
     setForm((current) => ({ ...current, [key]: value }))
   }
 
-  const dirty = JSON.stringify(form) !== JSON.stringify(medicine ? toInput(medicine) : EMPTY)
+  const formDirty = JSON.stringify(form) !== JSON.stringify(baseline)
+  const dirty = formDirty || photo !== undefined
 
   const canSave =
     form.genericName.trim() !== '' &&
@@ -86,28 +99,30 @@ export function MedicineModal({
     form.reorderLevel > 0
 
   async function save() {
+    if (inFlight.current || !dirty || !canSave) return
+    inFlight.current = true
     setSaving(true)
     setError(undefined)
+    let detailsSaved = !formDirty && Boolean(savedMedicine)
 
     try {
-      if (editing) {
-        await api.inventory.updateMedicine(medicine.id, form)
-        toast.success(
-          'Record Updated',
-          'The changes have been saved to your inventory records.',
-        )
-      } else {
-        await api.inventory.createMedicine(form)
-        toast.success(
-          'Medicine Added',
-          'The new medicine has been successfully added to your inventory.',
-        )
+      let record = savedMedicine
+      if (!record || formDirty) {
+        record = record ? await api.inventory.updateMedicine(record.id, form) : await api.inventory.createMedicine(form)
+        setSavedMedicine(record)
+        setBaseline({ ...form })
+        detailsSaved = true
+        onSaved()
       }
-      onSaved()
+      // Keep the created id on failure so Retry never creates a second medicine.
+      if (photo) await api.inventory.uploadMedicinePhoto(record.id, photo)
+      toast.success(editing ? 'Record Updated' : 'Medicine Added', photo ? 'The medicine details and photo have been saved.' : 'The medicine details have been saved.')
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save')
+      const message = err instanceof Error ? err.message : 'Could not save'
+      setError(detailsSaved && photo ? `Medicine details are saved. ${message} Retry or undo the photo selection.` : message)
     } finally {
+      inFlight.current = false
       setSaving(false)
     }
   }
@@ -131,17 +146,32 @@ export function MedicineModal({
         </Button>
       }
     >
-      <div className="flex flex-col gap-5">
+      <fieldset disabled={saving} className="flex min-w-0 flex-col gap-5">
         <Section title="Basic Medicine Details">
           <figure className="sm:col-span-2">
             <img
-              src="/images/medicine-placeholder.png"
-              alt="Generic, unbranded medicine packaging"
+              src={photo ? preview : currentPhoto.data?.url ?? '/images/medicine-placeholder.png'}
+              alt={photo || currentPhoto.data?.url ? `${form.genericName || 'Medicine'} photo` : 'Medicine photo placeholder'}
               className="h-40 w-full rounded-lg border border-border object-cover object-center"
             />
             <figcaption className="mt-1.5 text-xs text-gray-500">
-              Example image — product photo not added yet.
+              JPG, PNG, or WebP · up to 5 MB
             </figcaption>
+            <label className="mt-2 block text-sm font-medium text-gray-700">
+              Product photo
+              <input type="file" accept="image/jpeg,image/png,image/webp" disabled={saving}
+                className="mt-1 block w-full text-sm file:mr-3 file:rounded-md file:border file:border-border file:px-3 file:py-2"
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  if (!file) return
+                  const invalid = medicinePhotoError(file)
+                  setError(invalid)
+                  if (!invalid) { setPhoto(file); setPreview(URL.createObjectURL(file)) }
+                  event.target.value = ''
+                }} />
+            </label>
+            {photo && <button type="button" disabled={saving} className="mt-2 text-xs text-brand-700 underline" onClick={() => setPhoto(undefined)}>Undo photo selection</button>}
+            {currentPhoto.error && <p role="alert" className="mt-2 text-xs text-danger-700">Could not load the saved photo. <button type="button" className="underline" onClick={currentPhoto.reload}>Retry</button></p>}
           </figure>
           <TextField
             label="Generic Name"
@@ -245,7 +275,7 @@ export function MedicineModal({
             {error}
           </p>
         )}
-      </div>
+      </fieldset>
     </Modal>
   )
 }

@@ -1,6 +1,12 @@
 # Run HavenCare locally against hosted Supabase
 
-These instructions apply to `feat/mobile-patient-ui`. Use Node.js 24 and npm.
+For **Docker-based local Supabase, Windows/Linux startup, and automated tests**,
+use the [local setup/testing guide](LOCAL_TESTING.md). This page covers running
+the application against a shared hosted development database.
+
+Use Node.js 24 and npm. Use the team's current integrated development branch;
+check it with `git branch --show-current` rather than following a historical
+feature-branch name from an older setup note.
 Run commands from the cloned project root containing `frontend/` and `backend/`.
 Docker and a local Supabase stack are not required for this setup.
 
@@ -49,8 +55,9 @@ Node.js. If it still fails, check that Node.js was installed with its PATH optio
    `https://github.com/Haven-Care/Bernardos-Maternity-and-Lying-in-Clinic.git`.
    Choose a local folder you can find again, such as a `Projects` folder under
    Documents, and click **Clone**.
-5. Click **Fetch origin**, open **Current branch**, and select
-   `feat/mobile-patient-ui`. Avoid branches starting with `archive/`.
+5. Click **Fetch origin**, open **Current branch**, and select the current
+   development branch agreed with the maintainer. Avoid branches starting with
+   `archive/`.
 6. Choose **Repository → Open in Visual Studio Code**. The folder should contain
    `frontend`, `backend`, and `supabase`. Continue with the dependency installation
    below.
@@ -150,9 +157,9 @@ The browser connects to Supabase Auth for login. Application requests go to the
 local Express backend, which connects to hosted Supabase for data and storage.
 Writes affect the configured shared development database, not a private local copy.
 
-## Current setup — 2026-10-18
+## Historical setup notes — 2026-10-18
 
-- Use `feat/mobile-patient-ui`, which includes the newer dashboard date-range API.
+- At that date, `feat/mobile-patient-ui` included the newer dashboard date-range API.
   The older `archive/feat/backend-api` snapshot expects an incompatible database
   interface and is retained only as an archive.
 - Frontend and backend use ports 6100 and 6101. `npm run dev` reads the port from
@@ -169,3 +176,140 @@ On a shared computer, commit and push before leaving, sign out of the app and
 GitHub sessions, and remove local credentials. A locally running backend requires
 the privileged development key on that computer; use a hosted development API
 instead if the computer cannot be trusted with it.
+
+## Shared login and password recovery
+
+The shared sign-in page is `/login`. `/`, `/patient/login`, and `/admin/login`
+reach the same form. The backend's authenticated `/api/account/session` endpoint
+resolves active staff/administrator profiles and confirmed patient accounts;
+client-editable metadata cannot select a staff role. Existing patient and staff
+API guards remain responsible for authorizing each request.
+
+Password recovery accepts the six-digit code from `supabase/templates/recovery.html`
+or the standard Supabase recovery email link. For each hosted environment, add
+its frontend `/auth/recovery` URL to Supabase Auth's redirect allowlist and keep
+Site URL pointed at the frontend. For example, the current frontend callback is
+`https://havencare-frontend-ruddy.vercel.app/auth/recovery`. Use the eventual custom
+domain when one is configured. These hosted Auth settings are separate from the
+local `supabase/config.toml` file. A verified recovery session is required before
+the new-password form can be used. The browser signs out locally after success.
+
+SMTP credentials and an inbox delivery test are still required to verify real
+email delivery. Do not use a real patient's address for development tests.
+See [Supabase email templates](https://supabase.com/docs/guides/auth/auth-email-templates)
+and [redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls).
+
+## Production deployment branch — 21 October 2026
+
+Both `havencare-frontend` and `havencare-backend` now track `main` for production
+in Vercel's Production environment. Team branches remain preview branches.
+Changing branch tracking does not publish uncommitted local work or automatically
+apply SQL migrations. Deploy the frontend and backend from the same integrated
+commit: shared login requires the backend session endpoint, and historical date
+filters require the updated paginated endpoints.
+
+Custom dashboard dates use exact API counts against existing tables and do not
+require a new database migration. Inventory alerts remain current regardless of
+the selected date range. Appointment dates and timestamp cutoffs use Manila time.
+
+## Google sign-in
+
+Google sign-in is implemented behind `VITE_GOOGLE_LOGIN_ENABLED=true`; leave it
+false until the provider is configured. In the clinic-owned Google Cloud project,
+configure a web OAuth client with the Supabase callback URL shown in Auth →
+Providers → Google. Store its client ID/secret in the Supabase provider settings,
+never in frontend variables or committed files. Allow the frontend's
+`/auth/callback` URL (including its optional `next` query parameter) in Supabase
+Auth's redirect configuration. Use a narrowly scoped pattern such as
+`https://your-frontend.example/auth/callback**` if needed for `next`; do not allow
+all paths or arbitrary origins. The callback resolves the role using
+`/api/account/session`; Google metadata cannot grant staff access. Existing staff
+profiles remain the authority, and new Google users become patients. Complete
+missing patient contact details before booking.
+
+Enable the frontend flag and deploy after testing with a clinic-authorized Google
+account. Verify new-patient registration, existing-account linking, staff routing,
+rejected/deactivated accounts, and cancelled consent. The local mocked tests do
+not verify the external Google consent screen or hosted provider configuration.
+See [Supabase Google sign-in](https://supabase.com/docs/guides/auth/social-login/auth-google).
+
+## Medicine photos
+
+Apply `20261022000016_medicine_photos.sql` before deploying the photo endpoints.
+It adds a private `medicine-photos` bucket and the `medicine_photos` table with RLS
+and no browser policies. The API requires staff authentication for upload tickets,
+photo attachment, and short-lived view links. JPG, PNG, and WebP files are limited
+to 5 MB, both in the picker and in storage. SQL migration application and hosted
+storage checks are separate from frontend/backend build success.
+
+A new medicine is saved before its photo uploads. If storage fails, the modal
+states that the details were saved and retains the medicine ID and selected photo
+for retry; retrying does not create another medicine. Undoing the pending photo
+selection keeps the already-saved details. Cancelling the native file picker must
+leave the modal and current selection intact. Replacing a photo commits the new
+object path before attempting to remove the previous object. Failed/unattached
+uploads can remain in storage and may need periodic orphan cleanup.
+
+Before release, verify staff upload/read access and patient/anonymous denial on
+the intended Supabase project. Database types include the new table definition;
+regenerate them against a disposable migrated local database when available.
+
+## Visit management, services, and batch numbers
+
+Apply migrations 17–20 in order. Migration 17 commits the `arrived` and `no_show`
+enum values before migration 18 uses them. Existing confirmed appointments keep
+their status; new submissions become `pending` (labelled **Booked**) and continue
+to reserve capacity immediately. Visit management defaults to today's active
+appointments and supports custom dates, reference search, confirmation, arrival,
+completion, cancellation, and no-show recording. Confirmation can happen before
+the appointment day. Arrival/completion are allowed from the appointment date;
+no-show is allowed after the scheduled time. Rescheduling is available before
+arrival. Arrived patients must be managed by staff.
+
+Staff transitions run in a row-locked database function, append an audit event,
+and close open reschedule requests when attendance starts or the visit ends.
+Completed, cancelled, and no-show visits are terminal. For historical accounting,
+no-show bookings continue to count toward their original slot, like completed
+visits; cancellation releases a slot. Patient history shows current statuses.
+These are in-app updates; SMTP email delivery is a separate integration.
+
+Migration 19 adds all missing poster services without replacing configured prices
+or reactivating previously deactivated services. The 16 missing entries on a fresh
+seed receive **₱100 temporary prices**, clearly labelled in administration and
+booking/review. Staff can edit the price and clear the temporary-price checkbox
+once the clinic supplies its final rate. The fresh seed has 20 active entries:
+17 poster services plus the existing Consultation, Ultrasound, and Follow-up.
+
+Stock In generates an editable batch number. Custom values accept up to 64
+letters, numbers, spaces, hyphens, #, underscore, slash, and period, with at least
+one letter/number. Validation runs in the form, API, and stock-in function. Blank
+API/SQL values generate a number. Existing batch top-up and expiry rules remain;
+maximum-stock, percentage, low-stock policy changes, and clinical-condition lists
+are awaiting clinic decisions.
+
+`supabase/tests/visit_workflow.sql` exercises reservation, same-day transitions,
+terminal-state protection, cancellation/request cleanup, audit events, batch
+validation, placeholder rates, and RLS posture on a disposable migrated/seeded DB.
+It rolls its synthetic records back. The test also passed with PGlite using minimal
+Auth/Storage schema stubs; that verifies PostgreSQL rules, not hosted GoTrue,
+PostgREST, Storage uploads, or concurrent HTTP requests. The full Supabase
+integration suites still require a running local stack.
+
+## Free public URL and SMTP follow-up — 22 October 2026
+
+`bernardo-clinic.vercel.app` is attached to the frontend project. It temporarily
+redirects (307) to `havencare-frontend-ruddy.vercel.app`, because the deployed
+frontend's API transport recognizes only its previous hostname. This branch fixes
+transport for every `.vercel.app` frontend using the existing same-origin proxy.
+After deploying this branch's reviewed code and migrations, change the new domain
+back to Production in Vercel, verify `/book` loads services through `/api`, and
+add its recovery/OAuth callback URLs to Supabase before making it canonical. The
+old domain remains available during the transition. The domain configuration
+change did not publish this branch's feature code.
+
+Brevo is recommended for the current free-domain setup (300 sends/day on its
+free plan). A free mailbox sender may be rewritten under `brevosend.com`; an owned
+authenticated email domain is needed for fully branded sending. The clinic must
+choose a sender, authorize a test inbox, and privately configure SMTP credentials
+in Supabase. No email-provider account, paid domain, or Terms of Service was
+created. Google OAuth remains disabled until its clinic-owned project is ready.

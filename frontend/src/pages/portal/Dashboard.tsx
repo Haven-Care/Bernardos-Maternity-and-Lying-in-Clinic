@@ -4,21 +4,27 @@ import * as api from '../../api'
 import * as patientAccounts from '../../api/patientAccounts'
 import { useAsync } from '../../hooks/useAsync'
 import { AsyncBoundary, ErrorState } from '../../components/ui/states'
-import { DASHBOARD_RANGES, type DashboardPreset } from '../../types/dashboard'
+import { DASHBOARD_RANGES, type DashboardRange } from '../../types/dashboard'
+import { DateRangeFields } from '../../components/ui/DateRangeFields'
+import { dateRangeError } from '../../lib/dateRange'
 import './Dashboard.css'
 
 const PAGE_SIZE = 10
 const LABELS = { good: 'In Stock', low: 'Low Stock', out: 'Out of Stock' }
-const RANGE_LABELS: Record<DashboardPreset, string> = {
+const RANGE_LABELS: Record<DashboardRange, string> = {
   today: 'Today', yesterday: 'Yesterday', 'last-7-days': 'Last 7 days',
-  'this-month': 'This month', 'last-month': 'Last month', 'all-time': 'All time',
+  'this-month': 'This month', 'last-month': 'Last month', 'all-time': 'All time', custom: 'Custom dates',
 }
 export function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedRange = searchParams.get('range')
-  const range: DashboardPreset = DASHBOARD_RANGES.find((value) => value === requestedRange) ?? 'today'
+  const range: DashboardRange = requestedRange === 'custom' ? 'custom' : DASHBOARD_RANGES.find((value) => value === requestedRange) ?? 'today'
+  const from = searchParams.get('from') ?? ''
+  const to = searchParams.get('to') ?? ''
+  const dates = { from, to }
+  const ready = range !== 'custom' || (!!from && !!to && !dateRangeError(dates))
   const profile = useAsync(() => api.account.getProfile())
-  const stats = useAsync(() => api.dashboard.getStats(range), [range])
+  const stats = useAsync(() => ready ? api.dashboard.getStats(range, { from, to }) : Promise.resolve(undefined), [range, from, to, ready])
   const accounts = useAsync(() => patientAccounts.list())
   const inventory = useAsync(() => api.inventory.listMedicines())
   const alerts = useAsync(() => api.dashboard.getUrgentAlerts())
@@ -43,18 +49,25 @@ export function Dashboard() {
           ? `Welcome back, ${profile.data.fullName.split(' ')[0]}. ${range === 'today' ? "Here's what's happening today." : 'Clinic overview.'}`
           : range === 'today' ? "Here's what's happening today." : 'Clinic overview.'}</p>
       </div>
-      <label className="hc-range">Date range
+      <div className="flex flex-wrap items-end gap-3"><label className="hc-range">Date range
         <select value={range} onChange={(event) => {
           const next = new URLSearchParams(searchParams)
           next.set('range', event.target.value)
+          if (event.target.value !== 'custom') { next.delete('from'); next.delete('to') }
           setSearchParams(next, { replace: true })
         }}>
-          {DASHBOARD_RANGES.map((value) => <option key={value} value={value}>{RANGE_LABELS[value]}</option>)}
+          {[...DASHBOARD_RANGES, 'custom' as const].map((value) => <option key={value} value={value}>{RANGE_LABELS[value]}</option>)}
         </select>
       </label>
+      {range === 'custom' && <DateRangeFields value={dates} required onChange={(value) => {
+        const next = new URLSearchParams(searchParams)
+        next.set('from', value.from); next.set('to', value.to)
+        setSearchParams(next, { replace: true })
+      }} />}
+      </div>
     </header>
     <section className="hc-stats" aria-label="Clinic overview">
-      {stats.error ? <div className="hc-stats-error"><ErrorState error={stats.error} onRetry={stats.reload} /></div> :
+      {!ready ? <p className="text-sm text-gray-600">Choose start and end dates to view the overview.</p> : stats.error ? <div className="hc-stats-error"><ErrorState error={stats.error} onRetry={stats.reload} /></div> :
         tiles.map(tile => <article className="hc-stat" key={tile.label}>
           <h2>{tile.label}</h2><strong>{tile.value === undefined ? '...' : tile.value ?? '—'}</strong>
           {tile.value === null && <small>Not available</small>}
