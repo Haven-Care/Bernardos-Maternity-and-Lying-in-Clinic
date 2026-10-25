@@ -31,6 +31,7 @@ describe.skipIf(!up)('services, slots and clinic', () => {
         name: expect.any(String),
         category: expect.any(String),
         price: expect.any(Number),
+        priceIsTemporary: expect.any(Boolean),
         active: expect.any(Boolean),
       })
     })

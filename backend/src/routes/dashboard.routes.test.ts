@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import request from 'supertest'
 import { createApp } from '../app.js'
 import { getSupabaseClient } from '../config/supabase.js'
-import { DASHBOARD_RANGES, type DashboardRange } from '../contract/dashboard.js'
+import { DASHBOARD_RANGES, type DashboardPreset } from '../contract/dashboard.js'
 import {
   ADMIN_EMAIL,
   STAFF_PASSWORD,
@@ -252,6 +252,8 @@ describe.skipIf(!up)('dashboard', () => {
         'rescheduled',
         'cancelled',
         'completed',
+        'arrived',
+        'no_show',
       ]
       const positions = res.body.map((s: { status: string }) =>
         order.indexOf(s.status),
@@ -274,7 +276,7 @@ describe.skipIf(!up)('dashboard', () => {
   describe('range', () => {
     type Booking = { scheduledDate: string; submittedAt: string; status: string }
 
-    function bounds(range: DashboardRange, today: string): [string, string] {
+    function bounds(range: DashboardPreset, today: string): [string, string] {
       const [year, month] = today.split('-').map(Number)
       const iso = (d: Date) => d.toISOString().slice(0, 10)
       const shift = (days: number) => {

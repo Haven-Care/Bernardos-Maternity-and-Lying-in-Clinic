@@ -5,6 +5,8 @@ import {
   cancelBooking,
   completeBooking,
   confirmBooking,
+  arriveBooking,
+  noShowBooking,
   getBooking,
   getBookingByReference,
   listBookings,
@@ -47,6 +49,8 @@ bookingsRouter.get('/', requireStaff, listBookings)
 bookingsRouter.get('/reference/:referenceNo', requireStaff, getBookingByReference)
 bookingsRouter.get('/:id', requireStaff, getBooking)
 bookingsRouter.post('/:id/confirm', requireStaff, confirmBooking)
+bookingsRouter.post('/:id/arrive', requireStaff, arriveBooking)
+bookingsRouter.post('/:id/no-show', requireStaff, noShowBooking)
 bookingsRouter.post('/:id/complete', requireStaff, completeBooking)
 bookingsRouter.patch('/:id/reschedule', requireStaff, rescheduleBooking)
 bookingsRouter.delete('/:id', requireStaff, cancelBooking)

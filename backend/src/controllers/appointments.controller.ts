@@ -2,7 +2,8 @@ import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
 import { dbError, unwrap, unwrapList } from '../lib/db.js'
-import { isoDate, parseBody } from '../lib/validate.js'
+import { isoDate, parseBody, parseQuery } from '../lib/validate.js'
+import { datedListQuery } from '../lib/dateRange.js'
 import { HttpError } from '../middleware/errorHandler.js'
 import { toBooking } from '../mappers/appointment.js'
 import type { Database } from '../db/types.js'
@@ -17,15 +18,13 @@ const rescheduleSchema = z.object({
   slotTime: z.string().regex(TIME, 'Choose a time.'),
 })
 
-export async function listBookings(_req: Request, res: Response) {
-  const rows = unwrapList(
-    await getSupabaseClient()
-      .from('appointments')
-      .select('*')
-      .order('scheduled_date', { ascending: false })
-      .order('slot_time'),
-  )
-
+export async function listBookings(req: Request, res: Response) {
+  const { from, to, offset, limit } = parseQuery(datedListQuery, req.query)
+  let query = getSupabaseClient().from('appointments').select('*')
+    .order('scheduled_date', { ascending: false }).order('slot_time').order('id')
+  if (from) query = query.gte('scheduled_date', from)
+  if (to) query = query.lte('scheduled_date', to)
+  const rows = unwrapList(await query.range(offset, offset + limit - 1))
   res.json(rows.map(toBooking))
 }
 
@@ -81,38 +80,14 @@ export async function getBookingByReference(req: Request, res: Response) {
  * confirming or completing one would silently resurrect an appointment the
  * patient was told was off.
  */
-async function setStatus(id: string, next: Status, allowedFrom: Status[]) {
-  const db = getSupabaseClient()
-
-  const current = unwrap(
-    await db.from('appointments').select('status').eq('id', id).maybeSingle(),
-    'No such booking.',
-  )
-
-  if (!allowedFrom.includes(current.status)) {
-    throw new HttpError(
-      409,
-      `A ${current.status} appointment cannot be marked ${next}.`,
-    )
-  }
-
-  // The write repeats the check as a filter. The read above is only for the
-  // message; without the filter, a complete and a cancel landing together would
-  // both pass it and the last write would win — a finished visit could end up
-  // cancelled, or a reschedule could be overwritten.
-  const { data, error } = await db
-    .from('appointments')
-    .update({ status: next })
-    .eq('id', id)
-    .in('status', allowedFrom)
-    .select('*')
-    .maybeSingle()
-
+async function setStatus(req: Request, next: Status) {
+  const id = parseBody(idSchema, req.params.id)
+  if (!req.staff) throw new HttpError(403, 'Staff access required.')
+  const { data, error } = await getSupabaseClient().rpc('transition_appointment', {
+    p_booking_id: id, p_next: next, p_actor: req.staff.userId,
+  })
   if (error) throw dbError(error)
-  if (!data) {
-    throw new HttpError(409, 'That appointment changed while you were updating it.')
-  }
-
+  if (!data) throw new HttpError(500, 'Appointment update returned nothing.')
   return data
 }
 
@@ -134,38 +109,19 @@ export async function declineOpenRescheduleRequest(bookingId: string) {
 }
 
 export async function confirmBooking(req: Request, res: Response) {
-  const id = parseBody(idSchema, req.params.id)
-  res.json(toBooking(await setStatus(id, 'confirmed', ['pending', 'rescheduled'])))
+  res.json(toBooking(await setStatus(req, 'confirmed')))
 }
-
-/**
- * DELETE /api/bookings/:id
- *
- * Cancels rather than deletes. The appointment stays in the record — the
- * Dashboard charts cancellations, and a clinic needs to know a slot was held
- * and given up rather than never booked.
- */
+export async function arriveBooking(req: Request, res: Response) {
+  res.json(toBooking(await setStatus(req, 'arrived')))
+}
+export async function noShowBooking(req: Request, res: Response) {
+  res.json(toBooking(await setStatus(req, 'no_show')))
+}
 export async function cancelBooking(req: Request, res: Response) {
-  const id = parseBody(idSchema, req.params.id)
-  const row = await setStatus(id, 'cancelled', [
-    'pending',
-    'confirmed',
-    'rescheduled',
-  ])
-
-  await declineOpenRescheduleRequest(id)
-  res.json(toBooking(row))
+  res.json(toBooking(await setStatus(req, 'cancelled')))
 }
-
 export async function completeBooking(req: Request, res: Response) {
-  const id = parseBody(idSchema, req.params.id)
-  // Completing straight from pending is allowed: a walk-in the clinic saw
-  // without ever formally confirming still happened.
-  res.json(
-    toBooking(
-      await setStatus(id, 'completed', ['pending', 'confirmed', 'rescheduled']),
-    ),
-  )
+  res.json(toBooking(await setStatus(req, 'completed')))
 }
 
 /**

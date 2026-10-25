@@ -9,7 +9,7 @@ import type { AppointmentStatus } from './appointment'
  * The server turns the key into dates from the clinic's today, so a browser
  * with the wrong clock or timezone cannot shift it. `today` when omitted.
  */
-export type DashboardRange =
+export type DashboardPreset =
   | 'today'
   | 'yesterday'
   | 'last-7-days'
@@ -17,7 +17,11 @@ export type DashboardRange =
   | 'last-month'
   | 'all-time'
 
-export const DASHBOARD_RANGES: DashboardRange[] = [
+export type DashboardRange = DashboardPreset | 'custom'
+
+export interface DashboardDateRange { from: string; to: string }
+
+export const DASHBOARD_RANGES: DashboardPreset[] = [
   'today',
   'yesterday',
   'last-7-days',

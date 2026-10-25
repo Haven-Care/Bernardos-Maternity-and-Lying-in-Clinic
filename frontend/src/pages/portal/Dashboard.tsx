@@ -4,19 +4,19 @@ import * as api from '../../api'
 import * as patientAccounts from '../../api/patientAccounts'
 import { useAsync } from '../../hooks/useAsync'
 import { AsyncBoundary, ErrorState } from '../../components/ui/states'
-import { DASHBOARD_RANGES, type DashboardRange } from '../../types/dashboard'
+import { DASHBOARD_RANGES, type DashboardPreset } from '../../types/dashboard'
 import './Dashboard.css'
 
 const PAGE_SIZE = 10
 const LABELS = { good: 'In Stock', low: 'Low Stock', out: 'Out of Stock' }
-const RANGE_LABELS: Record<DashboardRange, string> = {
+const RANGE_LABELS: Record<DashboardPreset, string> = {
   today: 'Today', yesterday: 'Yesterday', 'last-7-days': 'Last 7 days',
   'this-month': 'This month', 'last-month': 'Last month', 'all-time': 'All time',
 }
 export function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedRange = searchParams.get('range')
-  const range: DashboardRange = DASHBOARD_RANGES.find((value) => value === requestedRange) ?? 'today'
+  const range: DashboardPreset = DASHBOARD_RANGES.find((value) => value === requestedRange) ?? 'today'
   const profile = useAsync(() => api.account.getProfile())
   const stats = useAsync(() => api.dashboard.getStats(range), [range])
   const accounts = useAsync(() => patientAccounts.list())

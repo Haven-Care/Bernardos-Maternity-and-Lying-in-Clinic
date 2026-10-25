@@ -76,3 +76,8 @@ export interface CreateStaffInput {
   contactNumber: string
   role: StaffRole
 }
+
+/** Server-verified destination for the shared sign-in page. */
+export interface SessionIdentity {
+  role: StaffRole | 'patient'
+}
