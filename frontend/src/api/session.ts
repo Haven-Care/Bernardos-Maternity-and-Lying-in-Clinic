@@ -9,17 +9,20 @@ export function getIdentity(): Promise<SessionIdentity> {
 
 export const googleLoginEnabled = import.meta.env.VITE_GOOGLE_LOGIN_ENABLED === 'true'
 
-export async function loginWithGoogle(from?: unknown): Promise<void> {
+export async function loginWithGoogle(credential: string, nonce: string): Promise<SessionIdentity> {
   if (!googleLoginEnabled) throw new Error('Google sign-in is not enabled yet.')
+  if (!credential || !nonce) throw new Error('Google sign-in did not return a valid credential.')
   sessionStorage.removeItem(RECOVERY_USER_KEY)
-  const callback = new URL('/auth/callback', window.location.origin)
-  if (typeof from === 'string') callback.searchParams.set('next', from)
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google', options: { redirectTo: callback.toString(), skipBrowserRedirect: true },
+  const { data, error } = await supabase.auth.signInWithIdToken({
+    provider: 'google', token: credential, nonce,
   })
   if (error) throw error
-  if (!data.url) throw new Error('Could not start Google sign-in.')
-  window.location.assign(data.url)
+  if (!data.session) throw new Error('Google sign-in did not create a session.')
+  try { return await getIdentity() }
+  catch (error) {
+    if (isSessionError(error)) await supabase.auth.signOut()
+    throw error
+  }
 }
 
 export async function completeOAuthLogin(): Promise<SessionIdentity> {

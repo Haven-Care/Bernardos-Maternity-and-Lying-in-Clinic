@@ -131,7 +131,8 @@ skip when Supabase is unavailable; skipped suites are incomplete verification.
 | `VITE_API_URL` | Frontend | `http://localhost:6101/api` |
 | `VITE_SUPABASE_URL` | Frontend | Same Supabase project as the backend |
 | `VITE_SUPABASE_ANON_KEY` | Frontend | Local `ANON_KEY`; public browser key |
-| `VITE_GOOGLE_LOGIN_ENABLED` | Frontend | `false` until OAuth is configured |
+| `VITE_GOOGLE_LOGIN_ENABLED` | Frontend | `false` until Google sign-in is configured |
+| `VITE_GOOGLE_CLIENT_ID` | Frontend | Public Web client ID matching Supabase's Google provider |
 
 The guide uses terminal-scoped variables so existing hosted `.env` files stay
 intact. Every new terminal needs environment initialization. Keep privileged
