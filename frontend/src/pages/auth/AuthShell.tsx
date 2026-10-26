@@ -62,7 +62,7 @@ export function AuthShell({
         {footer && <div className="mt-4">{footer}</div>}
 
         <p className="mt-6 text-center text-xs text-gray-400">
-          © {new Date().getFullYear()} HavenCare. All rights reserved.
+          © {new Date().getFullYear()} Bernardo’s Maternity &amp; Lying-in Clinic. All rights reserved.
         </p>
       </div>
     </div>

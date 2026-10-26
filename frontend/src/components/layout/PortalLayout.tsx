@@ -139,7 +139,7 @@ function Header({ clinicName }: { clinicName?: string }) {
           <p className="text-sm leading-tight font-semibold italic text-brand-700 sm:text-base lg:text-lg">
             {clinicName ?? "Bernardo's Maternity and Lying-in Clinic"}
           </p>
-          <p className="text-xs italic text-brand-600 sm:text-sm">HavenCare System</p>
+          <p className="text-xs italic text-brand-600 sm:text-sm">Clinic Management System</p>
         </div>
       </div>
       <LiveDate />

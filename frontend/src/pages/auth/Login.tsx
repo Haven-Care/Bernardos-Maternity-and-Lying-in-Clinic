@@ -39,7 +39,7 @@ export function Login() {
   }
 
   return (
-    <AuthShell title="Sign in" subtitle="Access your HavenCare account."
+    <AuthShell title="Sign in" subtitle="Access your Bernardo Clinic account."
       footer={<p className="text-center text-xs text-gray-500">New patient? <Link to="/patient/signup" state={typeof from === 'string' ? { from } : undefined} className="font-semibold text-brand-600 hover:underline">Create an account</Link></p>}>
       <form className="flex flex-col gap-4" onSubmit={onSubmit}>
         {/*
@@ -59,7 +59,7 @@ export function Login() {
           required
           value={identifier}
           onChange={setIdentifier}
-          placeholder="you@havencare.ph"
+          placeholder="you@example.com"
           autoComplete="username"
         />
 
