@@ -17,11 +17,13 @@ export function Login() {
   const [submitting, setSubmitting] = useState(false)
   const [googleSubmitting, setGoogleSubmitting] = useState(false)
 
-  async function googleLogin() {
+  async function googleLogin(credential: string, nonce: string) {
     setGoogleSubmitting(true)
     setError(undefined)
-    try { await api.session.loginWithGoogle(from) }
-    catch { setError('Unable to start Google sign-in. Please try again.'); setGoogleSubmitting(false) }
+    try {
+      const identity = await api.session.loginWithGoogle(credential, nonce)
+      navigate(loginDestination(identity.role, from), { replace: true })
+    } finally { setGoogleSubmitting(false) }
   }
 
   async function onSubmit(event: React.FormEvent) {
@@ -92,7 +94,7 @@ export function Login() {
         <Button type="submit" loading={submitting} disabled={googleSubmitting || !identifier.trim() || !password} className="mt-1 w-full">
           Log In
         </Button>
-        {api.session.googleLoginEnabled && <GoogleSignInButton loading={googleSubmitting} disabled={submitting} onClick={() => void googleLogin()} />}
+        {api.session.googleLoginEnabled && <GoogleSignInButton loading={googleSubmitting} disabled={submitting} onCredential={googleLogin} onError={() => setError('Google sign-in could not be completed. Please try again or use your email and password.')} />}
       </form>
     </AuthShell>
   )

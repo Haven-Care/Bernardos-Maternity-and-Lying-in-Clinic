@@ -215,24 +215,59 @@ the selected date range. Appointment dates and timestamp cutoffs use Manila time
 
 ## Google sign-in
 
-Google sign-in is implemented behind `VITE_GOOGLE_LOGIN_ENABLED=true`; leave it
-false until the provider is configured. In the clinic-owned Google Cloud project,
-configure a web OAuth client with the Supabase callback URL shown in Auth →
-Providers → Google. Store its client ID/secret in the Supabase provider settings,
-never in frontend variables or committed files. Allow the frontend's
-`/auth/callback` URL (including its optional `next` query parameter) in Supabase
-Auth's redirect configuration. Use a narrowly scoped pattern such as
-`https://your-frontend.example/auth/callback**` if needed for `next`; do not allow
-all paths or arbitrary origins. The callback resolves the role using
-`/api/account/session`; Google metadata cannot grant staff access. Existing staff
-profiles remain the authority, and new Google users become patients. Complete
-missing patient contact details before booking.
+The frontend uses Google's official Identity Services button on the website.
+Google returns an ID token to the page; `supabase.auth.signInWithIdToken()`
+exchanges it for a Supabase session. The frontend then calls
+`/api/account/session` for the server-verified role and preserves the requested
+destination. Google metadata cannot grant staff access. Existing staff profiles
+remain the authority, and new Google users become patients. Complete missing
+patient contact details before booking.
 
-Enable the frontend flag and deploy after testing with a clinic-authorized Google
-account. Verify new-patient registration, existing-account linking, staff routing,
-rejected/deactivated accounts, and cancelled consent. The local mocked tests do
-not verify the external Google consent screen or hosted provider configuration.
-See [Supabase Google sign-in](https://supabase.com/docs/guides/auth/social-login/auth-google).
+In Google Cloud → Google Auth Platform → Clients, open the existing **Web**
+OAuth client. Under **Authorized JavaScript origins**, add each exact origin
+that serves the app, without paths or trailing slashes:
+
+- Production: `https://bernardo-clinic.vercel.app`
+- Local testing: `http://localhost:6100` (and `http://127.0.0.1:6100` if used)
+- Any other deployed hostname where Google sign-in should work, individually.
+
+The clinic domain must serve the app directly; redirecting elsewhere changes
+the origin Google receives. Keep the existing Supabase callback URI and
+`/auth/callback` route for older deployed clients during rollout. The new
+JavaScript popup flow does not use that redirect. Do not change the callback URI
+to the frontend root.
+
+Keep the same client ID and client secret configured in Supabase Auth →
+Providers → Google, with nonce checking enabled. Set these **frontend** variables
+locally and in Vercel → frontend project → Settings → Environment Variables:
+
+```dotenv
+VITE_GOOGLE_LOGIN_ENABLED=true
+VITE_GOOGLE_CLIENT_ID=619815113208-dr02v4db3ifrp2ql0mgct36si6u4hthq.apps.googleusercontent.com
+```
+
+The client ID is public and must match Supabase's Google provider. The **client
+secret belongs only in Supabase**, never in a `VITE_` variable or Git. Restart
+Vite after local environment changes; redeploy Vercel after production changes
+because Vite embeds these values at build time. When testing with local Supabase,
+configure the matching Google client in that stack too; do not mix hosted and
+local Auth settings.
+
+Each mounted sign-in attempt generates a cryptographically random nonce. Google
+receives its SHA-256 hexadecimal hash; Supabase receives the original. Failed
+exchanges rotate the nonce before retry. Blocked SDK downloads show a retry and
+leave email/password sign-in available. Closing the Google popup does not leave
+the form stuck submitting. The app does not automatically fall back to the
+Supabase redirect flow.
+
+Before release, test with a clinic-authorized Google account on the intended
+domain. Verify the account chooser's actual domain/name, new-patient registration,
+existing-account linking, staff routing, rejected/deactivated accounts, and
+cancelled consent. Google controls the displayed identity; this integration does
+not guarantee exact consent-screen wording or replace Google's brand verification.
+Local mocked tests do not verify Google consent or hosted provider configuration.
+See [Supabase Google sign-in](https://supabase.com/docs/guides/auth/social-sign-in/auth-google)
+and [Google's setup guide](https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid).
 
 ## Medicine photos
 
@@ -297,6 +332,14 @@ PostgREST, Storage uploads, or concurrent HTTP requests. The full Supabase
 integration suites still require a running local stack.
 
 ## Free public URL and SMTP follow-up — 22 October 2026
+
+**URL update — 27 October 2026:** `https://bernardo-clinic.vercel.app` now serves
+the frontend directly. Supabase's hosted Site URL was changed to this origin;
+its `/auth/callback` and `/auth/recovery` return routes were added to the redirect
+allowlist, with wildcard matching for legacy callback query strings. A callback
+error redirects to this origin, and `/login` and
+`/auth/callback` both return HTTP 200. A complete Google account sign-in still
+requires user acceptance testing. The paragraphs below record the earlier setup.
 
 `bernardo-clinic.vercel.app` is attached to the frontend project. It temporarily
 redirects (307) to `havencare-frontend-ruddy.vercel.app`, because the deployed
