@@ -1,13 +1,51 @@
 # Local branch audit — 2026-10-27
 
-## Result
+## Cleanup completed and remaining feature audit
+
+The user approved local branch cleanup after the initial audit below. All 26 branches whose original recommendation was “Delete local branch” have now been deleted. The five remaining local branches are:
+
+| Branch | Remaining purpose | Recommendation |
+|---|---|---|
+| `frontend-main/chore/consolidate-local-work` | Google sign-in branding and eight-digit password recovery; audit documentation. | Keep both product changes and this branch until integrated. |
+| `feat/seed-demo-patient` | Optional development command that provisions a synthetic patient account, clinical note and completed visit. | Keep the tooling concept, but do not merge/use this implementation on a hosted target before fixing the ownership issue below. |
+| `feat/clinic-services` | Unresolved clinic contact/service seed data. | Retained for data review; excluded from the product-feature inventory. |
+| `main` | Production baseline. | Keep. |
+| `backend-main` | Backend integration baseline. | Keep. |
+
+No remote branches were changed. The existing stash was not dropped. A complete, verified pre-cleanup bundle now lives at `.git/local-branches-before-cleanup-20261027.bundle` inside this checkout; it includes the deleted refs and the consolidation commits. The tables below retain the original 30-branch inventory as historical evidence.
+
+### All remaining changes beyond main
+
+| Change | Audit facts | Recommendation |
+|---|---|---|
+| Google sign-in branding | Existing OAuth flow uses the new branded component, image/font/license assets, loading/disabled states and accessible loading text. The change does not modify OAuth identity/role resolution. | Keep. |
+| Eight-digit password recovery | Input count, truncation/completion, submission validation, button state and instructions share the eight-digit requirement. Local email OTP length is eight. Both staff/shared and legacy patient verification routes render eight inputs; the API forwards all eight digits. | Keep. |
+| Demo-patient provisioning command | Creates a confirmed synthetic login, linked patient, clinical note and completed appointment, with Manila-relative dates. This is development tooling, not a patient/staff app capability or a static data file. It remains absent from main and is not part of the consolidation branch. | Retain only as development tooling after the ownership guard is fixed; do not merge the old branch wholesale. |
+
+### Seeder finding requiring a fix
+
+At `backend/src/scripts/seed-patient.ts` lines 49–56 in commit `7608624`, an existing `patient_accounts` row matched by `SEED_PATIENT_EMAIL` leads directly to `auth.admin.updateUserById(accountId, { password })`. There is no check that the account was created by this demo tool. Pointing the command at an existing non-demo patient therefore resets that patient's password; subsequent code can also add synthetic clinical history to that patient's record.
+
+A mock-only execution reproduced the password-reset call for an arbitrary existing patient ID. The mock intentionally returned an error immediately after that call, so no later write path was executed. No real account, network endpoint or database was contacted.
+
+Before keeping an executable version, restrict reruns to accounts with a trusted demo ownership marker (for example, admin-managed app metadata), reject unmarked existing accounts before any mutation, and test that real patient accounts remain untouched. Published demo credentials being rejected on hosted targets does not address this existing-account path.
+
+### Checks for this cleanup and feature audit
+
+- Verified all 26 intended refs were deleted and the expected five refs remain; current branch is the consolidation branch.
+- Re-ran the recovery/OAuth tests: 16 tests passed across three files.
+- Type-checked the archived seeder against the current backend configuration and generated database types using a virtual source file and no emit: zero diagnostics. The script was not restored into the application.
+- Mock-only seeder probes confirmed missing hosted credentials and published demo credentials are blocked; an arbitrary existing patient can reach the password-reset call.
+- No product source code changed during this audit. The earlier full frontend/backend build, lint and unit-test results below remain applicable. Live OAuth/email/browser interactions and database integration were not re-run.
+
+## Initial audit result
 
 - Audited all 30 original local branches, the one Git stash, and all 14 modified/untracked working files.
 - Before consolidation, no commits reachable from a local branch were missing from all remote branches. This does not mean every feature was merged into main.
 - 22 original branch tips are ancestors of main; eight are outside its ancestry. Their nine distinct commits are listed below.
 - GitHub Compare API checks confirmed live main, frontend-main and backend-main at `0a69c445ba13dce542462e02f40aac4f22238d93`. Each of the eight non-ancestor local tips also matched its live corresponding branch/archive exactly.
 - Ordinary Git fetch remains unavailable because OpenSSH rejects the ownership/permissions of `/etc/ssh/ssh_config.d/20-systemd-ssh-proxy.conf`. Live GitHub connector comparisons supplied the independent remote verification; cached refs alone were not treated as conclusive.
-- The two unpublished working changes were consolidated on `frontend-main/chore/consolidate-local-work`, based on `origin/frontend-main`. They are committed locally. No branch was pushed, merged remotely, deleted, or reset. The original stash remains.
+- The two unpublished working changes were consolidated on `frontend-main/chore/consolidate-local-work`, based on `origin/frontend-main`. They are committed locally. During initial consolidation no branch was pushed, merged remotely, deleted, or reset. The subsequent approved deletions are recorded above. The original stash remains.
 
 ## Unpublished work consolidated
 
@@ -20,7 +58,7 @@ The 14 original file contents were preserved byte-for-byte (SHA-256 compared aga
 
 ## Every original local branch
 
-“Published” here means the branch commit exists on GitHub, possibly under an archive name. “Delete” is a recommendation for the local branch ref, not for deployed features or remote branches. No deletions were performed.
+“Published” here means the branch commit exists on GitHub, possibly under an archive name. “Delete” was the initial recommendation for the local branch ref, not for deployed features or remote branches. All 26 recommended local deletions have since been completed.
 
 | Local branch | Finding | Recommendation |
 |---|---|---|
@@ -55,7 +93,7 @@ The 14 original file contents were preserved byte-for-byte (SHA-256 compared aga
 | `setup/backend` | All branch commits are ancestors of main; no unpublished commits. | Delete local branch; retain the features already in main. |
 | `setup/project-scaffold` | All branch commits are ancestors of main; no unpublished commits. | Delete local branch; retain the features already in main. |
 
-For the 30 original branches: keep the two integration/production refs, retain two feature refs temporarily for review, and remove the other 26 local refs when cleanup is approved. Keep the new consolidation branch until its changes are integrated.
+For the 30 original branches: the two integration/production refs and the two refs requiring review remain; the other 26 local refs were deleted after approval. The new consolidation branch also remains until its changes are integrated.
 
 ## Commits outside main ancestry
 
