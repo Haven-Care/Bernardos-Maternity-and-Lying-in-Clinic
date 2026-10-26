@@ -335,8 +335,9 @@ integration suites still require a running local stack.
 
 **URL update — 27 October 2026:** `https://bernardo-clinic.vercel.app` now serves
 the frontend directly. Supabase's hosted Site URL was changed to this origin;
-its `/auth/callback**` and `/auth/recovery` URLs were added to the redirect
-allowlist. A callback error redirects to this origin, and `/login` and
+its `/auth/callback` and `/auth/recovery` return routes were added to the redirect
+allowlist, with wildcard matching for legacy callback query strings. A callback
+error redirects to this origin, and `/login` and
 `/auth/callback` both return HTTP 200. A complete Google account sign-in still
 requires user acceptance testing. The paragraphs below record the earlier setup.
 
