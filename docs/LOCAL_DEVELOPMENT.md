@@ -191,7 +191,8 @@ its frontend `/auth/recovery` URL to Supabase Auth's redirect allowlist and keep
 Site URL pointed at the frontend. For example, the current frontend callback is
 `https://havencare-frontend-ruddy.vercel.app/auth/recovery`. Use the eventual custom
 domain when one is configured. These hosted Auth settings are separate from the
-local `supabase/config.toml` file. A verified recovery session is required before
+local `supabase/config.toml` file. Keep the hosted email OTP length set to six
+digits to match the recovery form. A verified recovery session is required before
 the new-password form can be used. The browser signs out locally after success.
 
 SMTP credentials and an inbox delivery test are still required to verify real

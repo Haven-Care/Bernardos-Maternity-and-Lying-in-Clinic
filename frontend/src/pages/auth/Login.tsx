@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import * as api from '../../api'
 import { Button } from '../../components/ui/Button'
+import { GoogleSignInButton } from '../../components/ui/GoogleSignInButton'
 import { PasswordField, TextField } from '../../components/ui/fields'
 import { loginDestination, loginErrorMessage } from '../../lib/login'
 import { AuthShell } from './AuthShell'
@@ -40,7 +41,7 @@ export function Login() {
 
   return (
     <AuthShell title="Sign in" subtitle="Access your Bernardo Clinic account."
-      footer={<p className="text-center text-xs text-gray-500">New patient? <Link to="/patient/signup" state={typeof from === 'string' ? { from } : undefined} className="font-semibold text-brand-600 hover:underline">Create an account</Link></p>}>
+      footer={<p className="text-center text-xs text-gray-500">No account? <Link to="/patient/signup" state={typeof from === 'string' ? { from } : undefined} className="font-semibold text-brand-600 hover:underline">Create an account</Link></p>}>
       <form className="flex flex-col gap-4" onSubmit={onSubmit}>
         {/*
           The prototype labels this "username or email". It is email only.
@@ -91,7 +92,7 @@ export function Login() {
         <Button type="submit" loading={submitting} disabled={googleSubmitting || !identifier.trim() || !password} className="mt-1 w-full">
           Log In
         </Button>
-        {api.session.googleLoginEnabled && <Button type="button" variant="secondary" loading={googleSubmitting} disabled={submitting} onClick={() => void googleLogin()} className="w-full">Continue with Google</Button>}
+        {api.session.googleLoginEnabled && <GoogleSignInButton loading={googleSubmitting} disabled={submitting} onClick={() => void googleLogin()} />}
       </form>
     </AuthShell>
   )

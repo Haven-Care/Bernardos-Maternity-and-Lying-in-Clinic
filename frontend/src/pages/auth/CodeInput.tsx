@@ -1,9 +1,7 @@
 import { useRef } from 'react'
 
-const LENGTH = 6
-
 /**
- * Six single-character boxes, per the Enter Verification Code screen.
+ * Single-character boxes for the requested code length.
  *
  * Value is held as one string by the parent; the boxes are a presentation of
  * it. That keeps paste, backspace-across-boxes, and arrow navigation from each
@@ -11,24 +9,26 @@ const LENGTH = 6
  */
 export function CodeInput({
   value,
+  length,
   onChange,
   onComplete,
 }: {
   value: string
+  length: number
   onChange: (next: string) => void
   onComplete?: (code: string) => void
 }) {
   const refs = useRef<Array<HTMLInputElement | null>>([])
 
   function commit(next: string) {
-    const digits = next.replace(/\D/g, '').slice(0, LENGTH)
+    const digits = next.replace(/\D/g, '').slice(0, length)
     onChange(digits)
-    if (digits.length === LENGTH) onComplete?.(digits)
+    if (digits.length === length) onComplete?.(digits)
     return digits
   }
 
   function focus(index: number) {
-    refs.current[Math.min(Math.max(index, 0), LENGTH - 1)]?.focus()
+    refs.current[Math.min(Math.max(index, 0), length - 1)]?.focus()
   }
 
   function handleInput(index: number, raw: string) {
@@ -43,7 +43,7 @@ export function CodeInput({
     const digit = raw.replace(/\D/g, '')
     if (!digit) return
 
-    const chars = value.padEnd(LENGTH, ' ').split('')
+    const chars = value.padEnd(length, ' ').split('')
     chars[index] = digit
     commit(chars.join('').trimEnd())
     focus(index + 1)
@@ -78,7 +78,7 @@ export function CodeInput({
 
   return (
     <div className="flex min-w-0 justify-center gap-1.5 sm:gap-2">
-      {Array.from({ length: LENGTH }, (_, index) => (
+      {Array.from({ length }, (_, index) => (
         <input
           key={index}
           ref={(el) => {
@@ -88,7 +88,7 @@ export function CodeInput({
           inputMode="numeric"
           // One-time-code lets the OS offer an SMS/email code to autofill.
           autoComplete={index === 0 ? 'one-time-code' : 'off'}
-          aria-label={`Digit ${index + 1} of ${LENGTH}`}
+          aria-label={`Digit ${index + 1} of ${length}`}
           value={value[index] ?? ''}
           onChange={(e) => handleInput(index, e.target.value)}
           onKeyDown={(e) => handleKeyDown(index, e)}

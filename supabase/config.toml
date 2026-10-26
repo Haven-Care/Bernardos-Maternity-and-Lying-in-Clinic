@@ -245,7 +245,7 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
-# The reset screens in the Figma (A03 / U04) show a six-digit code, not a link.
+# The reset screens accept a six-digit code from the recovery email.
 # GoTrue's default recovery mail sends `{{ .ConfirmationURL }}`, and
 # `verifyOtp({ type: 'recovery' })` has nothing to verify against unless the
 # template emits `{{ .Token }}` instead. This is what makes that screen work.
