@@ -26,13 +26,13 @@ describe('password recovery session', () => {
   })
   it('only establishes recovery state after the code has been verified', async () => {
     auth.verifyOtp.mockResolvedValue({ data: { user: { id: 'patient' } }, error: null })
-    await verifyResetCode(' Patient@Example.Test ', '123456')
-    expect(auth.verifyOtp).toHaveBeenCalledWith({ email: 'patient@example.test', token: '123456', type: 'recovery' })
+    await verifyResetCode(' Patient@Example.Test ', '12345678')
+    expect(auth.verifyOtp).toHaveBeenCalledWith({ email: 'patient@example.test', token: '12345678', type: 'recovery' })
     expect(await recoveryEmail()).toBe('patient@example.test')
   })
   it('does not establish recovery state for an expired code', async () => {
     auth.verifyOtp.mockResolvedValue({ data: { user: null }, error: { message: 'expired' } })
-    await expect(verifyResetCode('patient@example.test', '123456')).rejects.toThrow('expired')
+    await expect(verifyResetCode('patient@example.test', '12345678')).rejects.toThrow('expired')
     expect(sessionStorage.getItem('recovery-user')).toBeNull()
   })
   it('clears the recovery marker and signs out locally after changing the password', async () => {
