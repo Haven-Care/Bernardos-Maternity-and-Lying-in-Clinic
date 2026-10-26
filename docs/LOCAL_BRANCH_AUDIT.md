@@ -6,7 +6,7 @@ The user approved local branch cleanup after the initial audit below. All 26 bra
 
 | Branch | Remaining purpose | Recommendation |
 |---|---|---|
-| `frontend-main/chore/consolidate-local-work` | Google sign-in branding and eight-digit password recovery; audit documentation. | Keep both product changes and this branch until integrated. |
+| `frontend-main/chore/consolidate-local-work` | Google sign-in branding and six-digit password recovery; audit documentation. | Keep both product changes and this branch until integrated. |
 | `feat/seed-demo-patient` | Optional development command that provisions a synthetic patient account, clinical note and completed visit. | Keep the tooling concept, but do not merge/use this implementation on a hosted target before fixing the ownership issue below. |
 | `feat/clinic-services` | Unresolved clinic contact/service seed data. | Retained for data review; excluded from the product-feature inventory. |
 | `main` | Production baseline. | Keep. |
@@ -19,7 +19,16 @@ No remote branches were changed. The existing stash was not dropped. A complete,
 | Change | Audit facts | Recommendation |
 |---|---|---|
 | Google sign-in branding | Existing OAuth flow uses the new branded component, image/font/license assets, loading/disabled states and accessible loading text. The change does not modify OAuth identity/role resolution. | Keep. |
-| Eight-digit password recovery | Input count, truncation/completion, submission validation, button state and instructions share the eight-digit requirement. Local email OTP length is eight. Both staff/shared and legacy patient verification routes render eight inputs; the API forwards all eight digits. | Keep. |
+| Six-digit password recovery | Input count, truncation/completion, submission validation, button state and instructions share the six-digit requirement. Local email OTP length is six. Both staff/shared and legacy patient verification routes render exactly six inputs; the API forwards all six digits. Hosted email OTP length was verified as six in the Supabase dashboard after a reload. | Keep. Local configuration and hosted Auth settings now agree. |
+
+The initial fix used eight digits to match the user's reported eight-digit email. The hosted Supabase email provider was also observed set to eight during dashboard inspection. The user subsequently requested six-digit recovery: the current implementation and local configuration use six, and the hosted setting now persists as six after a dashboard reload. All 79 frontend tests, full frontend lint and the production build passed after the change. No live reset email was requested. Initial eight-digit audit entries below are historical snapshots.
+
+### Outstanding work
+
+- Google sign-in branding: implemented locally on the consolidation branch; still requires push, review/integration and deployment.
+- Six-digit recovery: implemented locally on the same branch, with hosted OTP length verified as six; still requires push, review/integration, deployment and a live recovery-email check.
+- Demo-patient seeder: optional development tooling on its separate branch; the ownership guard described below must be fixed and tested before integration or hosted use.
+- Clinic contact/service seed changes are data review, excluded from the feature backlog. No other unpublished product-feature branch remains after cleanup.
 | Demo-patient provisioning command | Creates a confirmed synthetic login, linked patient, clinical note and completed appointment, with Manila-relative dates. This is development tooling, not a patient/staff app capability or a static data file. It remains absent from main and is not part of the consolidation branch. | Retain only as development tooling after the ownership guard is fixed; do not merge the old branch wholesale. |
 
 ### Seeder finding requiring a fix

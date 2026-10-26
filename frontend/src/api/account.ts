@@ -60,10 +60,10 @@ export async function changePassword(
   if (error) throw new Error(error.message)
 }
 
-// --- Password reset: email → 8-digit code → new password -------------------
+// --- Password reset: email → 6-digit code → new password -------------------
 
 /**
- * Sends the eight-digit code.
+ * Sends the six-digit code.
  *
  * The local template emits `{{ .Token }}` for code entry. Hosted projects may
  * use either that template or a recovery link to /auth/recovery.

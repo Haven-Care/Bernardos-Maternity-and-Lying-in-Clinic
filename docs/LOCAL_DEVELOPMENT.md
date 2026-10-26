@@ -185,13 +185,13 @@ resolves active staff/administrator profiles and confirmed patient accounts;
 client-editable metadata cannot select a staff role. Existing patient and staff
 API guards remain responsible for authorizing each request.
 
-Password recovery accepts the eight-digit code from `supabase/templates/recovery.html`
+Password recovery accepts the six-digit code from `supabase/templates/recovery.html`
 or the standard Supabase recovery email link. For each hosted environment, add
 its frontend `/auth/recovery` URL to Supabase Auth's redirect allowlist and keep
 Site URL pointed at the frontend. For example, the current frontend callback is
 `https://havencare-frontend-ruddy.vercel.app/auth/recovery`. Use the eventual custom
 domain when one is configured. These hosted Auth settings are separate from the
-local `supabase/config.toml` file. Keep the hosted email OTP length set to eight
+local `supabase/config.toml` file. Keep the hosted email OTP length set to six
 digits to match the recovery form. A verified recovery session is required before
 the new-password form can be used. The browser signs out locally after success.
 

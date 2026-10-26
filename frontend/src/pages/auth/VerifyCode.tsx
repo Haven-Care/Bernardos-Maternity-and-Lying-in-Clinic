@@ -6,7 +6,7 @@ import { AuthShell, BackToLogin } from './AuthShell'
 import { CodeInput } from './CodeInput'
 import { useAuthRealm } from './realm'
 
-const CODE_LENGTH = 8
+const CODE_LENGTH = 6
 
 export function VerifyCode() {
   const navigate = useNavigate()
