@@ -12,7 +12,7 @@ vi.mock('../patients/PatientModal', () => ({ PatientModal: () => null }))
 function booking(id: string, scheduledDate: string, slotTime: string, submittedAt: string): BookingRequest {
   return { id, referenceNo: id, scheduledDate, slotTime, submittedAt, patientId: null,
     patientName: 'Test patient', contactNumber: '09170000000', email: 'patient@example.test',
-    serviceId: 'service', serviceName: 'Pre-natal Check-up', status: 'confirmed', reasonForVisit: 'Check-up' }
+    serviceId: 'service', serviceName: 'Pre-natal Check-up', status: 'pending', reasonForVisit: 'Check-up' }
 }
 
 describe('appointment list default ordering', () => {

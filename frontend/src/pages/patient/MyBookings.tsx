@@ -191,7 +191,7 @@ function BookingCard({
         </dl>
       </Modal>}
 
-      {booking.status === 'pending' && <p className="mt-3 text-xs text-gray-500">Your slot is reserved. The clinic has yet to confirm this appointment.</p>}
+      {booking.status === 'pending' && <p className="mt-3 text-xs text-gray-500">Your appointment is booked and your slot is reserved. Please arrive at the scheduled time.</p>}
 
       {openRequest && (
         <div className="mt-3 rounded-card border border-warning-500/30 bg-warning-50 p-3 text-xs text-warning-700">

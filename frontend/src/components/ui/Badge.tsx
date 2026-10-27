@@ -31,8 +31,7 @@ export function Badge({
 }
 
 const APPOINTMENT_TONES: Record<AppointmentStatus, Tone> = {
-  pending: 'warning',
-  confirmed: 'info',
+  pending: 'info',
   rescheduled: 'brand',
   cancelled: 'danger',
   completed: 'success',

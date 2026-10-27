@@ -123,7 +123,7 @@ describe.skipIf(!up)('dashboard', () => {
 
       const services = await request(app).get('/api/services').expect(200)
       const serviceId = services.body.find(
-        (s: { name: string }) => s.name === 'Consultation',
+        (s: { name: string }) => s.name === 'Pre-natal Check-up (first visit)',
       ).id
 
       const { data: today } = await getSupabaseClient().rpc('clinic_today')
@@ -248,7 +248,6 @@ describe.skipIf(!up)('dashboard', () => {
 
       const order = [
         'pending',
-        'confirmed',
         'rescheduled',
         'cancelled',
         'completed',
@@ -489,7 +488,7 @@ describe.skipIf(!up)('dashboard', () => {
       // range so it cannot collide with another suite's slots.
       const services = await request(app).get('/api/services').expect(200)
       const serviceId = services.body.find(
-        (s: { name: string }) => s.name === 'Consultation',
+        (s: { name: string }) => s.name === 'Pre-natal Check-up (first visit)',
       ).id
 
       const { data: today } = await getSupabaseClient().rpc('clinic_today')
@@ -692,7 +691,7 @@ describe.skipIf(!up)('dashboard', () => {
 
       const services = await request(app).get('/api/services').expect(200)
       const serviceId = services.body.find(
-        (s: { name: string }) => s.name === 'Consultation',
+        (s: { name: string }) => s.name === 'Pre-natal Check-up (first visit)',
       ).id
 
       const slots = await request(app)

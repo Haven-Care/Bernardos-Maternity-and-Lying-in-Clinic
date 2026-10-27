@@ -1,6 +1,7 @@
 import type { Service } from '../../types/service'
+import { formatServicePrice } from '../../lib/services'
 import { Button } from '../../components/ui/Button'
-import { formatDateLong, formatPeso, formatTime } from '../../lib/format'
+import { formatDateLong, formatTime } from '../../lib/format'
 import type { Contact } from './DetailsStep'
 
 export function ReviewStep({ service, scheduledDate, slotTime, contact, savePersonalDetails, submitting, error, onSubmit, onBack, onPickAnotherTime }: {
@@ -21,7 +22,7 @@ export function ReviewStep({ service, scheduledDate, slotTime, contact, savePers
       <p className="mt-1 text-sm text-gray-500">Check the details before reserving your appointment.</p>
       <dl className="mt-5 divide-y divide-border rounded-card border border-border bg-white px-4">
         <Row label="Service" value={service.name} />
-        <Row label="Price" value={`${formatPeso(service.price)}${service.priceIsTemporary ? ' — temporary; confirm the final rate with the clinic' : ''}`} />
+        <Row label="Price" value={formatServicePrice(service.price)} />
         <Row label="Date" value={formatDateLong(scheduledDate)} />
         <Row label="Time" value={formatTime(slotTime)} />
         <Row label="Patient" value={contact.patientName} />
@@ -40,7 +41,7 @@ export function ReviewStep({ service, scheduledDate, slotTime, contact, savePers
         <Button variant="secondary" onClick={onBack} disabled={submitting} className="flex-1 justify-center">Edit details</Button>
         <Button onClick={onSubmit} loading={submitting} className="flex-1 justify-center">Book appointment</Button>
       </div>
-      <p className="mt-3 text-center text-xs text-gray-500">Booking holds this time immediately. The clinic confirms the appointment separately. Track updates, cancel, or request a new time from History.</p>
+      <p className="mt-3 text-center text-xs text-gray-500">Booking reserves this time immediately. You are expected to arrive at the scheduled time. Track updates, cancel, or request a new time from History.</p>
     </div>
   )
 }

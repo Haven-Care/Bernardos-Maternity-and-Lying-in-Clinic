@@ -30,7 +30,7 @@ export interface AppointmentSlot {
 
 /** A slot resolved against a specific date, for the booking form and the table. */
 export interface SlotAvailability extends AppointmentSlot {
-  /** Confirmed bookings on the date being viewed. */
+  /** Reserved bookings on the date being viewed. */
   booked: number
   /** `isOpen && booked < capacity`. */
   available: boolean
