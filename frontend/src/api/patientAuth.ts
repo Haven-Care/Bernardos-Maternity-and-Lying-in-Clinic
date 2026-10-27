@@ -32,6 +32,7 @@ export async function signUp(input: PatientSignupInput): Promise<void> {
     email: input.email.trim().toLowerCase(),
     password: input.password,
     options: {
+      emailRedirectTo: `${window.location.origin}/auth/callback`,
       // Goes to user_metadata, which the browser controls — fine for a name
       // and a phone number, and deliberately not where the realm is read from.
       data: {

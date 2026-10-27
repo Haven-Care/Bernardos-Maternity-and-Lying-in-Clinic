@@ -88,7 +88,7 @@ export function CalendarWeek() {
 
         <AsyncBoundary state={bookings}>
           {() => (
-            <div className="overflow-x-auto">
+            <div role="region" aria-label="Weekly appointment calendar" tabIndex={0} className="min-w-0 overflow-x-auto">
               <table className="w-full min-w-[820px] border-collapse">
                 <thead>
                   <tr>

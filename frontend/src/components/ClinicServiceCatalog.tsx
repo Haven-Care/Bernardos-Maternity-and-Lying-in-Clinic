@@ -24,7 +24,7 @@ export function ClinicServiceCatalog() {
             type="button"
             aria-pressed={category === option}
             onClick={() => setCategory(option)}
-            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${category === option ? 'bg-brand-600 text-white' : 'bg-brand-50 text-brand-700 hover:bg-brand-100'}`}
+            className={`min-h-11 shrink-0 rounded-full px-3 py-1.5 sm:min-h-9 text-xs font-semibold transition-colors ${category === option ? 'bg-brand-600 text-white' : 'bg-brand-50 text-brand-700 hover:bg-brand-100'}`}
           >
             {option}
           </button>

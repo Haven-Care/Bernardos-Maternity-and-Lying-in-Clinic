@@ -9,8 +9,26 @@ beforeEach(() => {
   vi.stubGlobal('sessionStorage', { removeItem: vi.fn() })
   vi.stubGlobal('window', { location: { origin: 'https://clinic.example', assign: vi.fn() } })
 })
-afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals() })
+afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals() })
 describe('Google role-based login', () => {
+  it('ends a stalled Google token exchange with a retryable timeout', async () => {
+    vi.useFakeTimers()
+    const { loginWithGoogle } = await import('./session')
+    auth.signInWithIdToken.mockReturnValue(new Promise(() => {}))
+    const rejection = expect(loginWithGoogle('token', 'nonce')).rejects.toMatchObject({ name: 'TimeoutError' })
+    await vi.advanceTimersByTimeAsync(15_000)
+    await rejection
+    expect(apiFetch).not.toHaveBeenCalled()
+  })
+  it('ends a stalled confirmation callback with a retryable timeout', async () => {
+    vi.useFakeTimers()
+    const { completeOAuthLogin } = await import('./session')
+    auth.getSession.mockReturnValue(new Promise(() => {}))
+    const rejection = expect(completeOAuthLogin()).rejects.toMatchObject({ name: 'TimeoutError' })
+    await vi.advanceTimersByTimeAsync(15_000)
+    await rejection
+    expect(apiFetch).not.toHaveBeenCalled()
+  })
   it('exchanges the Google credential with its original nonce and uses the server role', async () => {
     const { loginWithGoogle } = await import('./session')
     auth.signInWithIdToken.mockResolvedValue({ data: { session: { user: { user_metadata: { role: 'administrator' } } } }, error: null })

@@ -19,8 +19,8 @@ export function AuthShell({
   onLogoClick?: () => void
 }) {
   return (
-    <div className="flex min-h-full items-center justify-center bg-brand-50/40 p-4">
-      <div className="w-full max-w-md rounded-card border border-border bg-surface p-5 sm:p-7 shadow-sm">
+    <div className="flex min-h-dvh min-w-0 items-center justify-center bg-brand-50/40 px-4 py-6 sm:py-10">
+      <div className="w-full min-w-0 max-w-md rounded-card border border-border bg-surface p-5 sm:p-7 shadow-sm">
         {before}
 
         <div className="flex flex-col items-center gap-2 text-center">

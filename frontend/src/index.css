@@ -43,7 +43,12 @@
 html,
 body,
 #root {
+  min-width: 0;
   height: 100%;
+}
+
+html {
+  scroll-padding-top: 5rem;
 }
 
 body {
@@ -54,6 +59,26 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+main {
+  overflow-wrap: anywhere;
+}
+
+.clinic-modal::backdrop {
+  background: rgb(17 24 39 / 40%);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+/* Prevent iOS form zoom and keep controls usable on touch screens. */
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    min-height: 44px;
+    font-size: 16px;
+  }
 }
 
 /* Keep dropdown arrows inside the control with a dedicated text-free gutter. */

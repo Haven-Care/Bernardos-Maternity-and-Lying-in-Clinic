@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 export interface Column<T> {
   key: string
@@ -31,6 +31,7 @@ export function Table<T>({
   fillHeight = false,
   fitRows = false,
   onRowClick,
+  expandable,
   empty,
 }: {
   columns: Column<T>[]
@@ -40,15 +41,24 @@ export function Table<T>({
   fillHeight?: boolean
   fitRows?: boolean
   onRowClick?: (row: T) => void
+  expandable?: { label: (row: T) => string; render: (row: T) => ReactNode }
   empty?: ReactNode
 }) {
   const [page, setPage] = useState(0)
+  const [expandedKey, setExpandedKey] = useState<string | null>(null)
+  const expansionId = useId()
+  const [detailWidth, setDetailWidth] = useState<number>()
+  const hasExpandableRows = expandable !== undefined
   const viewport = useRef<HTMLDivElement>(null)
   const [capacity, setCapacity] = useState(pageSize)
   useLayoutEffect(() => {
     const element = viewport.current
-    if (!fitRows || !element) return
+    if (!element || (!fitRows && !hasExpandableRows)) return
     const measure = () => {
+      // clientWidth excludes the scrollbar, keeping expanded details readable
+      // even when the summary columns need horizontal scrolling on a phone.
+      if (hasExpandableRows) setDetailWidth(element.clientWidth)
+      if (!fitRows) return
       const headerHeight = element.querySelector('thead')?.getBoundingClientRect().height ?? 40
       // Compact inventory rows are 56px; clientHeight excludes horizontal scrollbar.
       setCapacity(Math.max(1, Math.floor((element.clientHeight - headerHeight - 2) / 56)))
@@ -57,7 +67,7 @@ export function Table<T>({
     const observer = new ResizeObserver(measure)
     observer.observe(element)
     return () => observer.disconnect()
-  }, [fitRows, rows.length])
+  }, [fitRows, hasExpandableRows, rows.length])
   const effectivePageSize = fitRows ? Math.min(pageSize, capacity) : pageSize
 
   const pageCount = Math.max(1, Math.ceil(rows.length / effectivePageSize))
@@ -76,8 +86,8 @@ export function Table<T>({
   const last = Math.min(rows.length, (current + 1) * effectivePageSize)
 
   return (
-    <div className={`flex flex-col ${fillHeight ? 'min-h-0 flex-1' : ''}`}>
-      <div ref={viewport} className={fitRows ? 'min-h-0 flex-1 overflow-x-auto overflow-y-hidden' : fillHeight ? 'min-h-0 flex-1 overflow-auto' : 'overflow-x-auto'}>
+    <div className={`flex min-w-0 flex-col ${fillHeight ? 'min-h-0 flex-1' : ''}`}>
+      <div ref={viewport} role="region" aria-label="Data table" tabIndex={0} className={fitRows ? 'min-h-0 min-w-0 flex-1 overflow-x-auto overflow-y-hidden' : fillHeight ? 'min-h-0 min-w-0 flex-1 overflow-auto' : 'min-w-0 overflow-x-auto'}>
         <table className={`w-full min-w-[640px] border-collapse text-sm ${fitRows ? 'inventory-fit-table' : ''}`}>
           <thead>
             <tr className="border-b border-border">
@@ -93,31 +103,59 @@ export function Table<T>({
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {visible.map((row) => (
-              <tr
-                key={rowKey(row)}
-                onClick={onRowClick ? () => onRowClick(row) : undefined}
-                className={
-                  onRowClick
-                    ? 'cursor-pointer transition-colors hover:bg-gray-50'
-                    : undefined
-                }
-              >
-                {columns.map((col) => (
-                  <td
-                    key={col.key}
-                    className={`px-4 py-3 text-gray-700 ${ALIGN[col.align ?? 'left']} ${col.className ?? ''}`}
+            {visible.map((row) => {
+              const key = rowKey(row)
+              const expanded = !!expandable && expandedKey === key
+              const detailsId = `${expansionId}-${encodeURIComponent(key)}`
+              const toggle = () => setExpandedKey((current) => current === key ? null : key)
+              return (
+                <Fragment key={key}>
+                  <tr
+                    onClick={expandable ? (event) => {
+                      // Links and controls inside a cell keep their own action.
+                      if ((event.target as Element).closest('a, button, input, select, textarea, [role="button"], [role="switch"]')) return
+                      toggle()
+                    } : onRowClick ? () => onRowClick(row) : undefined}
+                    className={
+                      expandable || onRowClick
+                        ? `cursor-pointer transition-colors hover:bg-gray-50 ${expanded ? 'bg-brand-50/60' : ''}`
+                        : undefined
+                    }
                   >
-                    {col.render(row)}
-                  </td>
-                ))}
-              </tr>
-            ))}
+                    {columns.map((col, index) => (
+                      <td
+                        key={col.key}
+                        className={`px-4 py-3 text-gray-700 ${ALIGN[col.align ?? 'left']} ${col.className ?? ''}`}
+                      >
+                        {expandable && index === 0 ? (
+                          <div className="flex items-center gap-2">
+                            <button type="button" onClick={toggle} aria-expanded={expanded} aria-controls={detailsId}
+                              aria-label={`${expanded ? 'Collapse' : 'Expand'} ${expandable.label(row)}`}
+                              className="flex size-10 shrink-0 items-center justify-center rounded-md text-brand-700 hover:bg-brand-100 focus-visible:outline-2 focus-visible:outline-brand-600">
+                              <Chevron className={expanded ? 'rotate-90' : ''} />
+                            </button>
+                            {col.render(row)}
+                          </div>
+                        ) : col.render(row)}
+                      </td>
+                    ))}
+                  </tr>
+                  {expanded && expandable && (
+                    <tr id={detailsId}>
+                      <td colSpan={columns.length} className="bg-brand-50/30 p-0">
+                        {/* Keep details within the viewport while the summary table scrolls horizontally. */}
+                        <div className="sticky left-0 max-w-full p-4 sm:p-5" style={{ width: detailWidth }}>{expandable.render(row)}</div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              )
+            })}
           </tbody>
         </table>
       </div>
 
-      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-4 py-2.5">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-2.5">
         <p className="text-xs text-gray-500">
           Showing {first} to {last} of {rows.length}{' '}
           {rows.length === 1 ? 'entry' : 'entries'}
@@ -166,7 +204,7 @@ function PagerButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className="flex size-6 items-center justify-center rounded border border-gray-300 text-gray-500 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+      className="flex size-10 items-center justify-center rounded border border-gray-300 text-gray-500 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 sm:size-8"
     >
       {children}
     </button>

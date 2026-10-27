@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges'
 import { Button } from './Button'
+import { createModalStack } from '../../lib/modalStack'
+
+const modalStack = createModalStack()
 
 /**
  * Dialog built on the native `<dialog>` element, so focus trapping, the top
@@ -45,10 +48,8 @@ export function Modal({
 
   useEffect(() => {
     const dialog = ref.current
-    if (!dialog) return
-
-    if (open && !dialog.open) dialog.showModal()
-    if (!open && dialog.open) dialog.close()
+    if (!dialog || !open) return
+    return modalStack.add(dialog)
   }, [open])
 
   useEffect(() => {
@@ -80,22 +81,22 @@ export function Modal({
       // Clicks land on the dialog element itself only when they hit the
       // backdrop — the inner wrapper stops anything inside the panel.
       onClick={requestClose}
-      className={`m-auto w-[calc(100%-2rem)] rounded-card border border-border bg-surface p-0 text-gray-900 shadow-xl backdrop:bg-gray-900/40 ${width}`}
+      className={`clinic-modal m-auto max-h-[calc(100dvh_-_1rem)] w-[calc(100%_-_1rem)] overflow-hidden rounded-card border border-border bg-surface p-0 text-gray-900 shadow-xl sm:max-h-[calc(100dvh_-_2rem)] sm:w-[calc(100%_-_2rem)] ${width}`}
     >
-      <div onClick={(e) => e.stopPropagation()}>
-        <header className="flex items-start justify-between gap-4 border-b border-border px-5 py-3.5">
-          <div>
+      <div onClick={(e) => e.stopPropagation()} className="flex max-h-[calc(100dvh_-_1rem_-_2px)] flex-col sm:max-h-[calc(100dvh_-_2rem_-_2px)]">
+        <header className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3 border-b border-border px-4 py-3 sm:px-5">
+          <div className="min-w-0 break-words">
             <h2 id={titleId} className="text-base font-semibold text-gray-900">{title}</h2>
             {description && (
               <p className="mt-0.5 text-sm text-gray-500">{description}</p>
             )}
           </div>
-          {headerAction && <div className="ml-auto shrink-0">{headerAction}</div>}
+          {headerAction && <div className="col-span-2 row-start-2 flex flex-wrap justify-end gap-2">{headerAction}</div>}
           <button
             type="button"
             onClick={requestClose}
             aria-label="Close"
-            className="-mr-1 flex size-7 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+            className="col-start-2 row-start-1 -mr-1 flex size-11 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
           >
             <svg
               className="size-4"
@@ -111,10 +112,10 @@ export function Modal({
           </button>
         </header>
 
-        {children && <div className="px-5 py-4">{children}</div>}
+        {children && <div className="min-h-0 min-w-0 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">{children}</div>}
 
         {footer && (
-          <footer className="flex justify-end gap-2 border-t border-border px-5 py-3">
+          <footer className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-border px-4 py-3 sm:px-5">
             {footer}
           </footer>
         )}

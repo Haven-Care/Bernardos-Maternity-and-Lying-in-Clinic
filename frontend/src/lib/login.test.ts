@@ -18,6 +18,7 @@ describe('shared login routing', () => {
     expect(loginDestination('staff', from)).toBe('/admin')
   })
   it('uses generic credential failures but keeps connection problems distinct', () => {
+    expect(loginErrorMessage({ name: 'TimeoutError' })).toContain('took too long')
     expect(loginErrorMessage({ code: 'invalid_credentials' })).toContain('Invalid account')
     expect(loginErrorMessage({ status: 403, message: 'Staff disabled' })).not.toContain('Staff')
     expect(loginErrorMessage(new TypeError('Failed to fetch'))).toContain('connection')

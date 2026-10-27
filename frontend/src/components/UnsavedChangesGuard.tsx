@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Outlet, useBeforeUnload, useBlocker, useLocation, useNavigate } from 'react-router-dom'
 import { RECOVERY_USER_KEY, supabase } from '../lib/supabase'
 import { UnsavedChangesContext } from '../hooks/useUnsavedChanges'
+import { ConfirmModal } from './ui/Modal'
 
 export function UnsavedChangesGuard() {
   const [forms, setForms] = useState<ReadonlySet<string>>(new Set())
@@ -16,6 +17,8 @@ export function UnsavedChangesGuard() {
   }, [])
   const dirty = forms.size > 0
   const approved = useRef(false)
+  const pendingLeave = useRef<((approved: boolean) => void) | null>(null)
+  const [askingToLeave, setAskingToLeave] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
   useEffect(() => { approved.current = false }, [location.key])
@@ -27,23 +30,36 @@ export function UnsavedChangesGuard() {
     }).catch(() => { /* A failed session check does not establish recovery. */ })
     return () => { mounted = false }
   }, [location.pathname, navigate])
-  const confirmLeave = useCallback(() => {
-    if (dirty && !window.confirm('Discard your unsaved changes?')) return false
-    approved.current = true
-    return true
+  const confirmLeave = useCallback(async () => {
+    if (!dirty) { approved.current = true; return true }
+    // Ignore repeated requests while the original caller awaits a decision.
+    if (pendingLeave.current) return false
+    setAskingToLeave(true)
+    return new Promise<boolean>((resolve) => { pendingLeave.current = resolve })
   }, [dirty])
   const cancelLeave = useCallback(() => { approved.current = false }, [])
   const blocker = useBlocker(() => dirty && !approved.current)
-  useEffect(() => {
-    if (blocker.state !== 'blocked') return
-    if (window.confirm('Discard your unsaved changes?')) blocker.proceed()
-    else blocker.reset()
-  }, [blocker])
+  useEffect(() => () => { pendingLeave.current?.(false) }, [])
+  function decideLeave(leave: boolean) {
+    if (pendingLeave.current) {
+      approved.current = leave
+      pendingLeave.current(leave)
+      pendingLeave.current = null
+      setAskingToLeave(false)
+    } else if (blocker.state === 'blocked') {
+      if (leave) blocker.proceed()
+      else blocker.reset()
+    }
+  }
   useBeforeUnload(useCallback((event) => {
     if (!dirty || approved.current) return
     event.preventDefault()
     event.returnValue = ''
   }, [dirty]))
 
-  return <UnsavedChangesContext.Provider value={{ register, confirmLeave, cancelLeave }}><Outlet /></UnsavedChangesContext.Provider>
+  return <UnsavedChangesContext.Provider value={{ register, confirmLeave, cancelLeave }}>
+    <Outlet />
+    <ConfirmModal open={askingToLeave || blocker.state === 'blocked'} onClose={() => decideLeave(false)} onConfirm={() => decideLeave(true)}
+      title="Discard unsaved changes?" message="Your unsaved changes will be lost." confirmLabel="Discard changes" />
+  </UnsavedChangesContext.Provider>
 }
