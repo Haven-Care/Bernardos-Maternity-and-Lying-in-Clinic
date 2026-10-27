@@ -39,7 +39,7 @@ export function Dashboard() {
     { label: range === 'today' ? 'Patient Bookings' : 'Bookings', value: stats.data?.bookedToday },
     { label: range === 'today' ? 'Completed Appointment' : 'Completed', value: stats.data?.completedAppointments },
     { label: 'Inventory Alerts', value: stats.data?.inventoryAlerts },
-    { label: 'Mobile App Users', value: accounts.data?.length },
+    { label: 'Patient Accounts', value: accounts.data?.length },
   ]
   return <div className="hc-dashboard">
     <header className="hc-dashboard-heading">
@@ -84,7 +84,7 @@ export function Dashboard() {
           </select>
         </div>
         <div className="hc-table-frame">
-          <AsyncBoundary state={inventory}>{() => <div className="hc-table-scroll">
+          <AsyncBoundary state={inventory}>{() => <div className="hc-table-scroll" role="region" aria-label="Inventory summary" tabIndex={0}>
             <table><caption className="sr-only">Current medicine stock levels</caption>
               <thead><tr>{['Generic/Medicine Name', 'Dosage Form', 'Dosage', 'Category', 'Qty on Hand', 'Status'].map(label => <th scope="col" key={label}>{label}</th>)}</tr></thead>
               <tbody>{rows.slice(start, start + PAGE_SIZE).map(row => <tr key={row.id}>

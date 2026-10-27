@@ -5,7 +5,7 @@ import * as api from '../../api'
 import { useAsync } from '../../hooks/useAsync'
 import { Badge, StatusBadge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
-import { ConfirmModal } from '../../components/ui/Modal'
+import { ConfirmModal, Modal } from '../../components/ui/Modal'
 import { Tabs } from '../../components/ui/Tabs'
 import { AsyncBoundary, EmptyState } from '../../components/ui/states'
 import { useToast } from '../../components/ui/toast-context'
@@ -17,7 +17,7 @@ import {
   type BookingFilter,
 } from '../../lib/bookings'
 import { isoDate, today } from '../../lib/dates'
-import { formatDateLong, formatTime } from '../../lib/format'
+import { formatDateLong, formatTime, formatTimestamp } from '../../lib/format'
 import { PublicShell } from '../public/PublicShell'
 import { RescheduleRequestModal } from './RescheduleRequestModal'
 
@@ -47,7 +47,7 @@ export function MyBookings() {
 
   return (
     <PublicShell>
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold text-gray-900">Booking history</h1>
           <p className="mt-0.5 text-sm text-gray-500">
@@ -133,6 +133,7 @@ function BookingCard({
   const [cancelling, setCancelling] = useState(false)
   const [confirmingCancel, setConfirmingCancel] = useState(false)
   const [rescheduling, setRescheduling] = useState(false)
+  const [expanded, setExpanded] = useState(false)
 
   const actionable = ACTIONABLE.has(booking.status)
 
@@ -156,19 +157,39 @@ function BookingCard({
 
   return (
     <li className="min-w-0 rounded-card border border-border bg-surface p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="font-semibold text-gray-900">{booking.serviceName}</p>
-          <p className="mt-0.5 text-sm text-gray-600">
+      <button type="button" onClick={() => setExpanded(true)} aria-haspopup="dialog"
+        aria-label={`View details for booking ${booking.referenceNo}`}
+        className="flex w-full min-w-0 flex-wrap items-start justify-between gap-3 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-600">
+        <span className="min-w-0 flex-1 basis-40 break-words">
+          <span className="block font-semibold text-gray-900">{booking.serviceName}</span>
+          <span className="mt-0.5 block text-sm text-gray-600">
             {formatDateLong(booking.scheduledDate)},{' '}
             {formatTime(booking.slotTime)}
-          </p>
-          <p className="mt-1 text-xs text-gray-400">
+          </span>
+          <span className="mt-1 block text-xs text-gray-400">
             Reference {booking.referenceNo}
-          </p>
-        </div>
-        <StatusBadge status={booking.status} />
-      </div>
+          </span>
+          <span className="mt-2 block text-xs font-semibold text-brand-700">View booking details</span>
+        </span>
+        <span className="flex shrink-0 items-center gap-2">
+          <StatusBadge status={booking.status} />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="size-4 text-brand-700"><path d="m9 6 6 6-6 6" /></svg>
+        </span>
+      </button>
+
+      {expanded && <Modal open onClose={() => setExpanded(false)} title="Booking details" description={`Reference ${booking.referenceNo}`}>
+        <div className="mb-4"><StatusBadge status={booking.status} /></div>
+        <dl className="grid min-w-0 gap-3 text-sm sm:grid-cols-2">
+          <BookingField label="Service" value={booking.serviceName} wide />
+          <BookingField label="Appointment date" value={formatDateLong(booking.scheduledDate)} />
+          <BookingField label="Time" value={formatTime(booking.slotTime)} />
+          <BookingField label="Patient" value={booking.patientName} />
+          <BookingField label="Mobile number" value={booking.contactNumber} />
+          <BookingField label="Email" value={booking.email} wide />
+          <BookingField label="Reason for visit" value={booking.reasonForVisit} wide />
+          <BookingField label="Booked on" value={formatTimestamp(booking.submittedAt)} wide />
+        </dl>
+      </Modal>}
 
       {booking.status === 'pending' && <p className="mt-3 text-xs text-gray-500">Your slot is reserved. The clinic has yet to confirm this appointment.</p>}
 
@@ -189,7 +210,7 @@ function BookingCard({
       )}
 
       {actionable && (
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
           <Button
             variant="secondary"
             size="sm"
@@ -238,4 +259,11 @@ function BookingCard({
       )}
     </li>
   )
+}
+
+function BookingField({ label, value, wide = false }: { label: string; value: string; wide?: boolean }) {
+  return <div className={`min-w-0 ${wide ? 'sm:col-span-2' : ''}`}>
+    <dt className="text-xs text-gray-500">{label}</dt>
+    <dd className="mt-1 break-words whitespace-pre-wrap text-gray-900">{value || 'Not provided'}</dd>
+  </div>
 }

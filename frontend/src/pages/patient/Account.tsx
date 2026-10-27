@@ -83,11 +83,11 @@ function AccountContent({ account }: { account: PatientAccount }) {
   }
 
   async function logOut() {
-    if (!confirmLeave()) return
+    if (!await confirmLeave()) return
     setLoggingOut(true)
     try {
       await api.patientAuth.logout()
-      navigate('/patient/login', { replace: true })
+      navigate('/login', { replace: true })
       window.location.reload()
     } catch (err) {
       cancelLeave()
@@ -130,7 +130,7 @@ function AccountContent({ account }: { account: PatientAccount }) {
         <h2 id="contact-clinic" className="text-base font-semibold text-gray-900">Contact the clinic</h2>
         <p className="mt-1 text-sm text-gray-500">Need help with your appointment or account?</p>
         {clinic.data?.mobile && <a href={`tel:${clinic.data.mobile.replace(/[^+\d]/g, '')}`} className="mt-4 block text-sm font-semibold text-brand-700">Call {clinic.data.mobile}</a>}
-        {clinic.data?.email && <a href={`mailto:${clinic.data.email}`} className="mt-2 block text-sm font-semibold text-brand-700">Email {clinic.data.email}</a>}
+        {clinic.data?.email && <a href={`mailto:${clinic.data.email}`} className="mt-2 block break-all text-sm font-semibold text-brand-700">Email {clinic.data.email}</a>}
         {clinic.error && <p className="mt-3 text-sm text-gray-500">Clinic contact details are temporarily unavailable.</p>}
       </section>
 

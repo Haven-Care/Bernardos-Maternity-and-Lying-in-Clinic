@@ -9,7 +9,8 @@ export function loginDestination(role: SessionIdentity['role'], from?: unknown):
 }
 
 export function loginErrorMessage(error: unknown): string {
-  const failure = error as { code?: string; status?: number; message?: string } | null
+  const failure = error as { code?: string; status?: number; message?: string; name?: string } | null
+  if (failure?.name === 'TimeoutError') return 'Sign-in took too long. Check your connection and try again.'
   if (failure?.code === 'email_not_confirmed') return 'Please confirm your email address before signing in.'
   if (failure?.code === 'invalid_credentials' || [400, 401, 403, 404].includes(failure?.status ?? 0)) {
     return 'Invalid account. Check your email and password.'
