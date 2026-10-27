@@ -14,6 +14,7 @@ import {
 import { DateRangeFields } from '../../../components/ui/DateRangeFields'
 import { clinicDate, dateRangeError, withinDateRange } from '../../../lib/dateRange'
 import { BookingDetail } from './BookingDetail'
+import { AppointmentExpanded } from './AppointmentExpanded'
 import { APPOINTMENT_LABELS } from '../../../lib/visits'
 import { ACTIONABLE } from '../../../lib/bookings'
 
@@ -31,7 +32,7 @@ export function BookingRequests({ visits = false, onChanged }: { visits?: boolea
   const [status, setStatus] = useState(visits ? 'active' : '')
   const [dates, setDates] = useState(() => { const today = clinicDate(new Date().toISOString()); return visits ? { from: today, to: today } : { from: '', to: '' } })
   const bookings = useAsync(() => dateRangeError(dates) ? Promise.resolve([]) : api.appointments.listBookings(dates), [dates.from, dates.to])
-  const [sort, setSort] = useState(visits ? 'appointment' : 'newest')
+  const [sort, setSort] = useState(visits ? 'appointment' : 'latest-appointment')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<BookingRequest | null>(null)
 
@@ -53,6 +54,9 @@ export function BookingRequests({ visits = false, onChanged }: { visits?: boolea
         if (sort === 'appointment') {
           return `${a.scheduledDate}T${a.slotTime}`.localeCompare(`${b.scheduledDate}T${b.slotTime}`)
         }
+        if (sort === 'latest-appointment') {
+          return `${b.scheduledDate}T${b.slotTime}`.localeCompare(`${a.scheduledDate}T${a.slotTime}`) || b.submittedAt.localeCompare(a.submittedAt) || a.id.localeCompare(b.id)
+        }
         return b.submittedAt.localeCompare(a.submittedAt)
       })
   }, [bookings.data, status, dates, search, sort])
@@ -61,6 +65,7 @@ export function BookingRequests({ visits = false, onChanged }: { visits?: boolea
     {
       key: 'ref',
       header: 'Reference No.',
+      className: 'whitespace-nowrap',
       render: (b) => (
         <span className="font-medium text-gray-900">{b.referenceNo}</span>
       ),
@@ -70,11 +75,13 @@ export function BookingRequests({ visits = false, onChanged }: { visits?: boolea
     {
       key: 'date',
       header: 'Date',
+      className: 'whitespace-nowrap',
       render: (b) => formatDate(b.scheduledDate),
     },
     {
       key: 'time',
       header: 'Time',
+      className: 'whitespace-nowrap',
       render: (b) => formatTime(b.slotTime),
     },
     {
@@ -85,6 +92,7 @@ export function BookingRequests({ visits = false, onChanged }: { visits?: boolea
     {
       key: 'action',
       header: 'Action',
+      className: 'whitespace-nowrap',
       align: 'right',
       render: (b) => (
         <button
@@ -95,7 +103,7 @@ export function BookingRequests({ visits = false, onChanged }: { visits?: boolea
           }}
           className="text-xs font-medium text-brand-600 hover:text-brand-700 hover:underline"
         >
-          View
+          Manage
         </button>
       ),
     },
@@ -119,9 +127,10 @@ export function BookingRequests({ visits = false, onChanged }: { visits?: boolea
           <DateRangeFields value={dates} onChange={setDates} />
           <div className="w-48">
             <SelectField label="Sort by" value={sort} onChange={setSort} options={[
+              { value: 'latest-appointment', label: 'Latest appointment first' },
               { value: 'newest', label: 'Newest booking first' },
               { value: 'oldest', label: 'Oldest booking first' },
-              { value: 'appointment', label: 'Appointment date' },
+              { value: 'appointment', label: 'Earliest appointment first' },
             ]} />
           </div>
           <div className="ml-auto w-full min-w-0 sm:w-80">
@@ -148,7 +157,10 @@ export function BookingRequests({ visits = false, onChanged }: { visits?: boolea
               columns={columns}
               rows={rows}
               rowKey={(b) => b.id}
-              onRowClick={setSelected}
+              expandable={{
+                label: (booking) => `appointment ${booking.referenceNo} for ${booking.patientName}`,
+                render: (booking) => <AppointmentExpanded booking={booking} onManage={() => setSelected(booking)} />,
+              }}
               empty={
                 <EmptyState
                   title="Nothing matches those filters"

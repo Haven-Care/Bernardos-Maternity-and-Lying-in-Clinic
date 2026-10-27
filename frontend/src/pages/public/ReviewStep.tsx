@@ -3,11 +3,12 @@ import { Button } from '../../components/ui/Button'
 import { formatDateLong, formatPeso, formatTime } from '../../lib/format'
 import type { Contact } from './DetailsStep'
 
-export function ReviewStep({ service, scheduledDate, slotTime, contact, submitting, error, onSubmit, onBack, onPickAnotherTime }: {
+export function ReviewStep({ service, scheduledDate, slotTime, contact, savePersonalDetails, submitting, error, onSubmit, onBack, onPickAnotherTime }: {
   service: Service
   scheduledDate: string
   slotTime: string
   contact: Contact
+  savePersonalDetails: boolean
   submitting: boolean
   error?: string
   onSubmit: () => void
@@ -27,6 +28,7 @@ export function ReviewStep({ service, scheduledDate, slotTime, contact, submitti
         <Row label="Mobile" value={contact.contactNumber} />
         <Row label="Email" value={contact.email} />
         <Row label="Reason for visit" value={contact.reasonForVisit} />
+        <Row label="Save for next booking" value={savePersonalDetails ? 'Name and mobile number' : 'No — keep my existing profile details'} />
       </dl>
       {error && (
         <div role="alert" className="mt-5 rounded-card border border-danger-500/30 bg-danger-50 p-3 text-sm text-danger-700">
@@ -34,7 +36,7 @@ export function ReviewStep({ service, scheduledDate, slotTime, contact, submitti
           <button type="button" onClick={onPickAnotherTime} className="mt-1.5 font-semibold underline underline-offset-2">Choose another time</button>
         </div>
       )}
-      <div className="mt-5 flex gap-2">
+      <div className="mt-5 flex flex-col gap-2 sm:flex-row">
         <Button variant="secondary" onClick={onBack} disabled={submitting} className="flex-1 justify-center">Edit details</Button>
         <Button onClick={onSubmit} loading={submitting} className="flex-1 justify-center">Book appointment</Button>
       </div>
@@ -45,9 +47,9 @@ export function ReviewStep({ service, scheduledDate, slotTime, contact, submitti
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between gap-4 py-3 text-sm">
+    <div className="flex flex-col gap-1 py-3 text-sm sm:flex-row sm:justify-between sm:gap-4">
       <dt className="shrink-0 text-gray-500">{label}</dt>
-      <dd className="min-w-0 break-words text-right font-medium text-gray-900">{value}</dd>
+      <dd className="min-w-0 break-words sm:text-right font-medium text-gray-900">{value}</dd>
     </div>
   )
 }

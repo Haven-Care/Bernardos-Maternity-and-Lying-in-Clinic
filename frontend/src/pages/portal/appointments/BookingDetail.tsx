@@ -170,9 +170,9 @@ function Row({
   value: React.ReactNode
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 py-2">
+    <div className="flex flex-col gap-1 py-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
       <dt className="shrink-0 text-xs text-gray-500">{label}</dt>
-      <dd className="text-right text-xs font-medium text-gray-900">{value}</dd>
+      <dd className="min-w-0 break-words text-xs font-medium text-gray-900 sm:text-right">{value}</dd>
     </div>
   )
 }

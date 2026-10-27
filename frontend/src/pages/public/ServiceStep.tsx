@@ -48,7 +48,7 @@ export function ServiceStep({
           {(rows) => <ServiceGroups rows={rows} value={value} onPick={onPick} />}
         </AsyncBoundary>
       </div>
-      <div className="mt-6"><ClinicServiceCatalog /></div>
+      <div className="mt-6 border-t border-border pt-6"><ClinicServiceCatalog /></div>
     </div>
   )
 }
@@ -91,7 +91,7 @@ function ServiceGroups({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="grid items-start gap-3 md:grid-cols-2">
       {groups.map((group, index) => {
         const expanded = open.has(group.category)
         const panelId = `${baseId}-${index}`

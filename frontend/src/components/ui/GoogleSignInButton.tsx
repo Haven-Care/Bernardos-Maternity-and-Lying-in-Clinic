@@ -86,7 +86,6 @@ export function GoogleSignInButton({ disabled = false, loading = false, onCreden
         <p role="alert" className="text-danger-700">Google sign-in is unavailable. You can use your email and password.</p>
         {clientId && <button type="button" className="mt-1 text-brand-600 underline" onClick={() => { setPhase('loading'); setAttempt((value) => value + 1) }}>Retry Google sign-in</button>}
       </div>}
-      {loading && <p role="status" className="mt-1 text-center text-sm text-gray-500">Finishing Google sign-in…</p>}
     </div>
   )
 }

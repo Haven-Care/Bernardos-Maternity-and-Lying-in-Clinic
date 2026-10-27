@@ -1,13 +1,16 @@
 import type { BookingRequest } from '../../types/appointment'
+import { Link } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
 import { formatDateLong, formatTime } from '../../lib/format'
 
 /** A saved booking holds its slot while awaiting staff confirmation. */
 export function BookingConfirmed({
   booking,
+  personalDetailsStatus,
   onBookAnother,
 }: {
   booking: BookingRequest
+  personalDetailsStatus?: 'saved' | 'failed'
   onBookAnother: () => void
 }) {
   return (
@@ -61,6 +64,18 @@ export function BookingConfirmed({
         <Row label="Mobile" value={booking.contactNumber} />
         <Row label="Reason for visit" value={booking.reasonForVisit} stacked />
       </dl>
+
+      {personalDetailsStatus === 'saved' && (
+        <p role="status" className="mt-5 rounded-card border border-success-500/30 bg-success-50 p-3 text-left text-sm text-success-700">
+          Your name and mobile number are saved to your profile and will be filled in for future bookings. You can update them in My profile.
+        </p>
+      )}
+      {personalDetailsStatus === 'failed' && (
+        <div role="alert" className="mt-5 rounded-card border border-warning-500/30 bg-warning-50 p-3 text-left text-sm text-warning-700">
+          <p>Your appointment is booked, but we couldn’t save your details for next time. You don’t need to book again.</p>
+          <Link to="/patient/account" className="mt-2 inline-block font-semibold underline">Save your details in My profile</Link>
+        </div>
+      )}
 
       <Button
         variant="secondary"

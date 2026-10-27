@@ -18,13 +18,13 @@ export function Stepper({
   onJump: (step: BookingStep) => void
 }) {
   return (
-    <ol className="mb-5 flex items-center gap-2" aria-label="Booking progress">
+    <ol className="mb-5 flex items-start gap-2" aria-label="Booking progress">
       {BOOKING_STEPS.map((label, index) => {
         const done = index < current
         const active = index === current
 
         return (
-          <li key={label} className="flex min-w-0 flex-1 items-center gap-2">
+          <li key={label} className="flex min-w-0 flex-1 items-start gap-2">
             <button
               type="button"
               disabled={!done}
