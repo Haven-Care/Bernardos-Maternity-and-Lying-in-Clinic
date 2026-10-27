@@ -5,7 +5,7 @@ import * as api from '../../api'
 import { useAsync } from '../../hooks/useAsync'
 import { Badge, StatusBadge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
-import { ConfirmModal, Modal } from '../../components/ui/Modal'
+import { ConfirmModal } from '../../components/ui/Modal'
 import { Tabs } from '../../components/ui/Tabs'
 import { AsyncBoundary, EmptyState } from '../../components/ui/states'
 import { useToast } from '../../components/ui/toast-context'
@@ -77,7 +77,7 @@ export function MyBookings() {
             if (shown.length === 0) return <EmptyState {...EMPTY[filter]} />
 
             return (
-              <ul className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <ul className="grid min-w-0 items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {shown.map((booking) => (
                   <BookingCard
                     key={booking.id}
@@ -133,7 +133,6 @@ function BookingCard({
   const [cancelling, setCancelling] = useState(false)
   const [confirmingCancel, setConfirmingCancel] = useState(false)
   const [rescheduling, setRescheduling] = useState(false)
-  const [expanded, setExpanded] = useState(false)
 
   const actionable = ACTIONABLE.has(booking.status)
 
@@ -157,39 +156,39 @@ function BookingCard({
 
   return (
     <li className="min-w-0 rounded-card border border-border bg-surface p-4">
-      <button type="button" onClick={() => setExpanded(true)} aria-haspopup="dialog"
-        aria-label={`View details for booking ${booking.referenceNo}`}
-        className="flex w-full min-w-0 flex-wrap items-start justify-between gap-3 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-600">
-        <span className="min-w-0 flex-1 basis-40 break-words">
-          <span className="block font-semibold text-gray-900">{booking.serviceName}</span>
-          <span className="mt-0.5 block text-sm text-gray-600">
-            {formatDateLong(booking.scheduledDate)},{' '}
-            {formatTime(booking.slotTime)}
+      <details className="group min-w-0">
+        <summary aria-label={`Details for booking ${booking.referenceNo}`}
+          className="flex w-full min-w-0 cursor-pointer list-none flex-wrap items-start justify-between gap-3 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-600 [&::-webkit-details-marker]:hidden">
+          <span className="min-w-0 flex-1 basis-40 break-words">
+            <span className="block font-semibold text-gray-900">{booking.serviceName}</span>
+            <span className="mt-0.5 block text-sm text-gray-600">
+              {formatDateLong(booking.scheduledDate)},{' '}
+              {formatTime(booking.slotTime)}
+            </span>
+            <span className="mt-1 block text-xs text-gray-400">
+              Reference {booking.referenceNo}
+            </span>
+            <span className="mt-2 block text-xs font-semibold text-brand-700"><span className="group-open:hidden">View booking details</span><span className="hidden group-open:inline">Hide booking details</span></span>
           </span>
-          <span className="mt-1 block text-xs text-gray-400">
-            Reference {booking.referenceNo}
+          <span className="flex shrink-0 items-center gap-2">
+            <StatusBadge status={booking.status} />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="size-4 text-brand-700 transition-transform group-open:rotate-90"><path d="m9 6 6 6-6 6" /></svg>
           </span>
-          <span className="mt-2 block text-xs font-semibold text-brand-700">View booking details</span>
-        </span>
-        <span className="flex shrink-0 items-center gap-2">
-          <StatusBadge status={booking.status} />
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="size-4 text-brand-700"><path d="m9 6 6 6-6 6" /></svg>
-        </span>
-      </button>
+        </summary>
 
-      {expanded && <Modal open onClose={() => setExpanded(false)} title="Booking details" description={`Reference ${booking.referenceNo}`}>
-        <div className="mb-4"><StatusBadge status={booking.status} /></div>
-        <dl className="grid min-w-0 gap-3 text-sm sm:grid-cols-2">
-          <BookingField label="Service" value={booking.serviceName} wide />
-          <BookingField label="Appointment date" value={formatDateLong(booking.scheduledDate)} />
-          <BookingField label="Time" value={formatTime(booking.slotTime)} />
-          <BookingField label="Patient" value={booking.patientName} />
-          <BookingField label="Mobile number" value={booking.contactNumber} />
-          <BookingField label="Email" value={booking.email} wide />
-          <BookingField label="Reason for visit" value={booking.reasonForVisit} wide />
-          <BookingField label="Booked on" value={formatTimestamp(booking.submittedAt)} wide />
-        </dl>
-      </Modal>}
+        <section aria-label={`Booking details for ${booking.referenceNo}`} className="mt-4 border-t border-border pt-4">
+          <dl className="grid min-w-0 gap-3 text-sm sm:grid-cols-2">
+            <BookingField label="Service" value={booking.serviceName} wide />
+            <BookingField label="Appointment date" value={formatDateLong(booking.scheduledDate)} />
+            <BookingField label="Time" value={formatTime(booking.slotTime)} />
+            <BookingField label="Patient" value={booking.patientName} />
+            <BookingField label="Mobile number" value={booking.contactNumber} />
+            <BookingField label="Email" value={booking.email} wide />
+            <BookingField label="Reason for visit" value={booking.reasonForVisit} wide />
+            <BookingField label="Booked on" value={formatTimestamp(booking.submittedAt)} wide />
+          </dl>
+        </section>
+      </details>
 
       {booking.status === 'pending' && <p className="mt-3 text-xs text-gray-500">Your appointment is booked and your slot is reserved. Please arrive at the scheduled time.</p>}
 
