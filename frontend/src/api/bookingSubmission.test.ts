@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BookingRequest, CreateBookingInput } from '../types/appointment'
 import { createBooking } from './appointments'
 import { updateAccount } from './patientAuth'
@@ -26,6 +26,7 @@ beforeEach(() => {
   vi.mocked(createBooking).mockResolvedValue(booking)
   vi.mocked(updateAccount).mockResolvedValue(profile)
 })
+afterEach(() => { vi.useRealTimers() })
 
 describe('saving personal details while booking', () => {
   it.each([undefined, false])('does not update a profile without consent (%s)', async (consent) => {
@@ -50,5 +51,15 @@ describe('saving personal details while booking', () => {
     vi.mocked(updateAccount).mockRejectedValue(new Error('Connection lost'))
     expect(await submitBooking(input, true)).toEqual({ booking, detailsSaveFailed: true })
     expect(createBooking).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows the successful booking if saving the profile stalls', async () => {
+    vi.useFakeTimers()
+    vi.mocked(updateAccount).mockReturnValue(new Promise(() => {}))
+    const result = submitBooking(input, true)
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(await result).toEqual({ booking, detailsSaveFailed: true })
+    expect(createBooking).toHaveBeenCalledTimes(1)
+    expect(vi.getTimerCount()).toBe(0)
   })
 })
