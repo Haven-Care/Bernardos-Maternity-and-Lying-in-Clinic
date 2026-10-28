@@ -122,7 +122,7 @@ export function buildDemoPlan({ tables, projectHost, backupSha256, today, genera
   return {
     format: 'havencare-demo-seed-v1', seedKey: SEED_KEY, projectHost, sourceBackupSha256: backupSha256,
     today, generatedAt, admins: ADMIN_EMAILS.map((email, index) => ({ email,
-      full_name: index === 0 ? 'Bernardo Clinic Administrator' : 'HavenCare Administrator', role: 'administrator' })),
+      full_name: index === 0 ? 'Bernardo Admin' : 'HavenCare Admin', role: 'administrator' })),
     clients, patients, reservations, clinicalRecords, statusEvents, rescheduleRequests,
     masterData: Object.fromEntries(['clinic_info', 'clinic_settings', 'operating_hours', 'services', 'appointment_slots']
       .map(table => [table, tables[table]])),
