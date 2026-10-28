@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { VerifyCode } from './VerifyCode'
 
 vi.mock('../../api', () => ({ account: {} }))
+vi.mock('../public/PublicShell', () => ({ PublicShell: () => null }))
 
 describe('password recovery code form', () => {
   it.each(['/verify-code', '/patient/verify-code'])('renders exactly six code digits at %s', (pathname) => {

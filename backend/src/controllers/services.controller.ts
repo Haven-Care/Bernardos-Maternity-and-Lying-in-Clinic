@@ -30,6 +30,12 @@ const servicePatchSchema = serviceInputSchema
 
 const idSchema = z.string().uuid('Not a valid service id.')
 
+/** Informational catalogue: unavailable services remain visible, never bookable. */
+export async function listServiceCatalog(_req: Request, res: Response) {
+  const query = getSupabaseClient().from('services').select('*').order('name')
+  res.json(unwrapList(await query).map(toService).filter((service) => service.name.trim().toLowerCase() !== 'other'))
+}
+
 /**
  * GET /api/services
  *

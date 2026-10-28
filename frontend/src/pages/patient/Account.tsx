@@ -76,7 +76,7 @@ function AccountContent({ account }: { account: PatientAccount }) {
     try {
       if (!await confirmLeave()) return
       await api.patientAuth.requestPasswordReset(account.email)
-      navigate('/verify-code', { state: { email: account.email, codeSentAt: Date.now() } })
+      navigate('/patient/verify-code', { state: { email: account.email, codeSentAt: Date.now(), returnTo: '/patient/account' } })
     } catch (err) {
       cancelLeave()
       setPasswordError(err instanceof Error ? err.message : 'Could not send the verification code. Please try again.')
@@ -132,7 +132,7 @@ function AccountContent({ account }: { account: PatientAccount }) {
       <ProfilePanel title="Password Management" description="Reset your password with an email code">
         <div className="space-y-4">
           <p className="text-sm text-gray-600">We’ll send a six-digit verification code to <span className="break-all font-medium text-gray-900">{account.email}</span>. Enter the code, then choose a new password.</p>
-          <p className="text-xs text-gray-500">After resetting your password, sign in again with your new password.</p>
+          <p className="text-xs text-gray-500">You’ll stay signed in. You can cancel before saving a new password.</p>
           {passwordError && <p role="alert" className="text-sm text-danger-700">{passwordError}</p>}
           <Button type="button" onClick={() => void requestPasswordReset()} loading={sendingCode} className="w-full justify-center">Send verification code</Button>
         </div>

@@ -3,9 +3,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import * as api from '../../api'
 import { Button } from '../../components/ui/Button'
-import { AuthShell, BackToLogin } from './AuthShell'
+import { RecoveryShell } from './RecoveryShell'
 import { CodeInput } from './CodeInput'
-import { useAuthRealm } from './realm'
+import { recoveryReturnTo, useAuthRealm } from './realm'
 
 const CODE_LENGTH = 6
 
@@ -15,6 +15,9 @@ export function VerifyCode() {
   const realm = useAuthRealm()
   const request = location.state as { email?: string; codeSentAt?: number } | null
   const email = request?.email
+  const returnTo = recoveryReturnTo(location.state)
+  const active = useRef(true)
+  useEffect(() => { active.current = true; return () => { active.current = false } }, [])
 
   const [code, setCode] = useState('')
   const [error, setError] = useState<string>()
@@ -33,7 +36,7 @@ export function VerifyCode() {
 
   // Reached directly, or after a refresh dropped the router state — there is no
   // address to verify against, so start the flow over rather than fail opaquely.
-  if (!email) return <Navigate to={realm.forgotPath} replace />
+  if (!email) return <Navigate to={returnTo ?? realm.forgotPath} replace />
 
   async function submit(value: string) {
     if (inFlight.current || value.length !== CODE_LENGTH || !/^\d+$/.test(value)) return
@@ -43,9 +46,9 @@ export function VerifyCode() {
 
     try {
       await api.account.verifyResetCode(email!, value)
-      navigate(realm.resetPath, { state: { email } })
+      if (active.current) navigate(returnTo ? '/patient/reset-password' : realm.resetPath, { state: { email, returnTo } })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'That code didn’t work')
+      if (active.current) setError(err instanceof Error ? err.message : 'That code didn’t work')
     } finally {
       inFlight.current = false
       setSubmitting(false)
@@ -70,10 +73,10 @@ export function VerifyCode() {
   }
 
   return (
-    <AuthShell
+    <RecoveryShell
       title="Enter Verification Code"
       subtitle={`Check ${email} for password recovery instructions.`}
-      before={<BackToLogin to={realm.loginPath} />}
+      returnTo={returnTo}
     >
       <ValidatedForm
         className="flex flex-col gap-4"
@@ -114,6 +117,6 @@ export function VerifyCode() {
           Verify Code
         </Button>
       </ValidatedForm>
-    </AuthShell>
+    </RecoveryShell>
   )
 }

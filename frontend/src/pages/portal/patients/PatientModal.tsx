@@ -1,5 +1,5 @@
 import { MedicalHistory } from './MedicalHistory'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import * as api from '../../../api'
 import { useAsync } from '../../../hooks/useAsync'
 import { Button } from '../../../components/ui/Button'
@@ -13,6 +13,7 @@ import {
 import { useToast } from '../../../components/ui/toast-context'
 import { clinicDate } from '../../../lib/dateRange'
 import { formatTimestamp } from '../../../lib/format'
+import { patientDocumentError } from '../../../lib/inputValidation'
 import type {
   BloodType,
   CivilStatus,
@@ -63,9 +64,8 @@ const EMPTY: PatientInput = {
  * New / edit patient record — Personal Information, Maternity & Medical Info,
  * and Required Documents, matching the prototype's three sections.
  *
- * Uploads are only offered on an existing record: a document has to attach to a
- * patient id, and holding files in memory until the record saves would lose
- * them on any validation failure.
+ * Documents on existing records are staged until Save Changes. Failed uploads
+ * remain selected for retry, while completed uploads are removed from the queue.
  */
 export function PatientModal({
   patientId,
@@ -90,6 +90,9 @@ export function PatientModal({
   const [form, setForm] = useState<PatientInput | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string>()
+  const [pendingDocuments, setPendingDocuments] = useState<Partial<Record<PatientDocumentType, File>>>({})
+  const [documentVersion, setDocumentVersion] = useState(0)
+  const inFlight = useRef(false)
 
   // Seed once the record arrives; a new record starts from EMPTY immediately.
   const values = form ?? (existing.data ? toInput(existing.data) : editing ? null : EMPTY)
@@ -99,7 +102,8 @@ export function PatientModal({
     setForm({ ...values, [key]: value })
   }
 
-  const dirty = values !== null && JSON.stringify(values) !== JSON.stringify(existing.data ? toInput(existing.data) : EMPTY)
+  const profileDirty = values !== null && JSON.stringify(values) !== JSON.stringify(existing.data ? toInput(existing.data) : EMPTY)
+  const dirty = profileDirty || Object.keys(pendingDocuments).length > 0
 
   const canSave =
     values !== null &&
@@ -107,13 +111,27 @@ export function PatientModal({
     values.contactNumber.trim() !== ''
 
   async function save() {
-    if (!values) return
+    if (!values || !canSave || !dirty || inFlight.current) return
+    inFlight.current = true
     setSaving(true)
     setError(undefined)
 
     try {
       if (editing) {
-        await api.patients.updatePatient(patientId, values)
+        if (profileDirty) {
+          const updated = await api.patients.updatePatient(patientId, values)
+          existing.updateData(updated)
+          setForm(null)
+        }
+        for (const [docType, file] of Object.entries(pendingDocuments)) {
+          await api.patients.uploadDocument(patientId, docType as PatientDocumentType, file)
+          setDocumentVersion((current) => current + 1)
+          setPendingDocuments((current) => {
+            const remaining = { ...current }
+            delete remaining[docType as PatientDocumentType]
+            return remaining
+          })
+        }
         toast.success(
           'Patient Record Updated',
           'The patient record has been updated in your records.',
@@ -130,6 +148,7 @@ export function PatientModal({
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save the record')
     } finally {
+      inFlight.current = false
       setSaving(false)
     }
   }
@@ -157,7 +176,7 @@ export function PatientModal({
       {values === null ? (
         <p className="py-10 text-center text-sm text-gray-400">Loading record…</p>
       ) : (
-        <div className="flex flex-col gap-5">
+        <fieldset disabled={saving} className="flex min-w-0 flex-col gap-5">
           <Section title="Personal Information">
             <TextField validation="name"
               label="Full Name"
@@ -317,7 +336,12 @@ export function PatientModal({
               Required Documents
             </h3>
             {editing ? (
-              <Documents patientId={patientId} />
+              <Documents patientId={patientId} version={documentVersion} pending={pendingDocuments} disabled={saving} onSelect={(type, file) => setPendingDocuments((current) => {
+                const next = { ...current }
+                if (file) next[type] = file
+                else delete next[type]
+                return next
+              })} />
             ) : (
               <p className="text-xs text-gray-500">
                 Save the record first — documents attach to a patient, so there
@@ -331,7 +355,7 @@ export function PatientModal({
               {error}
             </p>
           )}
-        </div>
+        </fieldset>
       )}
     </Modal>
     {historyOpen && patientId && (
@@ -341,30 +365,24 @@ export function PatientModal({
   )
 }
 
-function Documents({ patientId }: { patientId: string }) {
-  const documents = useAsync(() => api.patients.listDocuments(patientId))
+function Documents({ patientId, version, pending, onSelect, disabled }: {
+  patientId: string
+  version: number
+  pending: Partial<Record<PatientDocumentType, File>>
+  onSelect: (type: PatientDocumentType, file?: File) => void
+  disabled: boolean
+}) {
+  const documents = useAsync(() => api.patients.listDocuments(patientId), [patientId, version])
   const [uploadError, setUploadError] = useState<string>()
-  const [uploading, setUploading] = useState<PatientDocumentType | null>(null)
-
-  async function upload(docType: PatientDocumentType, file: File) {
-    setUploading(docType)
-    setUploadError(undefined)
-    try {
-      await api.patients.uploadDocument(patientId, docType, file)
-      documents.reload()
-    } catch (error) {
-      setUploadError(error instanceof Error ? error.message : 'Could not upload the document.')
-    } finally {
-      setUploading(null)
-    }
-  }
 
   return (
     <div className="flex flex-col divide-y divide-border rounded-md border border-border">
-      <p className="p-3 text-xs text-gray-500">JPG, PNG, WebP, HEIC, or PDF · up to 10 MB</p>
+      <p className="p-3 text-xs text-gray-500">JPG, PNG, WebP, HEIC, or PDF · up to 10 MB. Selected files are saved when you choose Save Changes.</p>
+      {documents.error && <p role="alert" className="p-3 text-sm text-danger-700">Could not load saved documents. <button type="button" onClick={documents.reload} className="underline">Retry</button></p>}
       {uploadError && <p role="alert" className="p-3 text-sm text-danger-700">{uploadError}</p>}
       {DOCUMENT_TYPES.map((type) => {
         const existing = documents.data?.find((d) => d.docType === type.id)
+        const selected = pending[type.id]
 
         return (
           <div
@@ -374,30 +392,34 @@ function Documents({ patientId }: { patientId: string }) {
             <div className="min-w-0">
               <p className="text-xs font-medium text-gray-700">{type.label}</p>
               <p className="truncate text-xs text-gray-400">
-                {existing
+                {selected ? `${selected.name} · ${formatSize(selected.size)} · Not saved yet` : existing
                   ? `${existing.fileName} · ${formatSize(existing.fileSize)}`
                   : 'Not uploaded'}
               </p>
             </div>
 
             <label className="shrink-0 cursor-pointer rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50">
-              {uploading === type.id
-                ? 'Uploading…'
-                : existing
+              {selected || existing
                   ? 'Replace'
                   : 'Upload'}
               <input
                 type="file" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf"
-                disabled={uploading !== null}
+                aria-label={`${selected || existing ? 'Replace' : 'Upload'} ${type.label}`}
+                disabled={disabled}
                 className="sr-only"
                 onChange={(e) => {
                   const file = e.target.files?.[0]
-                  if (file) void upload(type.id, file)
+                  if (file) {
+                    const issue = patientDocumentError(file)
+                    setUploadError(issue)
+                    if (!issue) onSelect(type.id, file)
+                  }
                   // Reset so re-picking the same file fires change again.
                   e.target.value = ''
                 }}
               />
             </label>
+            {selected && <button type="button" disabled={disabled} onClick={() => onSelect(type.id)} className="shrink-0 text-xs text-brand-700 underline" aria-label={`Remove selected ${type.label}`}>Undo selection</button>}
           </div>
         )
       })}

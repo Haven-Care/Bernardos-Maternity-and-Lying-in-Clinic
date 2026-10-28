@@ -6,16 +6,19 @@ import { Button } from '../../components/ui/Button'
 import { PasswordField } from '../../components/ui/fields'
 import { PasswordRules } from '../../components/ui/PasswordRules'
 import { meetsPasswordRules } from '../../lib/password'
-import { AuthShell, BackToLogin } from './AuthShell'
+import { RecoveryShell } from './RecoveryShell'
 import { useAsync } from '../../hooks/useAsync'
 import { ErrorState, LoadingState } from '../../components/ui/states'
 import { useUnsavedChanges } from '../../hooks/useUnsavedChanges'
-import { useAuthRealm } from './realm'
+import { recoveryReturnTo, useAuthRealm } from './realm'
+import { useToast } from '../../components/ui/toast-context'
 
 export function ResetPassword() {
   const navigate = useNavigate()
   const location = useLocation()
   const realm = useAuthRealm()
+  const returnTo = recoveryReturnTo(location.state)
+  const toast = useToast()
   const email = (location.state as { email?: string } | null)?.email
   const recovery = useAsync(() => api.account.recoveryEmail())
 
@@ -31,7 +34,7 @@ export function ResetPassword() {
 
   // Landing here without a verified code — restart rather than let someone set
   // a password on an unverified address.
-  if (!recovery.data || (email && email.toLowerCase() !== recovery.data.toLowerCase())) return <Navigate to={realm.forgotPath} replace />
+  if (!recovery.data || (email && email.toLowerCase() !== recovery.data.toLowerCase())) return <Navigate to={returnTo ?? realm.forgotPath} replace />
 
   const allPassed = meetsPasswordRules(password)
   const matches = password.length > 0 && password === confirm
@@ -48,8 +51,9 @@ export function ResetPassword() {
     setError(undefined)
 
     try {
-      await api.account.resetPassword(password)
-      navigate(realm.successPath, { replace: true })
+      await api.account.resetPassword(password, !!returnTo)
+      if (returnTo) toast.success('Password updated', 'Your new password has been saved. You’re still signed in.')
+      navigate(returnTo ?? realm.successPath, { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not reset password')
     } finally {
@@ -58,10 +62,10 @@ export function ResetPassword() {
   }
 
   return (
-    <AuthShell
+    <RecoveryShell
       title="Create new password"
       subtitle="Your code has been confirmed. Choose a new password to finish resetting your account."
-      before={<BackToLogin to={realm.loginPath} />}
+      returnTo={returnTo}
     >
       <ValidatedForm className="flex flex-col gap-4" onSubmit={onSubmit}>
         <PasswordField
@@ -100,6 +104,6 @@ export function ResetPassword() {
           Reset Password
         </Button>
       </ValidatedForm>
-    </AuthShell>
+    </RecoveryShell>
   )
 }

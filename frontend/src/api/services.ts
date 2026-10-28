@@ -2,7 +2,12 @@ import type { Service, ServiceInput } from '../types/service'
 import { apiFetch } from './client'
 
 export async function listServices(): Promise<Service[]> {
-  return (await apiFetch<Service[]>('/services')).filter(isSpecificService)
+  return (await apiFetch<Service[]>('/services', { cache: 'no-store' })).filter(isSpecificService)
+}
+
+/** Public rate cards include unavailable services; booking still uses active ones. */
+export async function listServiceCatalog(): Promise<Service[]> {
+  return (await apiFetch<Service[]>('/services/catalog', { cache: 'no-store' })).filter(isSpecificService)
 }
 
 /**
@@ -13,7 +18,7 @@ export async function listServices(): Promise<Service[]> {
  * not see them even by asking for everything.
  */
 export async function listActiveServices(): Promise<Service[]> {
-  return (await apiFetch<Service[]>('/services?active=true')).filter(isSpecificService)
+  return (await apiFetch<Service[]>('/services?active=true', { cache: 'no-store' })).filter(isSpecificService)
 }
 
 export async function createService(input: ServiceInput): Promise<Service> {

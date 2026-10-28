@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Outlet, useBeforeUnload, useBlocker, useLocation, useNavigate } from 'react-router-dom'
-import { RECOVERY_USER_KEY, supabase } from '../lib/supabase'
+import { Outlet, useBeforeUnload, useBlocker, useLocation } from 'react-router-dom'
+import { cancelPasswordReset } from '../api/account'
 import { UnsavedChangesContext } from '../hooks/useUnsavedChanges'
 import { ConfirmModal } from './ui/Modal'
 
@@ -20,16 +20,24 @@ export function UnsavedChangesGuard() {
   const pendingLeave = useRef<((approved: boolean) => void) | null>(null)
   const [askingToLeave, setAskingToLeave] = useState(false)
   const location = useLocation()
-  const navigate = useNavigate()
+  const previousPath = useRef(location.pathname)
   useEffect(() => { approved.current = false }, [location.key])
   useEffect(() => {
-    if (!['/', '/login', '/patient/login'].includes(location.pathname)) return
-    let mounted = true
-    void supabase.auth.getSession().then(() => {
-      if (mounted && sessionStorage.getItem(RECOVERY_USER_KEY)) navigate('/auth/recovery', { replace: true })
-    }).catch(() => { /* A failed session check does not establish recovery. */ })
-    return () => { mounted = false }
-  }, [location.pathname, navigate])
+    const resetPaths = ['/reset-password', '/patient/reset-password']
+    const recoveryPaths = [...resetPaths, '/verify-code', '/patient/verify-code', '/auth/recovery']
+    const leftPasswordForm = resetPaths.includes(previousPath.current) && previousPath.current !== location.pathname
+    previousPath.current = location.pathname
+    if (leftPasswordForm || !recoveryPaths.includes(location.pathname)) {
+      // Clear authorization even when no password has been typed. Going back
+      // must never restore a previously verified password-reset form.
+      void cancelPasswordReset().catch(() => { /* Local recovery authorization is already cleared. */ })
+    }
+  }, [location.pathname])
+  useEffect(() => {
+    const cancel = () => { void cancelPasswordReset().catch(() => {}) }
+    window.addEventListener('pagehide', cancel)
+    return () => window.removeEventListener('pagehide', cancel)
+  }, [])
   const confirmLeave = useCallback(async () => {
     if (!dirty) { approved.current = true; return true }
     // Ignore repeated requests while the original caller awaits a decision.

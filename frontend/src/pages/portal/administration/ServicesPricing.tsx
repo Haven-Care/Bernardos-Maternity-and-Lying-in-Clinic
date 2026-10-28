@@ -134,7 +134,7 @@ export function ServicesPricing() {
       {services.data && <Card className="p-4">
         <h2 className="text-sm font-semibold text-gray-900">Clinic’s service and price list</h2>
         <p className="mt-1 text-xs text-gray-500">
-          {clinicServices.length} services are listed by the clinic. Hearing Test is currently unavailable; contact the clinic for Norifam pricing.
+          {clinicServices.length} services are in the clinic reference list. Configured services show their saved price and availability.
         </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {clinicServiceGroups.map((group) => (
@@ -145,7 +145,7 @@ export function ServicesPricing() {
                   const configured = services.data?.find((service) => service.name.toLowerCase() === name.toLowerCase())
                   return (
                     <li key={name} className="flex items-center justify-between gap-2 text-xs text-gray-700">
-                      <span>{name}<span className="mt-0.5 block text-gray-500">{formatServicePrice(price)}{!available && ' · Currently unavailable'}</span></span>
+                      <span>{name}<span className="mt-0.5 block text-gray-500">{formatServicePrice(configured ? configured.price : price)}{!(configured ? configured.active : available) && ' · Currently unavailable'}</span></span>
                       {configured ? (
                         <span className="shrink-0 text-gray-400">{configured.active ? 'Bookable' : 'Configured'}</span>
                       ) : !available ? (

@@ -31,8 +31,21 @@ export const supabase = createClient(url, anonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    // Support both recovery email links and manually entered OTP codes.
-    detectSessionInUrl: true,
+    // OAuth and email confirmation keep using the portal client. A predicate
+    // must check credentials as well as the path: it replaces Supabase's own
+    // implicit-callback detection, including on ordinary page loads.
+    detectSessionInUrl: (callbackUrl, params) => callbackUrl.pathname !== '/auth/recovery' && Boolean(params.access_token || params.error || params.error_description || params.error_code),
+  },
+})
+
+// A verified reset code or email link must not replace an existing login or sign a visitor
+// into the portal. Keep its temporary session separate and in memory only.
+export const recoverySupabase = createClient(url, anonKey, {
+  auth: {
+    storageKey: 'havencare:password-recovery',
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: (callbackUrl, params) => callbackUrl.pathname === '/auth/recovery' && Boolean(params.access_token || params.error || params.error_description || params.error_code),
   },
 })
 
@@ -44,7 +57,7 @@ export async function getAccessToken(): Promise<string | null> {
 
 // The marker identifies a server-verified recovery session, never a password or token.
 export const RECOVERY_USER_KEY = 'havencare:recovery-user'
-supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'PASSWORD_RECOVERY' && session) sessionStorage.setItem(RECOVERY_USER_KEY, session.user.id)
+export const RECOVERY_RETURN_KEY = 'havencare:recovery-return'
+recoverySupabase.auth.onAuthStateChange((event) => {
   if (event === 'SIGNED_OUT') sessionStorage.removeItem(RECOVERY_USER_KEY)
 })

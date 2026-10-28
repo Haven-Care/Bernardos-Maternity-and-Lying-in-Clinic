@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Request, Response } from 'express'
 import { getSupabaseClient } from '../config/supabase.js'
-import { createService, listServices, updateService } from './services.controller.js'
+import { createService, listServiceCatalog, listServices, updateService } from './services.controller.js'
 import { toService } from '../mappers/clinic.js'
 import type { Database } from '../db/types.js'
 
@@ -9,6 +9,20 @@ vi.mock('../config/supabase.js', () => ({ getSupabaseClient: vi.fn() }))
 beforeEach(() => vi.clearAllMocks())
 
 describe('service pricing', () => {
+  it('publishes saved catalogue rates and availability without offering inactive services for booking', async () => {
+    const rows = [
+      { id: 'hearing', name: 'Hearing Test', category: 'Newborn', price: 725, active: false },
+      { id: 'norifam', name: 'Norifam', category: 'Family planning', price: 825, active: true },
+      { id: 'legacy', name: ' Other ', category: '', price: null, active: true },
+    ]
+    const query = { data: rows, error: null }
+    const order = vi.fn().mockReturnValue(query)
+    vi.mocked(getSupabaseClient).mockReturnValue({ from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ order }) }) } as unknown as ReturnType<typeof getSupabaseClient>)
+    const json = vi.fn()
+    await listServiceCatalog({} as Request, { json } as unknown as Response)
+    expect(order).toHaveBeenCalledWith('name')
+    expect(json).toHaveBeenCalledWith(rows.slice(0, 2))
+  })
   it('preserves an unspecified price instead of converting null to zero', () => {
     const row: Database['public']['Tables']['services']['Row'] = {
       id: 'norifam', name: 'Norifam', category: 'Family planning', price: null,

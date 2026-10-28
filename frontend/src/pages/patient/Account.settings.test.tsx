@@ -75,9 +75,10 @@ describe('client password reset from Profile', () => {
     await act(async () => { resetButton().click() })
     expect(requestPasswordReset).toHaveBeenCalledExactlyOnceWith('patient@example.test')
     const location = JSON.parse(container.querySelector('[data-testid="location"]')!.textContent!)
-    expect(location.pathname).toBe('/verify-code')
+    expect(location.pathname).toBe('/patient/verify-code')
     expect(location.state.email).toBe('patient@example.test')
     expect(location.state.codeSentAt).toEqual(expect.any(Number))
+    expect(location.state.returnTo).toBe('/patient/account')
   })
   it('stays on Profile and restores the unsaved-changes guard when email delivery fails', async () => {
     requestPasswordReset.mockRejectedValue(new Error('Email service unavailable'))

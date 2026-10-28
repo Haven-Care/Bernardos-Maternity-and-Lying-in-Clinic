@@ -735,7 +735,7 @@ describe.skipIf(!up)('dashboard', () => {
       expect(written).toHaveLength(beforeCount + 1)
       // Newest first, so ours is at the head.
       expect(written[0]).toMatchObject({
-        message: expect.stringContaining('Consultation'),
+        message: expect.stringContaining(services.body.find((service: { id: string; name: string }) => service.id === serviceId).name),
         read: false,
       })
       // "… booked Consultation on Nov 17, 09:00" — "booked", not "requested",

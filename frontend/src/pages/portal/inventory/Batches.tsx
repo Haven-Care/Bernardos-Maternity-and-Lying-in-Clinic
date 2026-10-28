@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import * as api from '../../../api'
 import { useAsync } from '../../../hooks/useAsync'
 import { Badge } from '../../../components/ui/Badge'
+import { Button } from '../../../components/ui/Button'
 import { Card } from '../../../components/ui/Card'
 import { SearchField, SelectField } from '../../../components/ui/fields'
 import { Table, type Column } from '../../../components/ui/Table'
@@ -36,6 +37,7 @@ export function Batches({ version, onChanged }: { version: number; onChanged: ()
   const [state, setState] = useState(medicineId ? 'all' : 'stock')
   const [action, setAction] = useState<{ batch: BatchListRow; action: BatchAction }>()
   const [receipt, setReceipt] = useState<BatchListRow>()
+  const [adding, setAdding] = useState(false)
   const rows = useMemo(() => (batches.data ?? []).filter((batch) =>
     (!medicineId || batch.medicineId === medicineId) &&
     (state === 'all' || (state === 'stock' ? batch.quantity > 0 : batchState(batch) === state)) &&
@@ -55,6 +57,7 @@ export function Batches({ version, onChanged }: { version: number; onChanged: ()
         <div className="w-52"><SelectField label="Batch State" value={state} onChange={setState} options={[{ value: 'stock', label: 'With remaining stock' }, { value: 'all', label: 'All batches / history' }, ...Object.entries(BATCH_LABELS).map(([value, label]) => ({ value, label }))]} /></div>
         {medicineId && <button type="button" className="py-2 text-sm text-brand-700 underline" onClick={() => setParams((previous) => { previous.delete('medicineId'); return previous })}>Clear medicine filter</button>}
         <div className="ml-auto w-full sm:w-72"><SearchField value={search} onChange={setSearch} placeholder="Search medicine, lot, or reference" /></div>
+        <Button size="sm" onClick={() => setAdding(true)}>Add Batch</Button>
         <p className="w-full text-xs text-gray-500">Expand a batch to see receipts and stock movements. Empty and disposed batches remain in All batches / history.</p>
       </div>
       <AsyncBoundary state={batches} empty={<EmptyState title="No batches yet" description="Use Receive Stock to record the first delivery." />}>
@@ -64,6 +67,7 @@ export function Batches({ version, onChanged }: { version: number; onChanged: ()
     </Card>
     {action && <BatchActionModal {...action} onClose={() => setAction(undefined)} onSaved={onChanged} />}
     {receipt && <ReceiptModal batch={receipt} onClose={() => setReceipt(undefined)} onSaved={onChanged} />}
+    {adding && <ReceiptModal onClose={() => setAdding(false)} onSaved={onChanged} />}
   </>
 }
 

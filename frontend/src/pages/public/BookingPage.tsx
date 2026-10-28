@@ -5,6 +5,7 @@ import type { Service } from '../../types/service'
 import * as api from '../../api'
 import { submitBooking } from '../../api/bookingSubmission'
 import { useAsync } from '../../hooks/useAsync'
+import { useActiveServices } from '../../hooks/useActiveServices'
 import { Button } from '../../components/ui/Button'
 import { LoadingState } from '../../components/ui/states'
 import {
@@ -83,7 +84,7 @@ export function BookingPage() {
   // The route checks identity before mounting; this request loads contact
   // details and catches an account that expires after the route check.
   const account = useAsync(() => api.patientAuth.getAccount().catch(() => null))
-  const services = useAsync(() => api.services.listActiveServices())
+  const services = useActiveServices()
 
   /**
    * The chosen service, derived rather than stored.
@@ -94,14 +95,13 @@ export function BookingPage() {
    * with it the window where `step` says 3 and `service` is still null.
    */
   const service =
-    picked ??
-    (draft ? (services.data?.find((s) => s.id === draft.serviceId) ?? null) : null)
+    services.data?.find((s) => s.id === (picked?.id ?? draft?.serviceId)) ?? null
 
   // The service behind a draft can be deactivated while the patient is signing
   // up. Once the list is in and it is not there, the draft is unusable — start
   // over rather than show a summary naming something no longer offered.
-  const draftServiceGone =
-    draft !== null && picked === null && services.data !== undefined && !service
+  const selectedServiceGone =
+    (picked !== null || draft !== null) && services.data !== undefined && !service
 
   const contact: Contact = {
     patientName: edits.patientName ?? account.data?.fullName ?? '',
@@ -219,14 +219,14 @@ export function BookingPage() {
 
   // Resolved after the fact rather than in `step`'s initialiser, because the
   // service list is not in yet at that point.
-  const current: BookingStep = draftServiceGone ? 0 : step
+  const current: BookingStep = selectedServiceGone ? 0 : step
 
   return (
     <PublicShell narrow>
       <Stepper current={current} onJump={setStep} />
 
       <div className="rounded-card border border-border bg-surface p-5">
-        {draftServiceGone && (
+        {selectedServiceGone && (
           <p
             role="alert"
             className="mb-4 rounded-card border border-warning-500/30 bg-warning-50 p-3 text-sm text-warning-700"

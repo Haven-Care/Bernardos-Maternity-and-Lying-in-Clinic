@@ -4,6 +4,7 @@ import { publicReadLimiter } from '../middleware/rateLimit.js'
 import {
   createService,
   listServices,
+  listServiceCatalog,
   updateService,
 } from '../controllers/services.controller.js'
 import {
@@ -42,6 +43,7 @@ export const servicesRouter = Router()
 // active services while staff see the deactivated ones too. One URL, and no
 // way for the booking form to be shown something the clinic has withdrawn.
 servicesRouter.get('/', publicReadLimiter, optionalStaff, listServices)
+servicesRouter.get('/catalog', publicReadLimiter, listServiceCatalog)
 
 servicesRouter.post('/', requireStaff, createService)
 servicesRouter.patch('/:id', requireStaff, updateService)

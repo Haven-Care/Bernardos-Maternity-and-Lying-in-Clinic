@@ -7,7 +7,8 @@ import { apiFetch } from './client'
 import { ApiError } from '../lib/api'
 import { textInputError } from '../lib/inputValidation'
 import { meetsPasswordRules } from '../lib/password'
-import { supabase } from '../lib/supabase'
+import { RECOVERY_RETURN_KEY, supabase } from '../lib/supabase'
+import { requestPasswordReset as sendPasswordReset } from './account'
 
 /**
  * Patient accounts.
@@ -85,7 +86,12 @@ export async function updateAccount(
   })
 }
 
-export { requestPasswordReset } from './account'
+export async function requestPasswordReset(email: string): Promise<void> {
+  await sendPasswordReset(email)
+  // Preserve Profile context when the patient chooses the email link instead
+  // of entering its code in the tab that requested the reset.
+  sessionStorage.setItem(RECOVERY_RETURN_KEY, '/patient/account')
+}
 
 /**
  * Change password from the patient Account page.

@@ -1,7 +1,6 @@
 import { useId, useMemo, useState } from 'react'
 import type { Service } from '../../types/service'
-import * as api from '../../api'
-import { useAsync } from '../../hooks/useAsync'
+import { useActiveServices } from '../../hooks/useActiveServices'
 import { AsyncBoundary, EmptyState } from '../../components/ui/states'
 import { formatServicePrice, groupServicesByCategory } from '../../lib/services'
 import { ClinicServiceCatalog } from '../../components/ClinicServiceCatalog'
@@ -23,7 +22,7 @@ export function ServiceStep({
   value: string
   onPick: (service: Service) => void
 }) {
-  const services = useAsync(() => api.services.listActiveServices())
+  const services = useActiveServices()
 
   return (
     <div>

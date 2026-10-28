@@ -5,7 +5,7 @@ import type {
   StaffProfile,
 } from '../types/account'
 import { apiFetch } from './client'
-import { RECOVERY_USER_KEY, supabase } from '../lib/supabase'
+import { RECOVERY_RETURN_KEY, RECOVERY_USER_KEY, recoverySupabase, supabase } from '../lib/supabase'
 
 export async function logout(): Promise<void> {
   const { error } = await supabase.auth.signOut()
@@ -62,6 +62,10 @@ export async function changePassword(
 
 // --- Password reset: email → 6-digit code → new password -------------------
 
+let codeRecoveryUser: string | null = null
+let recoveryAttempt = 0
+let allowRecoveryCallback = true
+
 /**
  * Sends the six-digit code.
  *
@@ -83,36 +87,84 @@ export async function requestPasswordReset(email: string): Promise<void> {
 /**
  * Exchanges the code for a session.
  *
- * On success the user is signed in — a recovery OTP is a login — which is what
- * lets `resetPassword` below call `updateUser` on the next screen.
+ * The temporary session can only be used by this recovery flow. The ordinary
+ * portal session remains unchanged until a new password is actually saved.
  */
 export async function verifyResetCode(
   email: string,
   code: string,
 ): Promise<void> {
-  const { data, error } = await supabase.auth.verifyOtp({
+  const attempt = ++recoveryAttempt
+  allowRecoveryCallback = false
+  const { data, error } = await recoverySupabase.auth.verifyOtp({
     email: email.trim().toLowerCase(),
     token: code.trim(),
     type: 'recovery',
   })
 
-  if (error || !data.user) throw new Error('That code is incorrect or has expired.')
-  sessionStorage.setItem(RECOVERY_USER_KEY, data.user.id)
+  if (attempt !== recoveryAttempt) throw new Error('Password reset was cancelled. Request a new code.')
+  if (error || !data.user || !data.session) throw new Error('That code is incorrect or has expired.')
+  codeRecoveryUser = data.user.id
 }
 
 export async function recoveryEmail(): Promise<string | null> {
-  const { data, error } = await supabase.auth.getUser()
+  const attempt = recoveryAttempt
+  let expectedUser = codeRecoveryUser ?? sessionStorage.getItem(RECOVERY_USER_KEY)
+  const isLinkCallback = allowRecoveryCallback && window.location.pathname === '/auth/recovery'
+  if (!expectedUser && !isLinkCallback) return null
+  const { data, error } = await recoverySupabase.auth.getUser()
+  if (attempt !== recoveryAttempt) return null
   if (error && ![400, 401, 403].includes(error.status ?? 0)) throw new Error('Unable to verify your recovery session. Check your connection and try again.')
-  if (error || !data.user || sessionStorage.getItem(RECOVERY_USER_KEY) !== data.user.id) return null
+  if (!error && data.user && isLinkCallback) {
+    // getUser waits for the isolated client to exchange the URL credentials;
+    // do not depend on a deferred PASSWORD_RECOVERY event to authorize the form.
+    expectedUser = data.user.id
+    sessionStorage.setItem(RECOVERY_USER_KEY, expectedUser)
+    allowRecoveryCallback = false
+  }
+  if (error || !data.user || expectedUser !== data.user.id) return null
   return data.user.email ?? null
 }
 
-export async function resetPassword(newPassword: string): Promise<void> {
-  if (!await recoveryEmail()) throw new Error('Your recovery session has expired. Request a new code or email link.')
-  const { error } = await supabase.auth.updateUser({ password: newPassword })
-  if (error) throw new Error(error.message)
+export async function cancelPasswordReset(): Promise<void> {
+  recoveryAttempt++
+  allowRecoveryCallback = false
+  const hadCodeSession = codeRecoveryUser !== null
+  const hadLinkSession = sessionStorage.getItem(RECOVERY_USER_KEY) !== null
+  codeRecoveryUser = null
   sessionStorage.removeItem(RECOVERY_USER_KEY)
-  await supabase.auth.signOut({ scope: 'local' })
+  sessionStorage.removeItem(RECOVERY_RETURN_KEY)
+  if (hadCodeSession || hadLinkSession) await recoverySupabase.auth.signOut({ scope: 'local' })
+}
+
+export async function resetPassword(newPassword: string, keepSignedIn = false): Promise<void> {
+  const attempt = recoveryAttempt
+  if (!await recoveryEmail()) throw new Error('Your recovery session has expired. Request a new code or email link.')
+  const auth = recoverySupabase.auth
+  const expectedUser = codeRecoveryUser ?? sessionStorage.getItem(RECOVERY_USER_KEY)
+  if (keepSignedIn) {
+    const { data, error } = await supabase.auth.getUser()
+    if (error || !expectedUser || data.user?.id !== expectedUser) throw new Error('Your sign-in session has expired. Sign in again before resetting your password from Profile.')
+  }
+  if (attempt !== recoveryAttempt) throw new Error('Password reset was cancelled. Request a new code.')
+  const { error } = await auth.updateUser({ password: newPassword })
+  if (error) throw new Error(error.message)
+  if (keepSignedIn) {
+    // Supabase can revoke the earlier session after a password change. Retain
+    // the newly verified session so Profile continues working after saving.
+    const { data, error } = await auth.getSession()
+    if (error || !data.session) throw new Error('Password changed. Please sign in again with your new password.')
+    const { error: sessionError } = await supabase.auth.setSession(data.session)
+    if (sessionError) throw new Error('Password changed. Please sign in again with your new password.')
+    codeRecoveryUser = null
+    sessionStorage.removeItem(RECOVERY_USER_KEY)
+    sessionStorage.removeItem(RECOVERY_RETURN_KEY)
+    return
+  }
+  codeRecoveryUser = null
+  sessionStorage.removeItem(RECOVERY_USER_KEY)
+  sessionStorage.removeItem(RECOVERY_RETURN_KEY)
+  await auth.signOut({ scope: 'local' })
 }
 
 // --- Preferences -----------------------------------------------------------

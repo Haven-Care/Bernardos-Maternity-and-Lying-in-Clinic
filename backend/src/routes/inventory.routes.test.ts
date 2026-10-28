@@ -122,11 +122,12 @@ describe.skipIf(!up)('inventory', () => {
         quantity: expect.any(Number), manufacturerLot: null, unit: expect.any(String),
       })
 
-      // Seeded at +3 and +5 days. If this drifts by one, clinic_today() is
-      // being bypassed somewhere and UTC has crept back in.
-      expect(res.body.map((r: { daysLeft: number }) => r.daysLeft)).toEqual([
-        3, 5,
-      ])
+      // Seed offsets age between runs; the API must count from today's Manila
+      // calendar date rather than the date on which the database was seeded.
+      const clinicToday = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
+      for (const row of res.body as { daysLeft: number; expiresAt: string }[]) {
+        expect(row.daysLeft).toBe(Math.round((Date.parse(`${row.expiresAt}T00:00:00Z`) - Date.parse(`${clinicToday}T00:00:00Z`)) / 86_400_000))
+      }
     })
 
     it('keeps inventory away from patients entirely', async () => {
