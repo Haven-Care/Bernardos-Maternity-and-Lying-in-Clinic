@@ -10,10 +10,10 @@ import { canReceiveStock } from '../../../lib/inventory'
 import { clinicDate } from '../../../lib/dateRange'
 import type { BatchListRow } from '../../../types/medicine'
 
-export function ReceiptModal({ batch, onClose, onSaved }: { batch?: BatchListRow; onClose: () => void; onSaved: () => void }) {
+export function ReceiptModal({ batch, medicineId: initialMedicineId, onClose, onSaved }: { batch?: BatchListRow; medicineId?: string; onClose: () => void; onSaved: () => void }) {
   const toast = useToast()
   const medicines = useAsync(() => api.inventory.listMedicines())
-  const [medicineId, setMedicineId] = useState(batch?.medicineId ?? '')
+  const [medicineId, setMedicineId] = useState(batch?.medicineId ?? initialMedicineId ?? '')
   const batches = useAsync(() => medicineId ? api.inventory.listBatches(medicineId) : Promise.resolve([]), [medicineId])
   const [batchId, setBatchId] = useState(batch?.id ?? '')
   const [lot, setLot] = useState(batch?.manufacturerLot ?? '')
