@@ -122,9 +122,10 @@ async function main() {
     for(const a of [...plan.admins,...plan.clients]) {
       const u=users.find(x=>x.email===a.email), admin=ADMIN_EMAILS.includes(a.email)
       const {error}=await client.auth.admin.updateUserById(u.id,{password:admin?secrets.SEED_ADMIN_PASSWORD:secrets.SEED_CLIENT_PASSWORD,email_confirm:true,
+        user_metadata:{...u.user_metadata,...(admin?{full_name:a.full_name}:{})},
         app_metadata:{...u.app_metadata,user_type:admin?'staff':'patient',...(admin?{staff_role:'administrator'}:{havencare_demo_seed:SEED_KEY})}})
       if(error) throw new Error('Provision account: '+error.message)
-      if(admin) { const {error}=await client.from('profiles').update({role:'administrator',status:'active'}).eq('id',u.id); if(error) throw error }
+      if(admin) { const {error}=await client.from('profiles').update({role:'administrator',status:'active',full_name:a.full_name}).eq('id',u.id); if(error) throw error }
     }
     const sql=resetSql(plan,tables,users)
     await writeFile(planPath+'.sql',sql,{mode:0o600})
@@ -145,6 +146,11 @@ async function main() {
     if(!session.ok) throw new Error('Session routing failed for '+a.email)
     const identity=await session.json()
     if(identity.role!==(admin?'administrator':'patient')) throw new Error('Wrong account realm: '+a.email)
+    if(admin) {
+      const profile=await fetch('https://havencare-backend.vercel.app/api/account/me',{headers})
+      const account=await profile.json()
+      if(!profile.ok || account.fullName!==a.full_name) throw new Error('Administrator display name mismatch: '+a.email)
+    }
     const bookings=await fetch('https://havencare-backend.vercel.app/api/'+(admin?'bookings':'me/bookings'),{headers})
     if(!bookings.ok) throw new Error('Booking access failed for '+a.email)
     const rows=await bookings.json()
