@@ -3,7 +3,7 @@ import { useAsync } from '../../../hooks/useAsync'
 import { Tabs, type Tab } from '../../../components/ui/Tabs'
 import { useActiveTab } from '../../../hooks/useActiveTab'
 import { BookingRequests } from './BookingRequests'
-import { CalendarWeek } from './CalendarWeek'
+import { AppointmentCalendar } from './AppointmentCalendar'
 import { RescheduleQueue } from './RescheduleQueue'
 import './Appointments.css'
 
@@ -47,7 +47,7 @@ export function Appointments() {
         // moment a decision lands.
         <RescheduleQueue onDecided={pending.reload} />
       )}
-      {active === 'calendar' && <CalendarWeek />}
+      {active === 'calendar' && <AppointmentCalendar />}
     </div>
   )
 }
