@@ -255,14 +255,14 @@ export function MedicineModal({
         </Section>
 
         <Section title="Pricing & Financials">
-          <NumberField
+          <NumberField decimalPlaces={2}
             label="Unit Cost"
             value={form.unitCost === 0 ? '' : form.unitCost}
             onChange={(v) => set('unitCost', v === '' ? 0 : v)}
             suffix="₱"
             placeholder="e.g. 1.50"
           />
-          <NumberField
+          <NumberField decimalPlaces={2}
             label="Selling Price"
             value={form.sellingPrice === 0 ? '' : form.sellingPrice}
             onChange={(v) => set('sellingPrice', v === '' ? 0 : v)}
@@ -278,7 +278,7 @@ export function MedicineModal({
             onChange={(v) => set('supplierName', v)}
             placeholder="e.g. MedLine Distributors"
           />
-          <TextField
+          <TextField maxLength={200}
             label="Supplier Contact"
             value={form.supplierContact}
             onChange={(v) => set('supplierContact', v)}

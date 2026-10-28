@@ -55,12 +55,12 @@ export function ReceiptModal({ batch, onClose, onSaved }: { batch?: BatchListRow
           <SelectField label="Batch" value={batchId} onChange={selectBatch} disabled={!!batch || batches.loading}
             options={[{ value: '', label: 'New batch' }, ...(batches.data ?? []).filter((b) => b.medicineId === medicineId && canReceiveStock(b)).map((b) => ({ value: b.id, label: `${b.manufacturerLot || 'Lot not recorded'} · ${b.batchNo} · expires ${b.expiresAt}` }))]} />
           {batches.error && <p role="alert" className="text-sm text-danger-700">Could not load batches. <button type="button" onClick={batches.reload} className="underline">Retry</button></p>}
-          <TextField label="Manufacturer Lot Number (optional)" value={lot} onChange={setLot} disabled={!!batchId}
+          <TextField validation="lot" maxLength={64} label="Manufacturer Lot Number (optional)" value={lot} onChange={setLot} disabled={!!batchId}
             hint="Copy from the packaging. Leave blank if unavailable; an internal batch reference is generated separately." />
-          <TextField label="Expiration Date" type="date" required value={expiry} onChange={setExpiry} disabled={!!batchId}
+          <TextField label="Expiration Date" type="date" min={today} required value={expiry} onChange={setExpiry} disabled={!!batchId}
             error={expiry && expiry < today ? 'Expired stock cannot be received.' : undefined} />
           <p className="text-xs text-gray-500">An existing manufacturer lot keeps its original expiry date. A different lot must be received as a new batch.</p>
-          <NumberField label="Quantity Received" required min={1} value={quantity} onChange={setQuantity} suffix={selectedMedicine?.unit} />
+          <NumberField label="Quantity Received" required min={1} max={2_147_483_647 - (batches.data?.find((b) => b.id === batchId)?.quantity ?? 0)} value={quantity} onChange={setQuantity} suffix={selectedMedicine?.unit} />
           {batchId && <p className="text-xs text-gray-500">Batch balance: {batches.data?.find((b) => b.id === batchId)?.quantity ?? '…'} → {(batches.data?.find((b) => b.id === batchId)?.quantity ?? 0) + Number(quantity)} {selectedMedicine?.unit}</p>}
           <TextArea label="Receipt Note" required value={note} onChange={setNote} placeholder="Supplier, delivery reference, or reason for this receipt" />
         </>}

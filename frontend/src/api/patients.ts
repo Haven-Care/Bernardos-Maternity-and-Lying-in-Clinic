@@ -1,3 +1,4 @@
+import { patientDocumentError } from '../lib/inputValidation'
 import type {
   Patient,
   PatientDocument,
@@ -61,6 +62,8 @@ export async function uploadDocument(
   docType: PatientDocumentType,
   file: File,
 ): Promise<PatientDocument> {
+  const invalid = patientDocumentError(file)
+  if (invalid) throw new Error(invalid)
   const { signedUrl, path } = await apiFetch<{
     signedUrl: string
     path: string

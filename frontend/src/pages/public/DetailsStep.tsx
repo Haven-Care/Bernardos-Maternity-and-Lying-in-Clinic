@@ -1,3 +1,4 @@
+import { ValidatedForm } from '../../components/ui/ValidatedForm'
 import { useState } from 'react'
 import type { Service } from '../../types/service'
 import { formatServicePrice } from '../../lib/services'
@@ -73,6 +74,10 @@ export function DetailsStep({
   onContinue: () => void
 }) {
   const [errors, setErrors] = useState<Errors>({})
+  function change(patch: Partial<Contact>) {
+    onChange(patch)
+    setErrors((current) => Object.fromEntries(Object.entries(current).filter(([key]) => !(key in patch))))
+  }
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -83,7 +88,7 @@ export function DetailsStep({
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate>
+    <ValidatedForm onSubmit={handleSubmit} noValidate>
       <h1 className="text-lg font-semibold text-gray-900">Your details</h1>
       <p className="mt-1 text-sm text-gray-500">
         The clinic uses these to contact you about your appointment.
@@ -108,22 +113,22 @@ export function DetailsStep({
       </dl>
 
       <div className="mt-4 grid min-w-0 gap-4 sm:grid-cols-2">
-        <TextField
+        <TextField validation="name"
           label="Full name"
           required
           value={value.patientName}
-          onChange={(patientName) => onChange({ patientName })}
+          onChange={(patientName) => change({ patientName })}
           placeholder="Juana Dela Cruz"
           autoComplete="name"
           error={errors.patientName}
         />
 
-        <TextField
+        <TextField validation="mobile" maxLength={30}
           label="Mobile number"
           required
           type="tel"
           value={value.contactNumber}
-          onChange={(contactNumber) => onChange({ contactNumber })}
+          onChange={(contactNumber) => change({ contactNumber })}
           placeholder="0917 123 4567"
           autoComplete="tel"
           error={errors.contactNumber}
@@ -164,12 +169,12 @@ export function DetailsStep({
         </label>
 
         <div className="sm:col-span-2">
-          <TextArea
+          <TextArea minLength={5}
             label="Reason for visit"
             required
             rows={3}
             value={value.reasonForVisit}
-            onChange={(reasonForVisit) => onChange({ reasonForVisit })}
+            onChange={(reasonForVisit) => change({ reasonForVisit })}
             placeholder="e.g. Routine monthly check-up"
             error={errors.reasonForVisit}
           />
@@ -186,6 +191,6 @@ export function DetailsStep({
       <p className="mt-3 text-center text-xs text-gray-500">
         You can check every detail before booking.
       </p>
-    </form>
+    </ValidatedForm>
   )
 }

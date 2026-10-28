@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import { validateControls } from '../../lib/formValidity'
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success'
 type Size = 'sm' | 'md'
@@ -36,6 +37,7 @@ export function Button({
   children,
   className = '',
   disabled,
+  onClick,
   ...rest
 }: Props) {
   return (
@@ -44,6 +46,13 @@ export function Button({
       disabled={disabled || loading}
       className={`inline-flex min-h-11 min-w-0 items-center justify-center rounded-md sm:min-h-9 font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 disabled:ring-0 ${VARIANTS[variant]} ${SIZES[size]} ${className}`}
       {...rest}
+      onClick={(event) => {
+        const scope = event.currentTarget.form ?? event.currentTarget.closest('[data-validation-footer]')?.closest('dialog')
+        if (scope && !['secondary', 'ghost'].includes(variant)) {
+          if (!validateControls(scope)) { event.preventDefault(); return }
+        }
+        onClick?.(event)
+      }}
     >
       {loading ? <Spinner /> : icon}
       {children}

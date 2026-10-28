@@ -1,3 +1,4 @@
+import { text, phoneNumber, mobileNumber, emailAddress, website, wholeNumber } from '../lib/inputValidation.js'
 import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
@@ -17,13 +18,13 @@ import {
  */
 
 const clinicInfoSchema = z.object({
-  name: z.string().trim().min(1, 'Clinic name is required.'),
-  licenseNo: z.string().trim().default(''),
-  address: z.string().trim().default(''),
-  landline: z.string().trim().default(''),
-  mobile: z.string().trim().default(''),
-  email: z.string().trim().email('Enter a valid email address.').or(z.literal('')),
-  website: z.string().trim().default(''),
+  name: text().min(1, 'Clinic name is required.'),
+  licenseNo: text(100).default(''),
+  address: text(1000).default(''),
+  landline: phoneNumber().default(''),
+  mobile: mobileNumber().or(z.literal('')).default(''),
+  email: emailAddress().or(z.literal('')),
+  website: website().default(''),
 })
 
 const TIME = /^([01][0-9]|2[0-3]):[0-5][0-9]$/
@@ -41,7 +42,7 @@ const operatingHoursSchema = z
         'sunday',
         'holidays',
       ]),
-      label: z.string().trim().min(1),
+      label: text(50).min(1),
       opensAt: z.string().regex(TIME).nullable(),
       closesAt: z.string().regex(TIME).nullable(),
       closed: z.boolean(),
@@ -92,9 +93,9 @@ const operatingHoursSchema = z
 
 const settingsSchema = z
   .object({
-    nearExpiryDays: z.number().int().positive().optional(),
-    reminderLeadHours: z.number().int().positive().optional(),
-    dailyBookingCapacity: z.number().int().positive().nullable().optional(),
+    nearExpiryDays: wholeNumber().positive().optional(),
+    reminderLeadHours: wholeNumber().positive().optional(),
+    dailyBookingCapacity: wholeNumber().positive().nullable().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, 'Nothing to update.')
 

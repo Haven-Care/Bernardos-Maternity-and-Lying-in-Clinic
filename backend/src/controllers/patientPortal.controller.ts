@@ -1,3 +1,4 @@
+import { text, personName, mobileNumber } from '../lib/inputValidation.js'
 import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
@@ -70,8 +71,8 @@ export async function getMyAccount(req: Request, res: Response) {
 
 const profileSchema = z
   .object({
-    fullName: z.string().trim().min(1, 'Your name is required.').optional(),
-    contactNumber: z.string().trim().optional(),
+    fullName: personName().optional(),
+    contactNumber: mobileNumber().optional(),
     emailNotifications: z.boolean().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, 'Nothing to update.')
@@ -122,11 +123,11 @@ const createBookingSchema = z.object({
   serviceId: z.string().uuid('Choose a service.'),
   scheduledDate: isoDate('Choose a date.'),
   slotTime: z.string().regex(TIME, 'Choose a time.'),
-  reasonForVisit: z.string().trim().default(''),
+  reasonForVisit: text(2000).min(5, 'Tell the clinic briefly why you are coming in.'),
   // Optional overrides. The account already knows these, but the booking form
   // lets a patient correct the number they want called on the day.
-  patientName: z.string().trim().min(1).optional(),
-  contactNumber: z.string().trim().optional(),
+  patientName: personName().optional(),
+  contactNumber: mobileNumber().optional(),
 })
 
 /**

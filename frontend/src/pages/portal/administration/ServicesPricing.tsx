@@ -254,13 +254,13 @@ function ServiceModal({
           onChange={(v) => setForm({ ...form, name: v })}
           placeholder="e.g. Pre-natal Check-up"
         />
-        <TextField
+        <TextField maxLength={100}
           label="Category"
           value={form.category}
           onChange={(v) => setForm({ ...form, category: v })}
           placeholder="e.g. Consultation"
         />
-        <NumberField
+        <NumberField decimalPlaces={2}
           label="Price"
           min={0}
           value={form.price ?? ''}

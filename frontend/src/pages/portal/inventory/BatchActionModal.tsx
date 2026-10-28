@@ -43,7 +43,7 @@ export function BatchActionModal({ batch, action, onClose, onSaved }: { batch: B
           <p className="text-sm text-gray-600">Correct a verified physical count. Use Receive Stock for deliveries. A correction is logged without editing earlier movements.</p>
           <SelectField label="Adjustment Direction" value={direction} onChange={setDirection} options={[{ value: 'remove', label: 'Decrease count' }, { value: 'add', label: 'Increase count' }]} />
         </>}
-        <NumberField label={action === 'disposed' ? 'Quantity Disposed' : action === 'dispensed' ? 'Quantity Dispensed' : 'Quantity Difference'} required min={1} value={quantity} onChange={setQuantity} suffix={batch.unit}
+        <NumberField label={action === 'disposed' ? 'Quantity Disposed' : action === 'dispensed' ? 'Quantity Dispensed' : 'Quantity Difference'} required min={1} max={action === 'adjustment' && direction === 'add' ? 2_147_483_647 - batch.quantity : batch.quantity} value={quantity} onChange={setQuantity} suffix={batch.unit}
           error={after < 0 ? `Only ${batch.quantity} ${batch.unit} remain.` : undefined} />
         <p className="rounded-md bg-gray-50 p-3 text-sm">Batch balance: <strong>{batch.quantity} → {after} {batch.unit}</strong></p>
       </>}

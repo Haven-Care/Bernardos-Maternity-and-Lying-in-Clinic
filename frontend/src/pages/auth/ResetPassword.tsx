@@ -1,3 +1,4 @@
+import { ValidatedForm } from '../../components/ui/ValidatedForm'
 import { useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import * as api from '../../api'
@@ -62,7 +63,7 @@ export function ResetPassword() {
       subtitle="Your code has been confirmed. Choose a new password to finish resetting your account."
       before={<BackToLogin to={realm.loginPath} />}
     >
-      <form className="flex flex-col gap-4" onSubmit={onSubmit}>
+      <ValidatedForm className="flex flex-col gap-4" onSubmit={onSubmit}>
         <PasswordField
           label="New Password"
           value={password}
@@ -98,7 +99,7 @@ export function ResetPassword() {
         >
           Reset Password
         </Button>
-      </form>
+      </ValidatedForm>
     </AuthShell>
   )
 }

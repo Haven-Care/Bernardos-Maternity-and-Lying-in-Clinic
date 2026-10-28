@@ -5,6 +5,8 @@ import type {
 } from '../types/patientAccount'
 import { apiFetch } from './client'
 import { ApiError } from '../lib/api'
+import { textInputError } from '../lib/inputValidation'
+import { meetsPasswordRules } from '../lib/password'
 import { supabase } from '../lib/supabase'
 
 /**
@@ -28,6 +30,11 @@ import { supabase } from '../lib/supabase'
  * rather than a real inbox.
  */
 export async function signUp(input: PatientSignupInput): Promise<void> {
+  const issue = textInputError(input.fullName, { label: 'Full name', required: true, rule: 'name' })
+    ?? textInputError(input.email, { label: 'Email', required: true, rule: 'email', maxLength: 254 })
+    ?? textInputError(input.contactNumber, { label: 'Mobile number', required: true, rule: 'mobile', maxLength: 30 })
+  if (issue) throw new Error(issue)
+  if (!meetsPasswordRules(input.password) || input.password.length > 128) throw new Error('Use 8–128 characters with an uppercase letter, a number, and a special character.')
   const { error } = await supabase.auth.signUp({
     email: input.email.trim().toLowerCase(),
     password: input.password,

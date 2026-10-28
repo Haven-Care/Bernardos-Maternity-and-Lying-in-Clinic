@@ -1,3 +1,4 @@
+import { ValidatedForm } from '../../components/ui/ValidatedForm'
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import * as api from '../../api'
@@ -73,7 +74,7 @@ export function VerifyCode() {
       subtitle={`Check ${email} for password recovery instructions.`}
       before={<BackToLogin to={realm.loginPath} />}
     >
-      <form
+      <ValidatedForm
         className="flex flex-col gap-4"
         onSubmit={(event) => {
           event.preventDefault()
@@ -111,7 +112,7 @@ export function VerifyCode() {
         >
           Verify Code
         </Button>
-      </form>
+      </ValidatedForm>
     </AuthShell>
   )
 }

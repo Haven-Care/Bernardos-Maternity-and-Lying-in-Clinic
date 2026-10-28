@@ -199,7 +199,7 @@ describe.skipIf(!up)('bookings', () => {
 
       await request(app)
         .post('/api/bookings')
-        .send({ serviceId, scheduledDate: date, slotTime: '10:00', reasonForVisit: '' })
+        .send({ serviceId, scheduledDate: date, slotTime: '10:00', reasonForVisit: 'Routine check-up' })
         .expect(401)
     })
 
@@ -211,7 +211,7 @@ describe.skipIf(!up)('bookings', () => {
           serviceId,
           scheduledDate: '2020-01-06',
           slotTime: '08:00',
-          reasonForVisit: '',
+          reasonForVisit: 'Routine check-up',
         })
       expect(past.status).toBe(400)
       expect(past.body.error).toMatch(/already passed/)
@@ -228,7 +228,7 @@ describe.skipIf(!up)('bookings', () => {
           serviceId,
           scheduledDate: wednesday.toISOString().slice(0, 10),
           slotTime: '13:00',
-          reasonForVisit: '',
+          reasonForVisit: 'Routine check-up',
         })
       expect(blocked.status).toBe(409)
       // A blocked slot is indistinguishable from one that does not exist.
@@ -241,7 +241,7 @@ describe.skipIf(!up)('bookings', () => {
           serviceId,
           scheduledDate: monday,
           slotTime: '23:00',
-          reasonForVisit: '',
+          reasonForVisit: 'Routine check-up',
         })
       expect(noSuchTime.status).toBe(409)
     })
@@ -260,7 +260,7 @@ describe.skipIf(!up)('bookings', () => {
               serviceId,
               scheduledDate: date,
               slotTime: '09:00',
-              reasonForVisit: 'Race',
+              reasonForVisit: 'Race booking test',
             }),
         ),
       )
@@ -488,7 +488,7 @@ describe.skipIf(!up)('bookings', () => {
           serviceId,
           scheduledDate: '2026-02-30',
           slotTime: '08:00',
-          reasonForVisit: '',
+          reasonForVisit: 'Routine check-up',
         })
 
       expect(res.status).toBe(400)
@@ -552,7 +552,7 @@ describe.skipIf(!up)('bookings', () => {
           request(app)
             .post('/api/bookings')
             .set(asAlice())
-            .send({ serviceId, scheduledDate: date, slotTime: '09:00', reasonForVisit: 'Race' }),
+            .send({ serviceId, scheduledDate: date, slotTime: '09:00', reasonForVisit: 'Race booking test' }),
         ),
       ])
 

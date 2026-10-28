@@ -1,3 +1,4 @@
+import { text, wholeNumber, money, MAX_INTEGER } from '../lib/inputValidation.js'
 import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
@@ -16,42 +17,44 @@ import {
 
 const idSchema = z.string().uuid('Not a valid id.')
 
-const medicineSchema = z.object({
-  genericName: z.string().trim().min(1, 'Generic name is required.'),
-  brandName: z.string().trim().default(''),
+const medicineFields = z.object({
+  genericName: text().min(1, 'Generic name is required.'),
+  brandName: text(200).default(''),
   // Free text, not an enum: the four observed values are the filter's options,
   // and the seed already needs "Obstetric" for Oxytocin.
-  category: z.string().trim().default(''),
+  category: text(100).default(''),
   dosageForm: z.enum(['Tablet', 'Capsule', 'Syrup', 'Injection', 'Ointment']),
-  dosage: z.string().trim().default(''),
-  unit: z.string().trim().default('pcs'),
-  reorderLevel: z.number().int().min(0).default(0),
-  targetStockLevel: z.number().int().min(0).nullable().optional(),
-  unitCost: z.number().min(0).default(0),
-  sellingPrice: z.number().min(0).default(0),
-  supplierName: z.string().trim().default(''),
-  supplierContact: z.string().trim().default(''),
-  storageLocation: z.string().trim().default(''),
+  dosage: text(200).min(1, 'Dosage is required.'),
+  unit: text(50).min(1, 'Choose a unit.').default('pcs'),
+  reorderLevel: wholeNumber().default(0),
+  targetStockLevel: wholeNumber().nullable().optional(),
+  unitCost: money().default(0),
+  sellingPrice: money().default(0),
+  supplierName: text(200).default(''),
+  supplierContact: text(200).default(''),
+  storageLocation: text(200).default(''),
 })
+
+const medicineSchema = medicineFields.refine((value) => value.targetStockLevel == null || value.targetStockLevel >= value.reorderLevel, { message: 'Target stock must be at least the reorder level.', path: ['targetStockLevel'] })
 
 // PATCH validates only what it is sent and applies none of the create
 // defaults: an edit that omits `reorderLevel` must not reset it to 0, which
 // would quietly change what counts as Low Stock.
 const medicinePatchSchema = z
   .object({
-    genericName: z.string().trim().min(1, 'Generic name is required.'),
-    brandName: z.string().trim(),
-    category: z.string().trim(),
+    genericName: text().min(1, 'Generic name is required.'),
+    brandName: text(200),
+    category: text(100),
     dosageForm: z.enum(['Tablet', 'Capsule', 'Syrup', 'Injection', 'Ointment']),
-    dosage: z.string().trim(),
-    unit: z.string().trim(),
-    reorderLevel: z.number().int().min(0),
-    targetStockLevel: z.number().int().min(0).nullable().optional(),
-    unitCost: z.number().min(0),
-    sellingPrice: z.number().min(0),
-    supplierName: z.string().trim(),
-    supplierContact: z.string().trim(),
-    storageLocation: z.string().trim(),
+    dosage: text(200).min(1, 'Dosage is required.'),
+    unit: text(50).min(1, 'Choose a unit.'),
+    reorderLevel: wholeNumber(),
+    targetStockLevel: wholeNumber().nullable().optional(),
+    unitCost: money(),
+    sellingPrice: money(),
+    supplierName: text(200),
+    supplierContact: text(200),
+    storageLocation: text(200),
   })
   .partial()
   .refine((v) => Object.keys(v).length > 0, 'Nothing to update.')
@@ -279,6 +282,13 @@ export async function updateMedicine(req: Request, res: Response) {
   const id = parseBody(idSchema, req.params.id)
   const input = parseBody(medicinePatchSchema, req.body)
 
+  if (input.reorderLevel !== undefined || input.targetStockLevel !== undefined) {
+    const current = unwrap(await getSupabaseClient().from('medicines').select('reorder_level, target_stock_level').eq('id', id).maybeSingle(), 'No such medicine.')
+    const reorder = input.reorderLevel ?? current.reorder_level
+    const target = input.targetStockLevel === undefined ? current.target_stock_level : input.targetStockLevel
+    if (target != null && target < reorder) throw new HttpError(400, 'Target stock must be at least the reorder level.')
+  }
+
   const updated = unwrap(
     await getSupabaseClient()
       .from('medicines')
@@ -305,15 +315,15 @@ export async function updateMedicine(req: Request, res: Response) {
 const stockInSchema = z.object({
   medicineId: z.string().uuid('Choose a medicine.'),
   batchNo: batchNumberSchema,
-  quantity: z.number().int().positive('Quantity must be at least 1.'),
+  quantity: wholeNumber().positive('Quantity must be at least 1.'),
   expiresAt: isoDate('Enter an expiry date.'),
-  note: z.string().trim().default(''),
+  note: text(2000).default(''),
 })
 
 const stockOutSchema = z.object({
   batchId: z.string().uuid('Choose a batch.'),
-  quantity: z.number().int().positive('Quantity must be at least 1.'),
-  note: z.string().trim().default(''),
+  quantity: wholeNumber().positive('Quantity must be at least 1.'),
+  note: text(2000).default(''),
 })
 
 /**
@@ -390,9 +400,9 @@ export async function listBatchEvents(req: Request, res: Response) {
 
 const receiptSchema = z.object({
   medicineId: idSchema, batchId: idSchema.optional(),
-  manufacturerLot: z.string().trim().max(64).default(''),
-  quantity: z.number().int().positive(), expiresAt: isoDate('Enter a valid expiry date.'),
-  note: z.string().trim().min(1, 'Describe the receipt.'),
+  manufacturerLot: text(64).default(''),
+  quantity: wholeNumber().positive(), expiresAt: isoDate('Enter a valid expiry date.'),
+  note: text(2000).min(1, 'Describe the receipt.'),
 })
 export async function receiveStock(req: Request, res: Response) {
   const input = parseBody(receiptSchema, req.body)
@@ -406,7 +416,7 @@ export async function receiveStock(req: Request, res: Response) {
   res.status(201).json(toBatch(data))
 }
 
-const movementSchema = z.object({ quantity: z.number().int().refine((value) => value !== 0, 'Quantity cannot be zero.'), reason: z.enum(['dispensed', 'disposed', 'adjustment']), note: z.string().trim().min(1, 'A reason is required.') })
+const movementSchema = z.object({ quantity: z.number().int().min(-MAX_INTEGER).max(MAX_INTEGER).refine((value) => value !== 0, 'Quantity cannot be zero.'), reason: z.enum(['dispensed', 'disposed', 'adjustment']), note: text(2000).min(1, 'A reason is required.') })
 export async function moveStock(req: Request, res: Response) {
   const id = parseBody(idSchema, req.params.id)
   const input = parseBody(movementSchema, req.body)
@@ -419,7 +429,7 @@ export async function moveStock(req: Request, res: Response) {
 
 export async function quarantineBatch(req: Request, res: Response) {
   const id = parseBody(idSchema, req.params.id)
-  const input = parseBody(z.object({ quarantined: z.boolean(), note: z.string().trim().min(1, 'A reason is required.') }), req.body)
+  const input = parseBody(z.object({ quarantined: z.boolean(), note: text(2000).min(1, 'A reason is required.') }), req.body)
   const { data, error } = await getSupabaseClient().rpc('set_inventory_quarantine', { p_batch_id: id, p_quarantined: input.quarantined, p_note: input.note, p_actor: actor(req) })
   if (error) throw dbError(error)
   if (!data) throw new HttpError(500, 'Batch update returned nothing.')
@@ -428,7 +438,7 @@ export async function quarantineBatch(req: Request, res: Response) {
 
 export async function reverseMovement(req: Request, res: Response) {
   const id = parseBody(idSchema, req.params.id)
-  const { note } = parseBody(z.object({ note: z.string().trim().min(1, 'Explain the correction.') }), req.body)
+  const { note } = parseBody(z.object({ note: text(2000).min(1, 'Explain the correction.') }), req.body)
   const { data, error } = await getSupabaseClient().rpc('reverse_inventory_movement', { p_movement_id: id, p_note: note, p_actor: actor(req) })
   if (error) throw dbError(error)
   if (!data) throw new HttpError(500, 'Reversal returned nothing.')
