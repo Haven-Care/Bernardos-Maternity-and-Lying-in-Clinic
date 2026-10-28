@@ -1,18 +1,19 @@
 // @vitest-environment jsdom
 import { act, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-const { updateAccount } = vi.hoisted(() => ({ updateAccount: vi.fn() }))
+const { updateAccount, requestPasswordReset, confirmLeave, cancelLeave } = vi.hoisted(() => ({ updateAccount: vi.fn(), requestPasswordReset: vi.fn(), confirmLeave: vi.fn(), cancelLeave: vi.fn() }))
 vi.mock('../../api', () => ({
   patientAuth: {
     getAccount: async () => ({ fullName: 'Test Patient', email: 'patient@example.test', contactNumber: '09171234567', emailNotifications: true }),
     updateAccount,
+    requestPasswordReset,
   },
   clinic: { getClinicInfo: async () => ({ name: 'Test Clinic', address: 'Clinic address', mobile: '09171234567', landline: '', email: 'clinic@example.test' }) },
 }))
 vi.mock('../public/PublicShell', () => ({ PublicShell: ({ children }: { children: ReactNode }) => <main>{children}</main> }))
-vi.mock('../../hooks/useUnsavedChanges', () => ({ useUnsavedChanges: () => {}, useConfirmLeave: () => ({ confirmLeave: async () => true, cancelLeave: () => {} }) }))
+vi.mock('../../hooks/useUnsavedChanges', () => ({ useUnsavedChanges: () => {}, useConfirmLeave: () => ({ confirmLeave, cancelLeave }) }))
 vi.mock('../../components/ui/toast-context', () => ({ useToast: () => ({ success: vi.fn(), error: vi.fn() }) }))
 import { Account } from './Account'
 let container: HTMLDivElement
@@ -22,10 +23,18 @@ beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
   vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} }))
   updateAccount.mockReset().mockResolvedValue({})
+  requestPasswordReset.mockReset().mockResolvedValue(undefined)
+  confirmLeave.mockReset().mockResolvedValue(true)
+  cancelLeave.mockReset()
   container = document.createElement('div'); document.body.append(container); root = createRoot(container)
 })
 afterEach(async () => { await act(() => root.unmount()); container.remove(); vi.unstubAllGlobals() })
-async function render() { await act(async () => { root.render(<MemoryRouter><Account /></MemoryRouter>); await Promise.resolve() }) }
+function LocationProbe() {
+  const location = useLocation()
+  return <output data-testid="location">{JSON.stringify({ pathname: location.pathname, state: location.state })}</output>
+}
+function resetButton() { return [...container.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent === 'Send verification code')! }
+async function render() { await act(async () => { root.render(<MemoryRouter initialEntries={['/patient/account']}><Account /><LocationProbe /></MemoryRouter>); await Promise.resolve() }) }
 
 describe('patient mobile settings', () => {
   it('shows all five sections and expands each mobile panel independently', async () => {
@@ -55,5 +64,44 @@ describe('patient mobile settings', () => {
     for (const title of ['Personal Information', 'Password Management', 'Notification Settings', 'Contact Us', 'Help & FAQs']) expect(panel(title).getAttribute('aria-expanded')).toBe('true')
     expect(container.querySelector('a[href="tel:09171234567"]')).not.toBeNull()
     expect(container.querySelector('a[href="mailto:clinic@example.test"]')).not.toBeNull()
+  })
+})
+
+
+describe('client password reset from Profile', () => {
+  it('sends the registered email a code and opens verification without collecting passwords', async () => {
+    await render()
+    expect(container.querySelector('input[type="password"]')).toBeNull()
+    await act(async () => { resetButton().click() })
+    expect(requestPasswordReset).toHaveBeenCalledExactlyOnceWith('patient@example.test')
+    const location = JSON.parse(container.querySelector('[data-testid="location"]')!.textContent!)
+    expect(location.pathname).toBe('/verify-code')
+    expect(location.state.email).toBe('patient@example.test')
+    expect(location.state.codeSentAt).toEqual(expect.any(Number))
+  })
+  it('stays on Profile and restores the unsaved-changes guard when email delivery fails', async () => {
+    requestPasswordReset.mockRejectedValue(new Error('Email service unavailable'))
+    await render()
+    await act(async () => { resetButton().click() })
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe('Email service unavailable')
+    expect(container.querySelector('[data-testid="location"]')!.textContent).toContain('/patient/account')
+    expect(cancelLeave).toHaveBeenCalledOnce()
+    expect(resetButton().disabled).toBe(false)
+  })
+  it('does not send a code when the client chooses to keep unsaved changes', async () => {
+    confirmLeave.mockResolvedValue(false)
+    await render()
+    await act(async () => { resetButton().click() })
+    expect(requestPasswordReset).not.toHaveBeenCalled()
+    expect(container.querySelector('[data-testid="location"]')!.textContent).toContain('/patient/account')
+  })
+  it('sends only one request while an email request is pending', async () => {
+    let complete!: () => void
+    requestPasswordReset.mockImplementation(() => new Promise<void>((resolve) => { complete = resolve }))
+    await render()
+    await act(async () => { resetButton().click(); resetButton().click() })
+    expect(requestPasswordReset).toHaveBeenCalledTimes(1)
+    expect(resetButton().disabled).toBe(true)
+    await act(async () => { complete() })
   })
 })

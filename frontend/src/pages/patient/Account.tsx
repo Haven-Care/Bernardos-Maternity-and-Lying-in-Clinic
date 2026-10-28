@@ -1,5 +1,5 @@
 import { ValidatedForm } from '../../components/ui/ValidatedForm'
-import { useId, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { useId, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import * as api from '../../api'
 import type { PatientAccount } from '../../types/patientAccount'
@@ -10,8 +10,6 @@ import { TextField } from '../../components/ui/fields'
 import { AsyncBoundary } from '../../components/ui/states'
 import { Toggle } from '../../components/ui/Toggle'
 import { useToast } from '../../components/ui/toast-context'
-import { ChangePasswordFields } from '../../components/ChangePasswordFields'
-import { EMPTY_PASSWORD_CHANGE, isPasswordChangeReady, type PasswordChange } from '../../lib/password'
 import { isPhMobile } from '../../lib/validate'
 import { PublicShell } from '../public/PublicShell'
 
@@ -36,11 +34,11 @@ function AccountContent({ account }: { account: PatientAccount }) {
   const [fullName, setFullName] = useState(account.fullName)
   const [contactNumber, setContactNumber] = useState(account.contactNumber)
   const [emailNotifications, setEmailNotifications] = useState(account.emailNotifications)
-  const [form, setForm] = useState<PasswordChange>(EMPTY_PASSWORD_CHANGE)
   const [profileError, setProfileError] = useState<string>()
   const [passwordError, setPasswordError] = useState<string>()
   const [savingProfile, setSavingProfile] = useState(false)
-  const [savingPassword, setSavingPassword] = useState(false)
+  const [sendingCode, setSendingCode] = useState(false)
+  const passwordRequestInFlight = useRef(false)
   const [savingNotifications, setSavingNotifications] = useState(false)
   const [notificationError, setNotificationError] = useState<string>()
   const [savedNotifications, setSavedNotifications] = useState(account.emailNotifications)
@@ -49,9 +47,8 @@ function AccountContent({ account }: { account: PatientAccount }) {
   const [savedProfile, setSavedProfile] = useState({ fullName: account.fullName, contactNumber: account.contactNumber })
   const profileDirty = fullName !== savedProfile.fullName || contactNumber !== savedProfile.contactNumber
   const notificationDirty = emailNotifications !== savedNotifications
-  const passwordDirty = Object.values(form).some((value) => value !== '')
   const { confirmLeave, cancelLeave } = useConfirmLeave()
-  useUnsavedChanges(!loggingOut && (profileDirty || passwordDirty || notificationDirty))
+  useUnsavedChanges(!loggingOut && (profileDirty || notificationDirty))
 
   async function saveProfile(event: React.FormEvent) {
     event.preventDefault()
@@ -71,19 +68,21 @@ function AccountContent({ account }: { account: PatientAccount }) {
     }
   }
 
-  async function changePassword(event: React.FormEvent) {
-    event.preventDefault()
-    if (!isPasswordChangeReady(form)) return
-    setSavingPassword(true)
+  async function requestPasswordReset() {
+    if (passwordRequestInFlight.current) return
+    passwordRequestInFlight.current = true
+    setSendingCode(true)
     setPasswordError(undefined)
     try {
-      await api.patientAuth.changePassword({ currentPassword: form.current, newPassword: form.next })
-      setForm(EMPTY_PASSWORD_CHANGE)
-      toast.success('Password changed', 'Use your new password the next time you sign in.')
+      if (!await confirmLeave()) return
+      await api.patientAuth.requestPasswordReset(account.email)
+      navigate('/verify-code', { state: { email: account.email, codeSentAt: Date.now() } })
     } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : 'Could not change password.')
+      cancelLeave()
+      setPasswordError(err instanceof Error ? err.message : 'Could not send the verification code. Please try again.')
     } finally {
-      setSavingPassword(false)
+      passwordRequestInFlight.current = false
+      setSendingCode(false)
     }
   }
 
@@ -130,14 +129,13 @@ function AccountContent({ account }: { account: PatientAccount }) {
         </ValidatedForm>
       </ProfilePanel>
 
-      <ProfilePanel title="Password Management" description="Change your account password">
-        <ValidatedForm onSubmit={changePassword}>
-          <fieldset disabled={savingPassword} className="space-y-4">
-            <ChangePasswordFields value={form} onChange={setForm} />
-            {passwordError && <p role="alert" className="text-sm text-danger-700">{passwordError}</p>}
-            <Button type="submit" loading={savingPassword} disabled={!isPasswordChangeReady(form)} className="w-full justify-center">Update password</Button>
-          </fieldset>
-        </ValidatedForm>
+      <ProfilePanel title="Password Management" description="Reset your password with an email code">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">We’ll send a six-digit verification code to <span className="break-all font-medium text-gray-900">{account.email}</span>. Enter the code, then choose a new password.</p>
+          <p className="text-xs text-gray-500">After resetting your password, sign in again with your new password.</p>
+          {passwordError && <p role="alert" className="text-sm text-danger-700">{passwordError}</p>}
+          <Button type="button" onClick={() => void requestPasswordReset()} loading={sendingCode} className="w-full justify-center">Send verification code</Button>
+        </div>
       </ProfilePanel>
 
       <ProfilePanel title="Notification Settings" description="Manage appointment email notifications">
@@ -179,7 +177,7 @@ const FAQS = [
   { question: 'How can I request a different appointment time?', answer: 'Open History, expand the appointment, and choose Request another time. Your original schedule stays reserved until the clinic approves the request.' },
   { question: 'How can I cancel a booking?', answer: 'Open History, expand an upcoming appointment, and select Cancel. Confirm the cancellation to release your reserved slot.' },
   { question: 'How do I update my contact information?', answer: 'Open Personal Information, edit your name or mobile number, then select Save personal information.' },
-  { question: 'What if I forget my password?', answer: 'Use Forgot Password on the sign-in page and follow the email verification steps. If you are already signed in, use Password Management to change it.' },
+  { question: 'What if I forget my password?', answer: 'Use Forgot Password on the sign-in page and follow the email verification steps. If you are already signed in, open Password Management and select Send verification code to reset it using your registered email.' },
 ]
 const desktopQuery = '(min-width: 1024px)'
 function subscribeDesktop(callback: () => void) {

@@ -195,6 +195,15 @@ local `supabase/config.toml` file. Keep the hosted email OTP length set to six
 digits to match the recovery form. A verified recovery session is required before
 the new-password form can be used. The browser signs out locally after success.
 
+Client **Profile → Password Management** sends a recovery code to the registered
+account email and opens the shared verification screen. It does not collect the
+current or new password before email verification. Unsaved profile/notification
+changes require confirmation before leaving; failed email requests keep the client
+on Profile. The new-password screen requires the verified recovery session.
+For this code flow, the hosted **Reset Password** email template must include
+`{{ .Token }}` (use `supabase/templates/recovery.html`); a link-only template will
+not display the code. Pushing to GitHub does not update hosted Auth templates.
+
 SMTP credentials and an inbox delivery test are still required to verify real
 email delivery. Do not use a real patient's address for development tests.
 See [Supabase email templates](https://supabase.com/docs/guides/auth/auth-email-templates)

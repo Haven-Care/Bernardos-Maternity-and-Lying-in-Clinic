@@ -13,12 +13,13 @@ export function VerifyCode() {
   const navigate = useNavigate()
   const location = useLocation()
   const realm = useAuthRealm()
-  const email = (location.state as { email?: string } | null)?.email
+  const request = location.state as { email?: string; codeSentAt?: number } | null
+  const email = request?.email
 
   const [code, setCode] = useState('')
   const [error, setError] = useState<string>()
   const [submitting, setSubmitting] = useState(false)
-  const [cooldown, setCooldown] = useState(0)
+  const [cooldown, setCooldown] = useState(request?.codeSentAt ? request.codeSentAt + 60_000 : 0)
   const [resending, setResending] = useState(false)
   const inFlight = useRef(false)
   const [resendWait, setResendWait] = useState(0)
