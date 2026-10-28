@@ -427,14 +427,7 @@ export async function moveStock(req: Request, res: Response) {
   res.json(toBatch(data))
 }
 
-export async function quarantineBatch(req: Request, res: Response) {
-  const id = parseBody(idSchema, req.params.id)
-  const input = parseBody(z.object({ quarantined: z.boolean(), note: text(2000).min(1, 'A reason is required.') }), req.body)
-  const { data, error } = await getSupabaseClient().rpc('set_inventory_quarantine', { p_batch_id: id, p_quarantined: input.quarantined, p_note: input.note, p_actor: actor(req) })
-  if (error) throw dbError(error)
-  if (!data) throw new HttpError(500, 'Batch update returned nothing.')
-  res.json(toBatch(data))
-}
+
 
 export async function reverseMovement(req: Request, res: Response) {
   const id = parseBody(idSchema, req.params.id)

@@ -1365,34 +1365,6 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      set_inventory_quarantine: {
-        Args: {
-          p_actor: string
-          p_batch_id: string
-          p_note: string
-          p_quarantined: boolean
-        }
-        Returns: {
-          batch_no: string
-          closed_reason: string | null
-          created_at: string
-          expires_at: string
-          id: string
-          manufacturer_lot: string | null
-          medicine_id: string
-          quantity: number
-          quarantine_reason: string | null
-          quarantined: boolean
-          received_at: string
-          updated_at: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "medicine_batches"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
       short_date: { Args: { d: string }; Returns: string }
       slot_availability: {
         Args: { target_date: string }

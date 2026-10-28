@@ -8,7 +8,7 @@ declare
   a medicine_batches; b medicine_batches; expired medicine_batches; stock medicine_stock; n integer;
 begin
   insert into medicines(generic_name,brand_name,dosage_form,dosage,unit,reorder_level,target_stock_level)
-    values('Inventory Test Medicine','Test Brand','Tablet','100mg','pcs',40,80) returning id into med;
+    values('Inventory Test Medicine','Test Brand','Tablet','100mg','pcs',60,80) returning id into med;
   a:=receive_inventory_stock(med,'LOT-A',30,clinic_today()+90,'Delivery 1',actor);
   original:=a.id;
   assert a.manufacturer_lot='LOT-A' and a.batch_no ~ '^B-[A-F0-9]{16}$';
@@ -29,30 +29,27 @@ begin
     raise exception 'Expired receipts must fail';
   exception when sqlstate 'HC400' then null; end;
   b:=receive_inventory_stock(med,'LOT-B',20,clinic_today()+60,'Delivery B',actor);
-  b:=set_inventory_quarantine(b.id,true,'Packaging under review',actor);
-  -- Simulate an existing expired lot and legacy movement without inventing balances.
-  insert into medicine_batches(medicine_id,batch_no,quantity,expires_at) values(med,'OLD-REF',5,clinic_today()-1) returning * into expired;
+  -- Retired flags and events may exist in old records, but cannot restrict stock.
+  update medicine_batches set quarantined=true,quarantine_reason='Historical hold' where id=b.id;
+  insert into inventory_batch_events(batch_id,action,reason,created_by,created_by_name) values
+    (b.id,'quarantined','Historical hold',actor,'Inventory Test Staff'),
+    (b.id,'released','Historical resolution',actor,'Inventory Test Staff');
+  insert into medicine_batches(medicine_id,batch_no,quantity,expires_at,quarantined) values(med,'OLD-REF',5,clinic_today()-1,true) returning * into expired;
   insert into stock_movements(batch_id,medicine_id,type,quantity,note,created_by) values(expired.id,med,'stock_in',5,'Original legacy note',actor);
   select * into stock from medicine_stock where id=med;
-  assert stock.physical_qty=65 and stock.qty_on_hand=40 and stock.expired_qty=5 and stock.quarantined_qty=20, 'Availability must exclude expired and quarantined quantities exactly once';
-  assert stock.stock_status='low' and stock.nearest_expiry=clinic_today()+90, 'Reorder equality triggers low stock; nearest usable expiry excludes held lots';
-  begin
-    perform record_stock_out(b.id,1,'Attempt held dispense',actor);
-    raise exception 'Quarantined stock cannot be dispensed';
-  exception when sqlstate 'HC409' then null; end;
+  assert stock.physical_qty=65 and stock.qty_on_hand=60 and stock.expired_qty=5 and stock.quarantined_qty=0, 'Retired flags cannot affect availability; expired stock stays excluded';
+  assert stock.stock_status='low' and stock.nearest_expiry=clinic_today()+60, 'Reorder equality triggers low stock; nearest expiry includes formerly held lots';
+  assert to_regprocedure('public.set_inventory_quarantine(uuid,boolean,text,uuid)') is null, 'Quarantine write RPC must be removed';
+  b:=receive_inventory_stock(med,'LOT-B',2,clinic_today()+60,'Receive despite retired flag',actor,b.id);
+  b:=record_stock_out(b.id,2,'Dispense despite retired flag',actor);
+  b:=record_stock_in(med,b.batch_no,2,b.expires_at,'Legacy receipt ignores retired flag',actor);
+  b:=move_inventory_stock(b.id,2,'dispensed','Dispense 2',actor);
+  assert b.quantity=20;
   begin
     perform record_stock_out(expired.id,1,'Attempt expired dispense',actor);
     raise exception 'Legacy stock-out must enforce expiry too';
   exception when sqlstate 'HC409' then null; end;
-  expired:=set_inventory_quarantine(expired.id,true,'Expired hold',actor);
-  begin
-    perform set_inventory_quarantine(expired.id,false,'Release expired',actor);
-    raise exception 'Expired stock cannot be released';
-  exception when sqlstate 'HC409' then null; end;
-  select * into stock from medicine_stock where id=med;
-  assert stock.expired_qty=5 and stock.quarantined_qty=20, 'Expired quarantine must not double-count held units';
-  b:=set_inventory_quarantine(b.id,false,'Packaging cleared',actor);
-  assert (select count(*) from inventory_batch_events where batch_id=b.id)=2, 'Quarantine and release must both remain recorded';
+  assert (select count(*) from inventory_batch_events where batch_id=b.id)=2, 'Historical events must remain intact';
   a:=move_inventory_stock(a.id,-4,'adjustment','Verified count correction',actor);
   a:=move_inventory_stock(a.id,4,'adjustment','Verified recount',actor);
   assert a.quantity=40;

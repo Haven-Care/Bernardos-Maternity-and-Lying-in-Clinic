@@ -119,7 +119,7 @@ describe.skipIf(!up)('inventory', () => {
         batchNo: expect.any(String),
         expiresAt: expect.any(String),
         daysLeft: expect.any(Number),
-        quantity: expect.any(Number), manufacturerLot: null, quarantined: false, unit: expect.any(String),
+        quantity: expect.any(Number), manufacturerLot: null, unit: expect.any(String),
       })
 
       // Seeded at +3 and +5 days. If this drifts by one, clinic_today() is

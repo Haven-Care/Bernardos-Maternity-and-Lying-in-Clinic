@@ -139,9 +139,7 @@ export function receiveStock(input: import('../types/medicine').ReceiveStockInpu
 export function moveStock(id: string, input: { quantity: number; reason: 'dispensed' | 'disposed' | 'adjustment'; note: string }): Promise<MedicineBatch> {
   return apiFetch(`/inventory/batches/${id}/move`, { method: 'POST', body: JSON.stringify(input) })
 }
-export function quarantineBatch(id: string, quarantined: boolean, note: string): Promise<MedicineBatch> {
-  return apiFetch(`/inventory/batches/${id}/quarantine`, { method: 'POST', body: JSON.stringify({ quarantined, note }) })
-}
+
 export function reverseMovement(id: string, note: string): Promise<MedicineBatch> {
   return apiFetch(`/inventory/movements/${id}/reverse`, { method: 'POST', body: JSON.stringify({ note }) })
 }

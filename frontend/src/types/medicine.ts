@@ -77,8 +77,6 @@ export interface MedicineBatch {
   expiresAt: DateString
   receivedAt: DateString
   manufacturerLot?: string | null
-  quarantined?: boolean
-  quarantineReason?: string | null
   state?: BatchState
 }
 
@@ -119,14 +117,13 @@ export type StockStatus = 'good' | 'low' | 'out'
 
 /** A row of the Medicine List tab. */
 export interface MedicineListRow extends Medicine {
-  /** Usable quantity, excluding expired and quarantined batches. */
+  /** Usable quantity, excluding expired batches. */
   qtyOnHand: number
   /** Soonest `expiresAt` across its batches; `null` when it has none. */
   nearestExpiry: DateString | null
   stockStatus: StockStatus
   physicalQty?: number
   expiredQty?: number
-  quarantinedQty?: number
   hasBatchHistory?: boolean
 }
 
@@ -148,7 +145,6 @@ export interface ExpiringBatchRow {
   genericName: string
   quantity: number
   manufacturerLot: string | null
-  quarantined: boolean
   unit?: string
   batchNo: string
   expiresAt: DateString
@@ -197,7 +193,7 @@ export interface StockOutInput {
   note: string
 }
 
-export type BatchState = 'available' | 'expired' | 'quarantined' | 'depleted' | 'disposed'
+export type BatchState = 'available' | 'expired' | 'depleted' | 'disposed'
 export type MovementReason = 'legacy' | 'received' | 'dispensed' | 'disposed' | 'adjustment' | 'reversal'
 export interface BatchListRow extends MedicineBatch {
   medicineName: string

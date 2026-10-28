@@ -2,7 +2,7 @@ import type { Request, Response } from 'express'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 const { getClient, rpc } = vi.hoisted(() => ({ getClient: vi.fn(), rpc: vi.fn() }))
 vi.mock('../config/supabase.js', () => ({ getSupabaseClient: getClient }))
-import { createMedicine, moveStock, quarantineBatch, receiveStock, reverseMovement } from './inventory.controller.js'
+import { createMedicine, moveStock, receiveStock, reverseMovement } from './inventory.controller.js'
 const id = 'a6e591be-05e4-4da9-8a7a-5a0af373b57a'
 const batch = { id, medicine_id: id, batch_no: 'B-TEST', manufacturer_lot: 'LOT-A', quantity: 5, expires_at: '2099-01-01', received_at: '2026-10-28', quarantined: false, quarantine_reason: null, closed_reason: null }
 function req(body: object, staff = true) { return { params: { id }, body, ...(staff ? { staff: { userId: 'verified-staff' } } : {}) } as unknown as Request }
@@ -28,10 +28,6 @@ describe('inventory lifecycle boundary', () => {
   it('rejects an unexplained correction', async () => {
     await expect(moveStock(req({ quantity: 2, reason: 'adjustment', note: ' ' }), response())).rejects.toMatchObject({ status: 400 })
     expect(rpc).not.toHaveBeenCalled()
-  })
-  it('changes quarantine through the availability RPC without writing a quantity', async () => {
-    await quarantineBatch(req({ quarantined: true, note: 'Damaged packaging' }), response())
-    expect(rpc).toHaveBeenCalledWith('set_inventory_quarantine', { p_batch_id: id, p_quarantined: true, p_note: 'Damaged packaging', p_actor: 'verified-staff' })
   })
   it('returns a reversal conflict as an actionable 409', async () => {
     rpc.mockResolvedValue({ data: null, error: { code: 'HC409', message: 'This movement has already been reversed.' } })

@@ -31,7 +31,7 @@ export function StockMovements({ version, onChanged }: { version: number; onChan
       <div className="ml-auto w-full sm:w-64"><SearchField value={search} onChange={setSearch} placeholder="Search medicine, lot, note, or staff" /></div>
       <p className="w-full text-xs text-gray-500">History is retained when a batch is empty or a medicine is archived. Legacy entries keep their original direction and note; their purpose and balances were not reconstructed.</p>
     </div>
-    <AsyncBoundary state={movements} empty={<EmptyState title="No stock movements yet" description="Receipts, dispensing, disposal, and corrections are recorded here." />}>
+    <AsyncBoundary state={movements} empty={<EmptyState title="No stock movements yet" description="Receipts, stock out, disposal, and corrections are recorded here." />}>
       {() => <MovementTable rows={rows} onChanged={onChanged} fillHeight />}
     </AsyncBoundary>
   </Card>

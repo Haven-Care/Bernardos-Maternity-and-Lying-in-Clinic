@@ -81,7 +81,7 @@ export function MedicineList({
       header: 'Available / Physical',
       align: 'right',
       render: (m) => (
-        <div className="tabular-nums"><p className="font-medium">{m.qtyOnHand} {m.unit} available</p><p className="text-xs text-gray-500">{m.physicalQty ?? m.qtyOnHand} physical · {m.expiredQty ?? 0} expired · {m.quarantinedQty ?? 0} quarantined</p></div>
+        <div className="tabular-nums"><p className="font-medium">{m.qtyOnHand} {m.unit} available</p><p className="text-xs text-gray-500">{m.physicalQty ?? m.qtyOnHand} physical · {m.expiredQty ?? 0} expired</p></div>
       ),
     },
     {
@@ -160,7 +160,7 @@ export function MedicineList({
           </div>
         </div>
 
-        <p className="px-4 py-2 text-xs text-gray-500">Available stock excludes expired and quarantined batches. Physical stock includes all remaining units; quarantined counts here exclude units already counted as expired. Use Batches to record stock changes.</p>
+        <p className="px-4 py-2 text-xs text-gray-500">Available stock excludes expired batches. Physical stock includes all remaining units. Use Batches to record stock changes.</p>
         {error && <p role="alert" className="px-4 py-2 text-sm text-danger-700">{error}</p>}
         <AsyncBoundary
           state={medicines}

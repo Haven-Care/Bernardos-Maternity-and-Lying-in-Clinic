@@ -86,13 +86,13 @@ export function ExpirationTracker({ version, onChanged }: { version: number; onC
         </Badge>
       ),
     },
-    { key: 'action', header: 'Action', align: 'right', render: (r) => <div className="flex justify-end gap-3 whitespace-nowrap text-xs"><button type="button" className="py-2 font-medium text-danger-700 underline disabled:opacity-40" disabled={loading} onClick={() => void act(r, 'disposed')}>Record disposal</button>{!r.quarantined && <button type="button" className="py-2 font-medium text-brand-700 underline disabled:opacity-40" disabled={loading} onClick={() => void act(r, 'quarantine')}>Quarantine</button>}{r.quarantined && <span className="py-2 text-gray-500">Quarantined</span>}</div> },
+    { key: 'action', header: 'Action', align: 'right', render: (r) => <div className="flex justify-end gap-3 whitespace-nowrap text-xs"><button type="button" className="py-2 font-medium text-danger-700 underline disabled:opacity-40" disabled={loading} onClick={() => void act(r, 'disposed')}>Record disposal</button></div> },
   ]
 
   return (
     <>
     <Card className="portal-table-card">
-      <p className="border-b border-border p-4 text-xs text-gray-500">Expired stock is already excluded from availability. Record disposal only after physical disposal; use quarantine to hold a batch while awaiting a decision. Completed disposals remain in Batches &amp; History.</p>
+      <p className="border-b border-border p-4 text-xs text-gray-500">Expired stock is already excluded from availability. Record disposal only after physical disposal. Completed disposals remain in Batches &amp; History.</p>
       {error && <p role="alert" className="p-4 text-sm text-danger-700">{error}</p>}
       <AsyncBoundary
         state={rows}

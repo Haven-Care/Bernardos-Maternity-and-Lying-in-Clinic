@@ -40,7 +40,6 @@ export function toMedicineListRow(row: StockViewRow): MedicineListRow {
     archivedAt: row.archived_at,
     physicalQty: Number(row.physical_qty ?? row.qty_on_hand ?? 0),
     expiredQty: Number(row.expired_qty ?? 0),
-    quarantinedQty: Number(row.quarantined_qty ?? 0),
     hasBatchHistory: Number(row.batch_count ?? 0) > 0,
 
     qtyOnHand: Number(row.qty_on_hand ?? 0),
@@ -58,9 +57,7 @@ export function toBatch(row: BatchRow): MedicineBatch {
     expiresAt: row.expires_at,
     receivedAt: row.received_at,
     manufacturerLot: row.manufacturer_lot,
-    quarantined: row.quarantined,
-    quarantineReason: row.quarantine_reason,
-    state: row.quantity === 0 ? row.closed_reason === 'disposed' ? 'disposed' : 'depleted' : row.expires_at < new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' }) ? 'expired' : row.quarantined ? 'quarantined' : 'available',
+    state: row.quantity === 0 ? row.closed_reason === 'disposed' ? 'disposed' : 'depleted' : row.expires_at < new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' }) ? 'expired' : 'available',
   }
 }
 
@@ -98,7 +95,6 @@ export function toExpiringRow(
     batchNo: row.batch_no,
     quantity: row.quantity,
     manufacturerLot: row.manufacturer_lot,
-    quarantined: row.quarantined,
     unit: row.medicines?.unit ?? 'units',
     expiresAt: row.expires_at,
     daysLeft: daysBetween(today, row.expires_at),
