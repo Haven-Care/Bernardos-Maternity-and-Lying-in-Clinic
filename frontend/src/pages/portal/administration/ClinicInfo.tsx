@@ -155,24 +155,24 @@ function EditClinicModal({
           value={form.name}
           onChange={(v) => set('name', v)}
         />
-        <TextField
+        <TextField maxLength={100}
           label="License No."
           value={form.licenseNo}
           onChange={(v) => set('licenseNo', v)}
         />
         <div className="sm:col-span-2">
-          <TextField
+          <TextField maxLength={1000}
             label="Address"
             value={form.address}
             onChange={(v) => set('address', v)}
           />
         </div>
-        <TextField
+        <TextField validation="phone" maxLength={30}
           label="Landline"
           value={form.landline}
           onChange={(v) => set('landline', v)}
         />
-        <TextField
+        <TextField validation="mobile" maxLength={30}
           label="Mobile"
           value={form.mobile}
           onChange={(v) => set('mobile', v)}
@@ -183,7 +183,7 @@ function EditClinicModal({
           value={form.email}
           onChange={(v) => set('email', v)}
         />
-        <TextField
+        <TextField validation="website" maxLength={2048}
           label="Website"
           value={form.website}
           onChange={(v) => set('website', v)}

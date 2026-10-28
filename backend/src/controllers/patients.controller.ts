@@ -1,3 +1,4 @@
+import { text, personName, emailAddress, phoneNumber, wholeNumber, recordedDate } from '../lib/inputValidation.js'
 import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
@@ -21,28 +22,28 @@ const idSchema = z.string().uuid('Not a valid patient id.')
  * visit. A form that demanded a blood type would make that impossible.
  */
 const patientFields = z.object({
-  fullName: z.string().trim().min(1, 'Full name is required.'),
-  dateOfBirth: isoDate().nullable(),
+  fullName: personName(),
+  dateOfBirth: recordedDate().nullable(),
   sex: z.enum(['male', 'female']).nullable(),
   civilStatus: z.enum(['single', 'married', 'widowed', 'separated']).nullable(),
-  contactNumber: z.string().trim(),
-  email: z.string().trim(),
-  address: z.string().trim(),
-  occupation: z.string().trim(),
+  contactNumber: phoneNumber(),
+  email: emailAddress().or(z.literal('')),
+  address: text(1000),
+  occupation: text(),
   bloodType: z
     .enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'])
     .nullable(),
-  emergencyContactName: z.string().trim(),
-  emergencyContactNumber: z.string().trim(),
-  emergencyContactRelation: z.string().trim(),
+  emergencyContactName: personName().or(z.literal('')),
+  emergencyContactNumber: phoneNumber(),
+  emergencyContactRelation: text(100),
 
-  lastMenstrualPeriod: isoDate().nullable(),
-  expectedDeliveryDate: isoDate().nullable(),
-  gravida: z.number().int().min(0).nullable(),
-  para: z.number().int().min(0).nullable(),
-  attendingPhysician: z.string().trim(),
-  allergies: z.string().trim(),
-  medicalConditions: z.string().trim(),
+  lastMenstrualPeriod: recordedDate().nullable(),
+  expectedDeliveryDate: isoDate().refine((value) => value >= '1900-01-01', 'Choose a date from 1900 onward.').nullable(),
+  gravida: wholeNumber().nullable(),
+  para: wholeNumber().nullable(),
+  attendingPhysician: personName().or(z.literal('')),
+  allergies: text(2000),
+  medicalConditions: text(2000),
   visitType: z.enum(['prenatal', 'delivery', 'postnatal']).nullable(),
 })
 
@@ -84,16 +85,20 @@ const paraWithinGravida = (v: PatientInput) =>
   v.gravida == null || v.para == null || v.para <= v.gravida
 
 const PARA_ISSUE = { message: 'Para cannot be greater than gravida.', path: ['para'] }
+const deliveryAfterPeriod = (value: PatientInput) => !value.lastMenstrualPeriod || !value.expectedDeliveryDate || value.expectedDeliveryDate >= value.lastMenstrualPeriod
+const DELIVERY_ISSUE = { message: 'Expected delivery date cannot precede the last menstrual period.', path: ['expectedDeliveryDate'] }
 
 const patientCreateSchema = patientFields
   .partial()
   .required({ fullName: true })
   .refine(paraWithinGravida, PARA_ISSUE)
+  .refine(deliveryAfterPeriod, DELIVERY_ISSUE)
 
 const patientPatchSchema = patientFields
   .partial()
   .refine((v) => Object.keys(v).length > 0, 'Nothing to update.')
   .refine(paraWithinGravida, PARA_ISSUE)
+  .refine(deliveryAfterPeriod, DELIVERY_ISSUE)
 
 function toRow(input: PatientFields) {
   return {
@@ -177,6 +182,13 @@ export async function updatePatient(req: Request, res: Response) {
   const id = parseBody(idSchema, req.params.id)
   const input = parseBody(patientPatchSchema, req.body)
 
+  if (['gravida', 'para', 'lastMenstrualPeriod', 'expectedDeliveryDate'].some((key) => key in input)) {
+    const current = unwrap(await getSupabaseClient().from('patients').select('gravida, para, last_menstrual_period, expected_delivery_date').eq('id', id).maybeSingle(), 'No such patient.')
+    const merged = { gravida: current.gravida, para: current.para, lastMenstrualPeriod: current.last_menstrual_period, expectedDeliveryDate: current.expected_delivery_date, ...input }
+    if (!paraWithinGravida(merged)) throw new HttpError(400, PARA_ISSUE.message)
+    if (!deliveryAfterPeriod(merged)) throw new HttpError(400, DELIVERY_ISSUE.message)
+  }
+
   const row = unwrap(
     await getSupabaseClient()
       .from('patients')
@@ -223,7 +235,7 @@ export async function listDocuments(req: Request, res: Response) {
 }
 
 const uploadUrlSchema = z.object({
-  fileName: z.string().trim().min(1, 'A file name is required.'),
+  fileName: text(255).min(1, 'A file name is required.'),
 })
 
 /**
@@ -267,9 +279,9 @@ export async function createUploadUrl(req: Request, res: Response) {
 
 const documentSchema = z.object({
   docType: z.enum(DOC_TYPES),
-  fileName: z.string().trim().min(1),
-  fileSize: z.number().int().min(0),
-  storagePath: z.string().trim().min(1),
+  fileName: text(255).min(1),
+  fileSize: z.number().int().min(1).max(10_485_760),
+  storagePath: text(512).min(1),
 })
 
 /** Step three: record the upload against the patient. */

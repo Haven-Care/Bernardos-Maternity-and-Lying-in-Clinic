@@ -1,3 +1,4 @@
+import { ValidatedForm } from '../../components/ui/ValidatedForm'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import * as api from '../../api'
@@ -36,7 +37,7 @@ export function ForgotPassword() {
       subtitle="Enter your email to receive a recovery code or password reset link."
       before={<BackToLogin to={realm.loginPath} />}
     >
-      <form className="flex flex-col gap-4" onSubmit={onSubmit}>
+      <ValidatedForm className="flex flex-col gap-4" onSubmit={onSubmit}>
         <TextField
           label="Email Address"
           type="email"
@@ -51,7 +52,7 @@ export function ForgotPassword() {
         <Button type="submit" loading={submitting} disabled={!email.trim()} className="w-full">
           Send
         </Button>
-      </form>
+      </ValidatedForm>
     </AuthShell>
   )
 }

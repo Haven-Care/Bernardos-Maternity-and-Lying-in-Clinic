@@ -4,6 +4,7 @@ import { useAsync } from '../../../hooks/useAsync'
 import { Button } from '../../../components/ui/Button'
 import { Modal } from '../../../components/ui/Modal'
 import { SelectField, TextField } from '../../../components/ui/fields'
+import { clinicDate } from '../../../lib/dateRange'
 import { formatTime } from '../../../lib/format'
 import type { BookingRequest } from '../../../types/appointment'
 
@@ -99,7 +100,7 @@ export function RescheduleModal({
     >
       <div className="flex flex-col gap-4">
         <TextField
-          label="New Date"
+          label="New Date" required min={clinicDate(new Date().toISOString())}
           type="date"
           value={date}
           onChange={(next) => {
@@ -111,7 +112,7 @@ export function RescheduleModal({
         />
 
         <SelectField
-          label="New Time"
+          label="New Time" required
           value={time}
           onChange={setTime}
           options={options}

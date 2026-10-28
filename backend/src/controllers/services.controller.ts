@@ -1,3 +1,4 @@
+import { text, money } from '../lib/inputValidation.js'
 import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
@@ -6,10 +7,10 @@ import { parseBody } from '../lib/validate.js'
 import { toService } from '../mappers/clinic.js'
 
 const serviceInputSchema = z.object({
-  name: z.string().trim().min(1, 'Service name is required.')
+  name: text().min(1, 'Service name is required.')
     .refine((name) => name.toLowerCase() !== 'other', 'Choose a specific service name.'),
-  category: z.string().trim().default(''),
-  price: z.number().min(0, 'Price cannot be negative.').nullable(),
+  category: text(100).default(''),
+  price: money().nullable(),
 })
 
 // PATCH carries either a full edit or just the active toggle, so every field is
@@ -22,7 +23,7 @@ const serviceInputSchema = z.object({
 const servicePatchSchema = serviceInputSchema
   .partial()
   .extend({
-    category: z.string().trim().optional(),
+    category: text(100).optional(),
     active: z.boolean().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, 'Nothing to update.')

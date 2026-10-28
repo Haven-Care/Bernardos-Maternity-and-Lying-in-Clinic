@@ -1,3 +1,4 @@
+import { ValidatedForm } from '../../components/ui/ValidatedForm'
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import * as api from '../../api'
@@ -52,7 +53,7 @@ export function Login() {
       <div inert={submitting || googleSubmitting} aria-hidden={submitting || googleSubmitting || undefined}>
         <AuthShell title="Sign in" subtitle="Access your Bernardo Clinic account."
           footer={<p className="text-center text-xs text-gray-500">No account? <Link to="/patient/signup" state={typeof from === 'string' ? { from } : undefined} className="font-semibold text-brand-600 hover:underline">Create an account</Link></p>}>
-          <form className="flex flex-col gap-4" onSubmit={onSubmit}>
+          <ValidatedForm className="flex flex-col gap-4" onSubmit={onSubmit}>
             {/*
               The prototype labels this "username or email". It is email only.
 
@@ -103,7 +104,7 @@ export function Login() {
               Log In
             </Button>
             {api.session.googleLoginEnabled && <GoogleSignInButton loading={googleSubmitting} disabled={submitting} onCredential={googleLogin} onError={() => setError('Google sign-in could not be completed. Please try again or use your email and password.')} />}
-          </form>
+          </ValidatedForm>
         </AuthShell>
       </div>
     </>

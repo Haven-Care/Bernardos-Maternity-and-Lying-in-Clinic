@@ -230,7 +230,7 @@ describe.skipIf(!up)('inventory', () => {
 
     it('keeps concurrent receipts with different expiry dates in separate outcomes', async () => {
       const raceMedicine = await request(app).post('/api/inventory/medicines').set(auth())
-        .send({ genericName: `Race Medicine ${crypto.randomUUID()}`, dosageForm: 'Tablet', reorderLevel: 0 }).expect(201)
+        .send({ genericName: `Race Medicine ${crypto.randomUUID()}`, dosageForm: 'Tablet', dosage: '100mg', reorderLevel: 0 }).expect(201)
       const batchNo = `RACE-${crypto.randomUUID()}`
       const deliveries = [
         { quantity: 7, expiresAt: '2028-01-01' },

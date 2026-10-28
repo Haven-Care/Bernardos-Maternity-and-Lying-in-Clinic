@@ -1,3 +1,4 @@
+import { text, personName } from '../lib/inputValidation.js'
 import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
@@ -7,10 +8,10 @@ import { HttpError } from '../middleware/errorHandler.js'
 
 const idSchema = z.string().uuid('Not a valid patient id.')
 const recordSchema = z.object({
-  occurredAt: z.string().datetime({ offset: true }),
-  title: z.string().trim().min(1).max(200),
-  findings: z.string().trim().min(1).max(10000),
-  provider: z.string().trim().min(1).max(200),
+  occurredAt: z.string().datetime({ offset: true }).refine((value) => Date.parse(value) <= Date.now() && value.slice(0, 10) >= '1900-01-01', 'Choose a record date from 1900 through the current time.'),
+  title: text().min(1),
+  findings: text(10000).min(1),
+  provider: personName(),
 })
 const pageSchema = z.object({
   offset: z.coerce.number().int().min(0).default(0),

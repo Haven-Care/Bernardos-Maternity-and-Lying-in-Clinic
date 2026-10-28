@@ -1,3 +1,4 @@
+import { personName, phoneNumber, emailAddress } from '../lib/inputValidation.js'
 import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
@@ -36,9 +37,9 @@ export async function getMe(req: Request, res: Response) {
 }
 
 const profileSchema = z.object({
-  fullName: z.string().trim().min(1, 'Full name is required.'),
-  email: z.string().trim().toLowerCase().email('Enter a valid email address.'),
-  contactNumber: z.string().trim().default(''),
+  fullName: personName(),
+  email: emailAddress().toLowerCase(),
+  contactNumber: phoneNumber().default(''),
 })
 
 /**

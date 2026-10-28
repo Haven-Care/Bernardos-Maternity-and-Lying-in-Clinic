@@ -1,3 +1,4 @@
+import { ValidatedForm } from '../../components/ui/ValidatedForm'
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import * as api from '../../api'
@@ -68,7 +69,10 @@ export function SignUp() {
   const [error, setError] = useState<string>()
   const [submitting, setSubmitting] = useState(false)
 
-  const patch = (next: Partial<Form>) => setForm((f) => ({ ...f, ...next }))
+  const patch = (next: Partial<Form>) => {
+    setForm((current) => ({ ...current, ...next }))
+    setErrors((current) => Object.fromEntries(Object.entries(current).filter(([key]) => !(key in next))))
+  }
 
   const passwordOk = meetsPasswordRules(form.password)
 
@@ -114,8 +118,8 @@ export function SignUp() {
         </p>
       }
     >
-      <form className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
-        <TextField
+      <ValidatedForm className="flex flex-col gap-4" onSubmit={onSubmit} noValidate>
+        <TextField validation="name"
           label="Full name"
           required
           value={form.fullName}
@@ -136,7 +140,7 @@ export function SignUp() {
           error={errors.email}
         />
 
-        <TextField
+        <TextField validation="mobile" maxLength={30}
           label="Mobile number"
           required
           type="tel"
@@ -186,7 +190,7 @@ export function SignUp() {
         >
           Create Account
         </Button>
-      </form>
+      </ValidatedForm>
     </AuthShell>
   )
 }

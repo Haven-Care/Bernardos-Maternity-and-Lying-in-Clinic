@@ -239,7 +239,7 @@ function AddStaffModal({
           </p>
         )}
 
-        <TextField
+        <TextField validation="name"
           label="Full Name"
           required
           value={form.fullName}
@@ -254,7 +254,7 @@ function AddStaffModal({
           onChange={(v) => set('email', v)}
           placeholder="e.g. staff@example.com"
         />
-        <TextField
+        <TextField validation="phone" maxLength={30}
           label="Contact Number"
           value={form.contactNumber}
           onChange={(v) => set('contactNumber', v)}
@@ -269,7 +269,7 @@ function AddStaffModal({
             { value: 'administrator', label: 'Administrator' },
           ]}
         />
-        <PasswordField
+        <PasswordField minLength={8}
           label="Temporary Password"
           required
           value={form.password}
