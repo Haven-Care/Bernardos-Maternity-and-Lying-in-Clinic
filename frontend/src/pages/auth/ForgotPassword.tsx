@@ -33,8 +33,8 @@ export function ForgotPassword() {
 
   return (
     <AuthShell
-      title="Reset Password"
-      subtitle="Enter your email to receive a recovery code or password reset link."
+      title="Set or reset your clinic password"
+      subtitle="Enter your account email to receive a verification code."
       before={<BackToLogin to={realm.loginPath} />}
     >
       <ValidatedForm className="flex flex-col gap-4" onSubmit={onSubmit}>
@@ -50,7 +50,7 @@ export function ForgotPassword() {
         />
 
         <Button type="submit" loading={submitting} disabled={!email.trim()} className="w-full">
-          Send
+          Send verification code
         </Button>
       </ValidatedForm>
     </AuthShell>

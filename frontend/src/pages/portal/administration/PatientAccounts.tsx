@@ -40,12 +40,12 @@ export function PatientAccounts() {
         <SearchField value={search} onChange={setSearch} placeholder="Search patient accounts..." />
       </div>
       <Card className="portal-table-card">
-        <AsyncBoundary state={accounts} empty={<EmptyState title="No patient accounts yet" description="Patients registered for the mobile app will appear here." />}>
+        <AsyncBoundary state={accounts} empty={<EmptyState title="No patient accounts yet" description="Patients who register through the patient portal will appear here." />}>
           {() => <Table fillHeight columns={columns} rows={rows} rowKey={(patient) => patient.id} empty={<EmptyState title="No patient accounts match your search" />} />}
         </AsyncBoundary>
       </Card>
       {selected && (
-        <Modal open onClose={() => setSelected(null)} title="Patient Account Details" description="Mobile patient account"
+        <Modal open onClose={() => setSelected(null)} title="Patient Account Details" description="Patient portal account"
           footer={<Button variant="secondary" onClick={() => setSelected(null)}>Close</Button>}>
           <dl className="grid gap-4 text-sm sm:grid-cols-2">
             {[

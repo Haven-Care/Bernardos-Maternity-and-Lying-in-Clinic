@@ -18,7 +18,7 @@ describe('staff visit transitions', () => {
     })).toMatchObject({ id, status: 'pending' })
   })
   it.each([[arriveBooking, 'arrived'], [completeBooking, 'completed'], [noShowBooking, 'no_show']] as const)('records %s using the guarded actor and atomic transition', async (handler, status) => {
-    rpc.mockResolvedValue({ data: { id, status }, error: null })
+    rpc.mockResolvedValue({ data: { id, status, reason_for_visit: '' }, error: null })
     const json = vi.fn()
     await handler(req, { json } as unknown as Response)
     expect(rpc).toHaveBeenCalledWith('transition_appointment', { p_booking_id: id, p_next: status, p_actor: 'verified-staff' })

@@ -65,14 +65,14 @@ export function resetSql(plan, tables, users) {
       values(m.id,'DEMO-B-'||n,'DEMO-LOT-'||n,initial,expiry,clinic_today()-30,case when initial=0 then 'depleted' else null end) returning * into b;
     -- Opening receipt/dispensing facts form a reconciled ledger, even for the empty batch.
     insert into stock_movements(batch_id,medicine_id,type,quantity,note,created_by,reason,quantity_before,quantity_after,created_by_name,medicine_snapshot,batch_snapshot,occurred_at)
-      select b.id,m.id,'stock_in',greatest(initial,10),'Synthetic opening receipt',first_actor,'received',0,greatest(initial,10),p.full_name,
+      select b.id,m.id,'stock_in',greatest(initial,10),'Opening stock receipt (sample)',first_actor,'received',0,greatest(initial,10),p.full_name,
         jsonb_build_object('genericName',m.generic_name,'brandName',m.brand_name,'dosage',m.dosage,'dosageForm',m.dosage_form,'unit',m.unit),
         jsonb_build_object('batchNo',b.batch_no,'manufacturerLot',b.manufacturer_lot,'expiresAt',b.expires_at),(clinic_today()-30)::timestamptz from profiles p where id=first_actor;
     if initial=0 then
       insert into stock_movements(batch_id,medicine_id,type,quantity,note,created_by,reason,quantity_before,quantity_after,created_by_name,medicine_snapshot,batch_snapshot)
-        select batch_id,medicine_id,'stock_out',10,'Synthetic completed dispensing',created_by,'dispensed',10,0,created_by_name,medicine_snapshot,batch_snapshot from stock_movements where batch_id=b.id;
+        select batch_id,medicine_id,'stock_out',10,'Stock issued (sample)',created_by,'dispensed',10,0,created_by_name,medicine_snapshot,batch_snapshot from stock_movements where batch_id=b.id;
     end if;
-    if n=4 then perform move_inventory_stock(b.id,5,'disposed','Synthetic partial disposal history; no real stock transaction',first_actor); end if;
+    if n=4 then perform move_inventory_stock(b.id,5,'disposed','Partial stock disposal (sample)',first_actor); end if;
     update medicines set target_stock_level=greatest(reorder_level*3,100) where id=m.id;
   end loop;
   end $$;\n`

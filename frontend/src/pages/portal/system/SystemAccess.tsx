@@ -270,18 +270,15 @@ function AddStaffModal({
           ]}
         />
         <PasswordField minLength={8}
-          label="Temporary Password"
+          label="Initial Password"
           required
           value={form.password}
           onChange={(v) => set('password', v)}
           placeholder="At least 8 characters"
         />
 
-        {/* Said plainly because it is true: there is no "force change on first
-            login" here, and pretending otherwise would be worse than the note. */}
         <p className="text-xs text-gray-500">
-          Give this password to them directly and ask them to change it from My
-          Account once they have signed in.
+          Share the initial password securely with the staff member. They can use Forgot password on the sign-in page to set their own clinic password.
         </p>
       </div>
     </Modal>

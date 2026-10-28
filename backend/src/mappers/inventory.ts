@@ -1,4 +1,5 @@
 import type { Database } from '../db/types.js'
+import { sampleCopy } from '../lib/sampleCopy.js'
 import type {
   ExpiringBatchRow,
   MedicineBatch,
@@ -71,7 +72,7 @@ export function toMovement(
     medicineId: row.medicine_id,
     type: row.type,
     quantity: row.quantity,
-    note: row.note,
+    note: sampleCopy(row.note),
     occurredAt: row.occurred_at,
     // The contract carries a name — the log reads "Hannah Puerta", not a uuid.
     // Null once a staff member is removed, which the log has to survive.

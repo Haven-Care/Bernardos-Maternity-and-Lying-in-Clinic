@@ -29,7 +29,7 @@ export function ResetPassword() {
 
   useUnsavedChanges((password !== '' || confirm !== '') && !submitting)
 
-  if (recovery.loading) return <LoadingState label="Checking recovery session…" />
+  if (recovery.loading) return <LoadingState label="Verifying your password request…" />
   if (recovery.error) return <ErrorState error={recovery.error} onRetry={recovery.reload} />
 
   // Landing here without a verified code — restart rather than let someone set
@@ -52,7 +52,7 @@ export function ResetPassword() {
 
     try {
       await api.account.resetPassword(password, !!returnTo)
-      if (returnTo) toast.success('Password updated', 'Your new password has been saved. You’re still signed in.')
+      if (returnTo) toast.success('Clinic password saved', 'Your clinic password has been saved. You’re still signed in.')
       navigate(returnTo ?? realm.successPath, { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not reset password')
@@ -63,8 +63,8 @@ export function ResetPassword() {
 
   return (
     <RecoveryShell
-      title="Create new password"
-      subtitle="Your code has been confirmed. Choose a new password to finish resetting your account."
+      title="Set your clinic password"
+      subtitle="Your email is verified. Choose a password for your clinic account."
       returnTo={returnTo}
     >
       <ValidatedForm className="flex flex-col gap-4" onSubmit={onSubmit}>
@@ -101,7 +101,7 @@ export function ResetPassword() {
           disabled={!allPassed || !matches}
           className="w-full"
         >
-          Reset Password
+          Save clinic password
         </Button>
       </ValidatedForm>
     </RecoveryShell>

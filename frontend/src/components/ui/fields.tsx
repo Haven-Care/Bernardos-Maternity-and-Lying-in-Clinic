@@ -189,7 +189,7 @@ export function NumberField({ label, value, onChange, min = 0, max, decimalPlace
         onChange={(event) => {
           const raw = event.target.value
           if (!numericSyntax(raw, decimalPlaces)) {
-            setRejected(decimalPlaces ? 'Use digits and a decimal point, with up to two decimal places.' : 'Use digits only. Letters, decimals, signs, and exponents are not allowed.')
+            setRejected(decimalPlaces ? 'Enter a number with up to two decimal places.' : 'Enter a whole number.')
             return
           }
           setRejected(undefined)

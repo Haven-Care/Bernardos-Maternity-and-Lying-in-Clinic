@@ -1,4 +1,5 @@
 import type { Database } from '../db/types.js'
+import { sampleCopy } from '../lib/sampleCopy.js'
 import type {
   Patient,
   PatientDocument,
@@ -27,8 +28,8 @@ export function toPatient(row: PatientRow, lastVisit: string | null): Patient {
     civilStatus: row.civil_status,
     contactNumber: row.contact_number,
     email: row.email,
-    address: row.address,
-    occupation: row.occupation,
+    address: sampleCopy(row.address),
+    occupation: sampleCopy(row.occupation),
     bloodType: row.blood_type,
     emergencyContactName: row.emergency_contact_name,
     emergencyContactNumber: row.emergency_contact_number,
@@ -38,9 +39,9 @@ export function toPatient(row: PatientRow, lastVisit: string | null): Patient {
     expectedDeliveryDate: row.expected_delivery_date,
     gravida: row.gravida,
     para: row.para,
-    attendingPhysician: row.attending_physician,
-    allergies: row.allergies,
-    medicalConditions: row.medical_conditions,
+    attendingPhysician: sampleCopy(row.attending_physician),
+    allergies: sampleCopy(row.allergies),
+    medicalConditions: sampleCopy(row.medical_conditions),
     visitType: row.visit_type,
 
     lastVisit,

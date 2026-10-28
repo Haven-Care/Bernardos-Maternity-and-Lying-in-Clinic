@@ -81,20 +81,19 @@ export function buildDemoPlan({ tables, projectHost, backupSha256, today, genera
     const patientId = seedId(`${client.key}:patient`)
     patients.push({ id: patientId, client_key: client.key, full_name: client.full_name,
       email: client.email, contact_number: client.contact_number, date_of_birth: `${1992 + index}-05-14`,
-      sex: 'female', civil_status: 'single', address: 'Synthetic demo address, Caloocan City',
-      occupation: 'Demo record', blood_type: 'O+', last_menstrual_period: addDays(today, -70 - index * 7),
+      sex: 'female', civil_status: 'single', address: 'Caloocan City (sample)',
+      occupation: 'Not recorded (sample)', blood_type: 'O+', last_menstrual_period: addDays(today, -70 - index * 7),
       expected_delivery_date: addDays(today, 210 - index * 7), gravida: 1, para: 0,
-      attending_physician: 'Demo Clinician', allergies: 'Synthetic demo record',
-      medical_conditions: `Synthetic demonstration only. Seed: ${SEED_KEY}`, visit_type: 'prenatal' })
+      attending_physician: 'Sample clinician', allergies: 'Not recorded (sample)',
+      medical_conditions: 'Sample patient record.', visit_type: 'prenatal' })
     for (const [historyIndex, item] of history.entries()) {
       const service = availableServices[(index + historyIndex) % availableServices.length]
       const seat = takeSeat(addDays(today, item.offset), item.status, item.offset < 0 ? -1 : 1)
       const id = seedId(`${client.key}:${item.key}`)
-      const marker = `[${SEED_KEY}:${client.key}:${item.key}]`
       const row = { id, client_key: client.key, patient_id: patientId,
         patient_name: client.full_name, contact_number: client.contact_number, email: client.email,
         service_id: service.id, service_name: service.name, ...seat, status: item.status,
-        reason_for_visit: `${marker} Synthetic demonstration reservation.`,
+        reason_for_visit: `${service.name} appointment (sample)`,
         submitted_at: item.offset < 0 ? `${addDays(seat.scheduled_date, -3)}T09:00:00+08:00` : generatedAt }
       reservations.push(row)
       if (item.offset < 0) {
@@ -108,8 +107,8 @@ export function buildDemoPlan({ tables, projectHost, backupSha256, today, genera
       if (item.status === 'completed') clinicalRecords.push({
         id: seedId(`${client.key}:${item.key}:clinical`), patient_id: patientId,
         occurred_at: `${seat.scheduled_date}T${seat.slot_time}:00+08:00`,
-        title: `Demo consultation ${historyIndex + 1}`, findings: 'Synthetic demonstration record; no real clinical findings.',
-        provider: 'Demo Clinician' })
+        title: `${service.name} (sample)`, findings: 'Sample clinical record for demonstration.',
+        provider: 'Sample clinician' })
       if (item.key === 'upcoming-booked' && index < 3) {
         const proposal = takeSeat(addDays(seat.scheduled_date, 2), 'cancelled')
         rescheduleRequests.push({ id: seedId(`${client.key}:reschedule`), booking_id: id,

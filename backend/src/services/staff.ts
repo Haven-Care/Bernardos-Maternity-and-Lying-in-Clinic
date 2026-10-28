@@ -62,11 +62,8 @@ export async function createStaffAccount(
     // The trigger runs inside GoTrue's own transaction, so reaching here means
     // the realm sync did not fire — a schema problem, not a user error. Say so
     // rather than returning a half-made account.
-    throw new HttpError(
-      500,
-      'The account was created but no staff profile followed it. Check the ' +
-        'on_auth_user_meta_changed trigger.',
-    )
+    console.error('Staff account has no profile. Check on_auth_user_meta_changed.', { userId: data.user.id })
+    throw new HttpError(500, 'Account setup could not be completed. Contact the system administrator.')
   }
 
   return profile

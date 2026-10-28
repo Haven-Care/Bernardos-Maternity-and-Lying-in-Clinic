@@ -13,7 +13,7 @@ export function AuthShell({
   title: string
   subtitle?: string
   children: ReactNode
-  /** Rendered above the logo — the "Back to login" link on the reset screens. */
+  /** Rendered above the logo — the "Back to sign in" link on the reset screens. */
   before?: ReactNode
   footer?: ReactNode
   onLogoClick?: () => void
@@ -88,7 +88,7 @@ export function BackToLogin({ to = '/login' }: { to?: string }) {
       >
         <path d="m15 18-6-6 6-6" />
       </svg>
-      Back to login
+      Back to sign in
     </Link>
   )
 }

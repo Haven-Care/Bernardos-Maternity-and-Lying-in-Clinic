@@ -62,13 +62,13 @@ async function verify() {
   expect(digits).toHaveLength(6)
   for (const [index, digit] of digits.entries()) await type(digit, String(index + 1))
   expect(router.state.location.pathname).toBe('/patient/reset-password')
-  expect(container.textContent).toContain('Create new password')
+  expect(container.textContent).toContain('Set your clinic password')
 }
 
 describe('patient password reset navigation', () => {
   it('keeps the patient portal visible and aborts a verified reset when Cancel is selected', async () => {
     expect(container.textContent).toContain('Patient portal')
-    expect(container.textContent).not.toContain('Back to login')
+    expect(container.textContent).not.toContain('Back to sign in')
     await verify()
     await act(() => container.querySelector<HTMLAnchorElement>('a[href="/patient/account"]')!.click())
     expect(router.state.location.pathname).toBe('/patient/account')

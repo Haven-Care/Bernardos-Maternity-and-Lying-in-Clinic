@@ -151,7 +151,7 @@ export function DetailsStep({
             {value.email}
           </p>
           <p className="mt-1 text-xs text-gray-400">
-            The clinic sends appointment emails to your account address.
+            The clinic uses your account email for appointment-related contact.
           </p>
         </div>
 

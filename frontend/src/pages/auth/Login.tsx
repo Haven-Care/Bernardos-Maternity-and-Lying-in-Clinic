@@ -89,7 +89,7 @@ export function Login() {
                   to="/forgot-password"
                   className="text-xs text-brand-600 hover:text-brand-700 hover:underline"
                 >
-                  Forgot Password?
+                  Forgot password?
                 </Link>
               </div>
             </div>
@@ -101,9 +101,9 @@ export function Login() {
             )}
 
             <Button type="submit" loading={submitting} disabled={googleSubmitting || !identifier.trim() || !password} className="mt-1 w-full">
-              Log In
+              Sign in
             </Button>
-            {api.session.googleLoginEnabled && <GoogleSignInButton loading={googleSubmitting} disabled={submitting} onCredential={googleLogin} onError={() => setError('Google sign-in could not be completed. Please try again or use your email and password.')} />}
+            {api.session.googleLoginEnabled && <GoogleSignInButton loading={googleSubmitting} disabled={submitting} onCredential={googleLogin} onError={() => setError('Google sign-in could not be completed. Please try again.')} />}
           </ValidatedForm>
         </AuthShell>
       </div>

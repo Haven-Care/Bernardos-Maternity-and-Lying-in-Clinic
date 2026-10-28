@@ -190,7 +190,7 @@ export function MedicineModal({
                   }} />
               </label>
             </div>
-            <p className="mt-2 text-xs text-gray-500">Search opens in a new tab. Verify the brand, strength, and packaging, then upload a photo you have permission to use. No API key or subscription is needed.</p>
+            <p className="mt-2 text-xs text-gray-500">Choose a clear photo that matches the medicine’s brand, strength, and packaging. Photo search opens in a new tab.</p>
             {photo && <button type="button" disabled={saving} className="mt-2 text-xs text-brand-700 underline" onClick={() => setPhoto(undefined)}>Undo photo selection</button>}
             {currentPhoto.error && <p role="alert" className="mt-2 text-xs text-danger-700">Could not load the saved photo. <button type="button" className="underline" onClick={currentPhoto.reload}>Retry</button></p>}
           </figure>

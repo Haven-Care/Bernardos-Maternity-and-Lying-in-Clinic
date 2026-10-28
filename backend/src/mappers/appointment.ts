@@ -4,6 +4,7 @@ import type {
   RescheduleRequest,
 } from '../contract/appointment.js'
 import type { PatientAccount } from '../contract/patientAccount.js'
+import { sampleCopy } from '../lib/sampleCopy.js'
 
 type AppointmentRow = Database['public']['Tables']['appointments']['Row']
 type RescheduleRow =
@@ -28,7 +29,7 @@ export function toBooking(row: AppointmentRow): BookingRequest {
 
     // Older rows use confirmed; the API exposes all accepted bookings as Booked.
     status: row.status === 'confirmed' ? 'pending' : row.status,
-    reasonForVisit: row.reason_for_visit,
+    reasonForVisit: sampleCopy(row.reason_for_visit),
 
     submittedAt: row.submitted_at,
   }

@@ -129,20 +129,21 @@ function AccountContent({ account }: { account: PatientAccount }) {
         </ValidatedForm>
       </ProfilePanel>
 
-      <ProfilePanel title="Password Management" description="Reset your password with an email code">
+      <ProfilePanel title="Password Management" description="Set or reset your clinic password">
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">We’ll send a six-digit verification code to <span className="break-all font-medium text-gray-900">{account.email}</span>. Enter the code, then choose a new password.</p>
+          <p className="text-sm text-gray-600">We’ll send a six-digit verification code to <span className="break-all font-medium text-gray-900">{account.email}</span>. Verify your email, then choose a password for your clinic account.</p>
+          <p className="text-xs text-gray-500">If you use Google, a clinic password gives you another way to sign in. Your Google password stays unchanged.</p>
           <p className="text-xs text-gray-500">You’ll stay signed in. You can cancel before saving a new password.</p>
           {passwordError && <p role="alert" className="text-sm text-danger-700">{passwordError}</p>}
           <Button type="button" onClick={() => void requestPasswordReset()} loading={sendingCode} className="w-full justify-center">Send verification code</Button>
         </div>
       </ProfilePanel>
 
-      <ProfilePanel title="Notification Settings" description="Manage appointment email notifications">
+      <ProfilePanel title="Notification Settings" description="Manage your email contact preferences">
         <ValidatedForm onSubmit={saveNotifications}>
           <div className="flex items-center justify-between gap-4">
-            <div><p className="text-sm font-medium text-gray-900">Email notifications</p><p className="mt-1 text-xs text-gray-500">Receive appointment emails from the clinic.</p></div>
-            <Toggle checked={emailNotifications} onChange={setEmailNotifications} disabled={savingNotifications} label="Email notifications" />
+            <div><p className="text-sm font-medium text-gray-900">Appointment emails</p><p className="mt-1 text-xs text-gray-500">Allow the clinic to contact you by email about your appointments.</p></div>
+            <Toggle checked={emailNotifications} onChange={setEmailNotifications} disabled={savingNotifications} label="Allow appointment emails" />
           </div>
           {notificationError && <p role="alert" className="mt-3 text-sm text-danger-700">{notificationError}</p>}
           <Button type="submit" loading={savingNotifications} disabled={!notificationDirty} className="mt-4 w-full justify-center">Save notification settings</Button>
@@ -177,7 +178,7 @@ const FAQS = [
   { question: 'How can I request a different appointment time?', answer: 'Open History, expand the appointment, and choose Request another time. Your original schedule stays reserved until the clinic approves the request.' },
   { question: 'How can I cancel a booking?', answer: 'Open History, expand an upcoming appointment, and select Cancel. Confirm the cancellation to release your reserved slot.' },
   { question: 'How do I update my contact information?', answer: 'Open Personal Information, edit your name or mobile number, then select Save personal information.' },
-  { question: 'What if I forget my password?', answer: 'Use Forgot Password on the sign-in page and follow the email verification steps. If you are already signed in, open Password Management and select Send verification code to reset it using your registered email.' },
+  { question: 'How do I set or reset my clinic password?', answer: 'Use Forgot password on the sign-in page, or open Password Management in your profile and select Send verification code. After verifying your email, choose a clinic password. You can also continue using Google if it is linked to your account.' },
 ]
 const desktopQuery = '(min-width: 1024px)'
 function subscribeDesktop(callback: () => void) {

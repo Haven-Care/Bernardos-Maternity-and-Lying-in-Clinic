@@ -31,18 +31,18 @@ export function ResetSuccess() {
         </span>
 
         <h1 className="text-lg font-semibold text-gray-900">
-          Password Successfully Reset
+          Clinic password saved
         </h1>
         <p className="text-sm text-gray-500">
-          Your password has been updated. You can now log in with your new
-          credentials.
+          You can now sign in with your email and clinic password. You can also
+          continue using Google if it is linked to your account.
         </p>
 
         <Button
           className="mt-3 w-full"
           onClick={() => navigate(realm.loginPath, { replace: true })}
         >
-          Log In
+          Sign in
         </Button>
       </div>
     </AuthShell>

@@ -28,7 +28,7 @@ beforeEach(async () => {
 describe('password recovery session', () => {
   it('does not allow an ordinary signed-in session to use the recovery screen', async () => {
     expect(await recoveryEmail()).toBeNull()
-    await expect(resetPassword('NewPassword1!')).rejects.toThrow('recovery session has expired')
+    await expect(resetPassword('NewPassword1!')).rejects.toThrow('password request has expired')
     expect(auth.updateUser).not.toHaveBeenCalled()
   })
   it('does not accept a recovery marker belonging to a different user', async () => {

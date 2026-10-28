@@ -37,7 +37,7 @@ export function Dashboard() {
   const tiles = [
     { label: range === 'today' ? "Today's Schedule" : 'Scheduled', value: stats.data?.todaysSchedule },
     { label: range === 'today' ? 'Patient Bookings' : 'Bookings', value: stats.data?.bookedToday },
-    { label: range === 'today' ? 'Completed Appointment' : 'Completed', value: stats.data?.completedAppointments },
+    { label: range === 'today' ? 'Completed Appointments' : 'Completed', value: stats.data?.completedAppointments },
     { label: 'Inventory Alerts', value: stats.data?.inventoryAlerts },
     { label: 'Patient Accounts', value: accounts.data?.length },
   ]

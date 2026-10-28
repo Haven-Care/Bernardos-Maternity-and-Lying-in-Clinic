@@ -56,8 +56,7 @@ export function CheckEmail() {
           activate your account, then sign in.
         </p>
         <p className="text-xs text-gray-400">
-          Nothing arrived? Check your spam folder — the clinic’s mail sometimes
-          lands there.
+          Check your inbox and spam folder for the confirmation email.
         </p>
 
         <Button

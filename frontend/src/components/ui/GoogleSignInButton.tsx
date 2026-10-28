@@ -83,7 +83,7 @@ export function GoogleSignInButton({ disabled = false, loading = false, onCreden
       <div ref={hostRef} className="flex w-full justify-center" inert={disabled || loading} hidden={phase === 'error'} />
       {phase === 'loading' && <p role="status" className="text-center text-sm text-gray-500">Loading Google sign-in…</p>}
       {phase === 'error' && <div className="text-center text-sm">
-        <p role="alert" className="text-danger-700">Google sign-in is unavailable. You can use your email and password.</p>
+        <p role="alert" className="text-danger-700">Google sign-in is unavailable. Try again later, or use Forgot password to set a clinic password.</p>
         {clientId && <button type="button" className="mt-1 text-brand-600 underline" onClick={() => { setPhase('loading'); setAttempt((value) => value + 1) }}>Retry Google sign-in</button>}
       </div>}
     </div>

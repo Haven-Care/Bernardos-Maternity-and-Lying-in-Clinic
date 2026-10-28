@@ -5,6 +5,7 @@ import { getSupabaseClient } from '../config/supabase.js'
 import { unwrap, unwrapList } from '../lib/db.js'
 import { parseBody, parseQuery } from '../lib/validate.js'
 import { HttpError } from '../middleware/errorHandler.js'
+import { sampleCopy } from '../lib/sampleCopy.js'
 
 const idSchema = z.string().uuid('Not a valid patient id.')
 const recordSchema = z.object({
@@ -30,9 +31,9 @@ function toRecord(row: {
     id: row.id,
     patientId: row.patient_id,
     occurredAt: row.occurred_at,
-    title: row.title,
-    findings: row.findings,
-    provider: row.provider,
+    title: sampleCopy(row.title),
+    findings: sampleCopy(row.findings),
+    provider: sampleCopy(row.provider),
   }
 }
 

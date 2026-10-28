@@ -344,8 +344,7 @@ export function PatientModal({
               })} />
             ) : (
               <p className="text-xs text-gray-500">
-                Save the record first — documents attach to a patient, so there
-                is nothing to attach them to yet.
+                Save this patient record before uploading documents.
               </p>
             )}
           </section>

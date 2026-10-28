@@ -75,7 +75,7 @@ export function VerifyCode() {
   return (
     <RecoveryShell
       title="Enter Verification Code"
-      subtitle={`Check ${email} for password recovery instructions.`}
+      subtitle={`Enter the verification code sent to ${email}.`}
       returnTo={returnTo}
     >
       <ValidatedForm
@@ -101,11 +101,11 @@ export function VerifyCode() {
         )}
 
         <p className="text-center text-xs text-gray-500">
-          If an account exists, check its inbox and spam folder. Enter the {CODE_LENGTH}-digit code here, or open the reset link in the email.
+          Enter the {CODE_LENGTH}-digit code sent to your email. If you don’t see it, check your spam folder.
         </p>
-        {resendWait > 0 && <p role="status" className="text-center text-xs text-gray-500">New email requested. Please wait a minute before requesting another.</p>}
+        {resendWait > 0 && <p role="status" className="text-center text-xs text-gray-500">Please wait before requesting another code.</p>}
         <button type="button" disabled={submitting || resending || resendWait > 0} onClick={() => void resend()} className="text-xs font-medium text-brand-600 disabled:text-gray-400">
-          {resending ? 'Sending…' : resendWait > 0 ? `Resend in ${resendWait}s` : 'Resend recovery email'}
+          {resending ? 'Sending…' : resendWait > 0 ? `Resend in ${resendWait}s` : 'Resend code'}
         </button>
 
         <Button

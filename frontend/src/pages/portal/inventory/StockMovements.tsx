@@ -29,7 +29,7 @@ export function StockMovements({ version, onChanged }: { version: number; onChan
       <div className="w-44"><SelectField label="Movement" value={type} onChange={setType} options={[{ value: '', label: 'All movements' }, ...Object.entries(MOVEMENT_LABELS).map(([value, label]) => ({ value, label }))]} /></div>
       <DateRangeFields value={dates} onChange={setDates} />
       <div className="ml-auto w-full sm:w-64"><SearchField value={search} onChange={setSearch} placeholder="Search medicine, lot, note, or staff" /></div>
-      <p className="w-full text-xs text-gray-500">History is retained when a batch is empty or a medicine is archived. Legacy entries keep their original direction and note; their purpose and balances were not reconstructed.</p>
+      <p className="w-full text-xs text-gray-500">Stock history includes empty batches and archived medicines. Some older records have incomplete details.</p>
     </div>
     <AsyncBoundary state={movements} empty={<EmptyState title="No stock movements yet" description="Receipts, stock out, disposal, and corrections are recorded here." />}>
       {() => <MovementTable rows={rows} onChanged={onChanged} fillHeight />}
@@ -44,7 +44,7 @@ export function MovementTable({ rows, onChanged, fillHeight = false }: { rows: S
     { key: 'type', header: 'Movement', render: (m) => <div><Badge tone={m.reason === 'disposed' ? 'danger' : m.type === 'stock_in' ? 'success' : 'neutral'}>{MOVEMENT_LABELS[m.reason ?? 'legacy']}</Badge>{m.reason === 'legacy' && <p className="mt-1 text-xs text-gray-500">{m.type === 'stock_in' ? 'Stock in' : 'Stock out'}</p>}{m.reversed && <p className="mt-1 text-xs text-gray-500">Reversed</p>}{m.reversesMovementId && <p className="mt-1 text-xs text-gray-500">Corrects {m.reversesMovementId.slice(0, 8)}</p>}</div> },
     { key: 'item', header: 'Medicine / Batch', render: (m) => <div><p className="font-medium text-gray-900">{m.medicineName ?? 'Historical medicine'}</p><p className="text-xs text-gray-500">{m.brandName} {m.dosage}</p><p className="text-xs text-gray-500">{m.manufacturerLot || 'Lot not recorded'} · {m.batchNo}</p></div> },
     { key: 'qty', header: 'Quantity', align: 'right', render: (m) => <span className={`whitespace-nowrap tabular-nums ${m.type === 'stock_in' ? 'text-success-700' : 'text-danger-700'}`}>{m.type === 'stock_in' ? '+' : '−'}{m.quantity} {m.unit}</span> },
-    { key: 'balance', header: 'Batch Before → After', render: (m) => m.quantityBefore == null || m.quantityAfter == null ? <span className="text-xs text-gray-400">Not recorded (legacy)</span> : <span className="whitespace-nowrap tabular-nums">{m.quantityBefore} → {m.quantityAfter} {m.unit}</span> },
+    { key: 'balance', header: 'Batch Before → After', render: (m) => m.quantityBefore == null || m.quantityAfter == null ? <span className="text-xs text-gray-400">Not recorded</span> : <span className="whitespace-nowrap tabular-nums">{m.quantityBefore} → {m.quantityAfter} {m.unit}</span> },
     { key: 'note', header: 'Reason / Reference', render: (m) => <p className="min-w-40 max-w-80 whitespace-normal break-words text-gray-600">{m.note || '—'}</p> },
     { key: 'action', header: 'Correction', render: (m) => ['received', 'dispensed', 'adjustment'].includes(m.reason ?? '') && !m.reversed ? <button type="button" className="py-2 text-xs font-medium text-brand-700 underline" onClick={() => setReversing(m)}>Reverse entry</button> : <span className="text-xs text-gray-400">Retained</span> },
   ]
@@ -69,7 +69,7 @@ function ReverseModal({ movement, onClose, onSaved }: { movement: StockMovement;
     footer={<Button onClick={() => void save()} loading={saving} disabled={!note.trim()}>Record Reversal</Button>}>
     <fieldset disabled={saving} className="space-y-4">
       <p className="text-sm text-gray-600">Correct an entry recorded in error. This adds an opposite movement of {movement.quantity} {movement.unit} to {movement.batchNo}. Use a new receipt or movement to record a new physical transaction.</p>
-      <p className="text-xs text-gray-500">An entry can be reversed once, if the batch still supports the correction. Disposal and legacy entries cannot be reversed.</p>
+      <p className="text-xs text-gray-500">Eligible entries can be reversed once. Disposals and older records without correction details cannot be reversed.</p>
       <TextArea label="Correction Reason" required value={note} onChange={setNote} />
       {error && <p role="alert" className="text-sm text-danger-700">{error}</p>}
     </fieldset>

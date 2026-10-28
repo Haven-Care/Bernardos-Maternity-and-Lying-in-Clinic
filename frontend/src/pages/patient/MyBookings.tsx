@@ -228,7 +228,7 @@ function BookingActions({ booking, openRequest, onChanged, compact = false }: Bo
 
     try {
       await api.myBookings.cancelMyBooking(booking.id)
-      toast.success('Booking cancelled', 'The time has been given back.')
+      toast.success('Booking cancelled', 'Your appointment has been cancelled.')
       setConfirmingCancel(false)
       onChanged()
     } catch (err) {

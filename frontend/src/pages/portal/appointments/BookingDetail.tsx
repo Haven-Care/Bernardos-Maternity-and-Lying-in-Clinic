@@ -99,7 +99,7 @@ export function BookingDetail({
 
           {resolved ? (
             <p className="text-center text-xs text-gray-400">
-              This booking is {APPOINTMENT_LABELS[booking.status].toLowerCase()} and can no longer be actioned.
+              This appointment is {APPOINTMENT_LABELS[booking.status].toLowerCase()}. No further changes are available.
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-2">

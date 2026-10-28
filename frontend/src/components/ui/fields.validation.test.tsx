@@ -32,7 +32,7 @@ describe('quantity field and modal save', () => {
     expect(input.type).toBe('text'); expect(input.inputMode).toBe('numeric')
     await type(input, 'aaa')
     expect(input.value).toBe('5')
-    expect(container.textContent).toContain('Use digits only')
+    expect(container.textContent).toContain('Enter a whole number')
     await click(container.querySelector('button')!)
     expect(save).not.toHaveBeenCalled()
     await type(input, '4')

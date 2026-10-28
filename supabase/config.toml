@@ -253,7 +253,7 @@ otp_expiry = 3600
 # The hosted project needs the same change made by hand in its dashboard —
 # it does not read this file. Forgetting that breaks the demo and nothing else.
 [auth.email.template.recovery]
-subject = "Reset your Bernardo Clinic password"
+subject = "Your Bernardo Clinic password verification code"
 content_path = "./supabase/templates/recovery.html"
 
 [auth.email.template.confirmation]

@@ -114,7 +114,7 @@ export async function recoveryEmail(): Promise<string | null> {
   if (!expectedUser && !isLinkCallback) return null
   const { data, error } = await recoverySupabase.auth.getUser()
   if (attempt !== recoveryAttempt) return null
-  if (error && ![400, 401, 403].includes(error.status ?? 0)) throw new Error('Unable to verify your recovery session. Check your connection and try again.')
+  if (error && ![400, 401, 403].includes(error.status ?? 0)) throw new Error('We couldn’t verify your password request. Check your connection and try again.')
   if (!error && data.user && isLinkCallback) {
     // getUser waits for the isolated client to exchange the URL credentials;
     // do not depend on a deferred PASSWORD_RECOVERY event to authorize the form.
@@ -139,7 +139,7 @@ export async function cancelPasswordReset(): Promise<void> {
 
 export async function resetPassword(newPassword: string, keepSignedIn = false): Promise<void> {
   const attempt = recoveryAttempt
-  if (!await recoveryEmail()) throw new Error('Your recovery session has expired. Request a new code or email link.')
+  if (!await recoveryEmail()) throw new Error('Your password request has expired. Request a new verification code.')
   const auth = recoverySupabase.auth
   const expectedUser = codeRecoveryUser ?? sessionStorage.getItem(RECOVERY_USER_KEY)
   if (keepSignedIn) {
