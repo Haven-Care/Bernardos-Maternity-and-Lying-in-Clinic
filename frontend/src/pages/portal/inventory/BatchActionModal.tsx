@@ -20,13 +20,19 @@ export function BatchActionModal({ batch, action, onClose, onSaved }: { batch: B
   const inFlight = useRef(false)
   const delta = action === 'adjustment' && direction === 'add' ? Number(quantity) : -Number(quantity)
   const after = batch.quantity + delta
-  const valid = note.trim() && (Number.isInteger(quantity) && Number(quantity) > 0 && after >= 0) && (action !== 'disposed' || acknowledged)
+  const lotNumber = batch.manufacturerLot?.trim() ?? ''
+  const valid = note.trim() && (Number.isInteger(quantity) && Number(quantity) > 0 && after >= 0) &&
+    (action !== 'disposed' || (acknowledged && lotNumber.length > 0))
 
   async function save() {
     if (!valid || inFlight.current) return
     inFlight.current = true; setSaving(true); setError(undefined)
     try {
-      await api.inventory.moveStock(batch.id, { quantity: action === 'adjustment' ? delta : Number(quantity), reason: action, note })
+      if (action === 'disposed') {
+        await api.inventory.disposeStockByLot(batch.medicineId, lotNumber, { quantity: Number(quantity), note })
+      } else {
+        await api.inventory.moveStock(batch.id, { quantity: delta, reason: action, note })
+      }
       toast.success(TITLES[action], 'The batch and inventory history have been updated.')
       onSaved(); onClose()
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not save this movement.') }
@@ -44,7 +50,13 @@ export function BatchActionModal({ batch, action, onClose, onSaved }: { batch: B
           error={after < 0 ? `Only ${batch.quantity} ${batch.unit} remain.` : undefined} />
         <p className="rounded-md bg-gray-50 p-3 text-sm">Batch balance: <strong>{batch.quantity} → {after} {batch.unit}</strong></p>
       <TextArea label="Reason / Reference" required value={note} onChange={setNote} placeholder={action === 'disposed' ? 'Reason, disposal date, and disposal reference' : 'Explain this inventory action'} />
-      {action === 'disposed' && <label className="flex items-start gap-2 text-sm text-gray-700"><input type="checkbox" className="mt-1 size-4 shrink-0" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} />I confirm this quantity has already been physically disposed of under the clinic’s procedure. This records the disposal; it does not perform it.</label>}
+      {action === 'disposed' && <>
+        <p className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
+          Disposal will be recorded against manufacturer lot <strong>{lotNumber || 'not recorded'}</strong>, not the internal batch reference.
+        </p>
+        {!lotNumber && <p role="alert" className="text-sm text-danger-700">A manufacturer lot number is required before this stock can be disposed of.</p>}
+        <label className="flex items-start gap-2 text-sm text-gray-700"><input type="checkbox" className="mt-1 size-4 shrink-0" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} />I confirm this quantity has already been physically disposed of under the clinic’s procedure. This records the disposal; it does not perform it.</label>
+      </>}
       {error && <p role="alert" className="text-sm text-danger-700">{error}</p>}
     </fieldset>
   </Modal>

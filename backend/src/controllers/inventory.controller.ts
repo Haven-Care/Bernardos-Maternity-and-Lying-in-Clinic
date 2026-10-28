@@ -427,6 +427,34 @@ export async function moveStock(req: Request, res: Response) {
   res.json(toBatch(data))
 }
 
+const disposalSchema = z.object({
+  quantity: wholeNumber().positive(),
+  note: text(2000).min(1, 'A reason is required.'),
+})
+export async function disposeStockByLot(req: Request, res: Response) {
+  const medicineId = parseBody(idSchema, req.params.id)
+  const lotNumber = text(64).min(1, 'A manufacturer lot number is required.').parse(req.params.lot)
+  const input = parseBody(disposalSchema, req.body)
+  const { data: batch, error: lookupError } = await getSupabaseClient()
+    .from('medicine_batches')
+    .select('id')
+    .eq('medicine_id', medicineId)
+    .eq('manufacturer_lot', lotNumber)
+    .maybeSingle()
+  if (lookupError) throw dbError(lookupError)
+  if (!batch) throw new HttpError(404, 'That manufacturer lot does not exist for this medicine.')
+  const { data, error } = await getSupabaseClient().rpc('move_inventory_stock', {
+    p_batch_id: batch.id,
+    p_quantity: input.quantity,
+    p_reason: 'disposed',
+    p_note: input.note,
+    p_actor: actor(req),
+  })
+  if (error) throw dbError(error)
+  if (!data) throw new HttpError(500, 'Disposal returned nothing.')
+  res.json(toBatch(data))
+}
+
 
 
 export async function reverseMovement(req: Request, res: Response) {

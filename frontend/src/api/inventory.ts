@@ -139,6 +139,12 @@ export function receiveStock(input: import('../types/medicine').ReceiveStockInpu
 export function moveStock(id: string, input: { quantity: number; reason: 'dispensed' | 'disposed' | 'adjustment'; note: string }): Promise<MedicineBatch> {
   return apiFetch(`/inventory/batches/${id}/move`, { method: 'POST', body: JSON.stringify(input) })
 }
+export function disposeStockByLot(medicineId: string, lotNumber: string, input: { quantity: number; note: string }): Promise<MedicineBatch> {
+  return apiFetch(`/inventory/medicines/${medicineId}/lots/${encodeURIComponent(lotNumber)}/dispose`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
 
 export function reverseMovement(id: string, note: string): Promise<MedicineBatch> {
   return apiFetch(`/inventory/movements/${id}/reverse`, { method: 'POST', body: JSON.stringify({ note }) })

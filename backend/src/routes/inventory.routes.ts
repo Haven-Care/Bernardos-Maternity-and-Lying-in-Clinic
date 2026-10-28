@@ -3,7 +3,7 @@ import { requireStaff } from '../middleware/auth.js'
 import { createMedicinePhotoUpload, getMedicinePhoto, saveMedicinePhoto } from '../controllers/medicinePhotos.controller.js'
 import {
   createMedicine,
-  listAllBatches, listBatchEvents, receiveStock, moveStock, reverseMovement, archiveMedicine,
+  listAllBatches, listBatchEvents, receiveStock, moveStock, disposeStockByLot, reverseMovement, archiveMedicine,
   getInventoryStats,
   getMedicine,
   listBatches,
@@ -40,6 +40,7 @@ inventoryRouter.get('/batches', listAllBatches)
 inventoryRouter.get('/batches/:id/events', listBatchEvents)
 inventoryRouter.post('/receipts', receiveStock)
 inventoryRouter.post('/batches/:id/move', moveStock)
+inventoryRouter.post('/medicines/:id/lots/:lot/dispose', disposeStockByLot)
 inventoryRouter.post('/movements/:id/reverse', reverseMovement)
 inventoryRouter.patch('/medicines/:id/archive', archiveMedicine)
 inventoryRouter.get('/movements', listMovements)
