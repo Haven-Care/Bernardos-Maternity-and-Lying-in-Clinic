@@ -86,7 +86,7 @@ export function Dashboard() {
         <div className="hc-table-frame">
           <AsyncBoundary state={inventory}>{() => <div className="hc-table-scroll" role="region" aria-label="Inventory summary" tabIndex={0}>
             <table><caption className="sr-only">Current medicine stock levels</caption>
-              <thead><tr>{['Generic/Medicine Name', 'Dosage Form', 'Dosage', 'Category', 'Qty on Hand', 'Status'].map(label => <th scope="col" key={label}>{label}</th>)}</tr></thead>
+              <thead><tr>{['Generic/Medicine Name', 'Dosage Form', 'Dosage', 'Category', 'Available Stock', 'Status'].map(label => <th scope="col" key={label}>{label}</th>)}</tr></thead>
               <tbody>{rows.slice(start, start + PAGE_SIZE).map(row => <tr key={row.id}>
                 <td>{row.genericName}</td><td>{row.dosageForm}</td><td>{row.dosage}</td><td>{row.category}</td>
                 <td>{row.qtyOnHand} {row.unit}</td><td><span className={'hc-badge hc-stock-' + row.stockStatus}>{LABELS[row.stockStatus]}</span></td>

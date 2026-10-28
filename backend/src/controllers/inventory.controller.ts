@@ -26,6 +26,7 @@ const medicineSchema = z.object({
   dosage: z.string().trim().default(''),
   unit: z.string().trim().default('pcs'),
   reorderLevel: z.number().int().min(0).default(0),
+  targetStockLevel: z.number().int().min(0).nullable().optional(),
   unitCost: z.number().min(0).default(0),
   sellingPrice: z.number().min(0).default(0),
   supplierName: z.string().trim().default(''),
@@ -45,6 +46,7 @@ const medicinePatchSchema = z
     dosage: z.string().trim(),
     unit: z.string().trim(),
     reorderLevel: z.number().int().min(0),
+    targetStockLevel: z.number().int().min(0).nullable().optional(),
     unitCost: z.number().min(0),
     sellingPrice: z.number().min(0),
     supplierName: z.string().trim(),
@@ -63,6 +65,7 @@ function toRow(input: z.infer<typeof medicineSchema>) {
     dosage: input.dosage,
     unit: input.unit,
     reorder_level: input.reorderLevel,
+    target_stock_level: input.targetStockLevel,
     unit_cost: input.unitCost,
     selling_price: input.sellingPrice,
     supplier_name: input.supplierName,
@@ -105,14 +108,10 @@ async function nearExpiryDays(): Promise<number> {
 // arithmetic done here. One definition of "on hand", shared by every tab.
 // ---------------------------------------------------------------------------
 
-export async function listMedicines(_req: Request, res: Response) {
-  const rows = unwrapList(
-    await getSupabaseClient()
-      .from('medicine_stock')
-      .select('*')
-      .eq('active', true)
-      .order('generic_name'),
-  )
+export async function listMedicines(req: Request, res: Response) {
+  let query = getSupabaseClient().from('medicine_stock').select('*').order('generic_name')
+  if (req.query.includeArchived !== 'true') query = query.eq('active', true)
+  const rows = unwrapList(await query)
 
   res.json(rows.map(toMedicineListRow))
 }
@@ -134,13 +133,14 @@ export async function getMedicine(req: Request, res: Response) {
 
 export async function listBatches(req: Request, res: Response) {
   const medicineId = parseBody(idSchema, req.params.id)
+  const { offset, limit } = parseQuery(datedListQuery, req.query)
 
   const rows = unwrapList(
     await getSupabaseClient()
       .from('medicine_batches')
       .select('*')
       .eq('medicine_id', medicineId)
-      .order('expires_at'),
+      .order('expires_at').order('id').range(offset, offset + limit - 1),
   )
 
   res.json(rows.map(toBatch))
@@ -148,12 +148,27 @@ export async function listBatches(req: Request, res: Response) {
 
 export async function listMovements(req: Request, res: Response) {
   const { from, to, offset, limit } = parseQuery(datedListQuery, req.query)
-  let query = getSupabaseClient().from('stock_movements').select('*, profiles(full_name)')
+  let query = getSupabaseClient().from('stock_movements').select('*, profiles(full_name), medicines(generic_name, brand_name, dosage, unit), medicine_batches(batch_no, manufacturer_lot)')
     .order('occurred_at', { ascending: false }).order('id')
+  if (req.query.batchId) query = query.eq('batch_id', parseBody(idSchema, req.query.batchId))
   if (from) query = query.gte('occurred_at', `${from}T00:00:00+08:00`)
   if (to) query = query.lt('occurred_at', afterClinicDay(to))
   const rows = unwrapList(await query.range(offset, offset + limit - 1))
-  res.json(rows.map((row) => toMovement(row, row.profiles?.full_name ?? 'System')))
+  const ids = rows.map((row) => row.id)
+  // Keep each REST URL below proxy URI limits for a full 500-entry page.
+  const chunks = Array.from({ length: Math.ceil(ids.length / 100) }, (_, index) => ids.slice(index * 100, (index + 1) * 100))
+  const reversals = (await Promise.all(chunks.map(async (chunk) => unwrapList(await getSupabaseClient().from('stock_movements').select('reverses_movement_id').in('reverses_movement_id', chunk))))).flat()
+  const reversed = new Set(reversals.map((row) => row.reverses_movement_id))
+  res.json(rows.map((row) => {
+    const snapshot = row.medicine_snapshot && typeof row.medicine_snapshot === 'object' && !Array.isArray(row.medicine_snapshot) ? row.medicine_snapshot : {}
+    const batch = row.batch_snapshot && typeof row.batch_snapshot === 'object' && !Array.isArray(row.batch_snapshot) ? row.batch_snapshot : {}
+    return { ...toMovement(row, row.created_by_name ?? row.profiles?.full_name ?? 'Former staff / system'), reversed: reversed.has(row.id),
+      medicineName: String(snapshot.genericName ?? row.medicines?.generic_name ?? 'Historical medicine'),
+      brandName: String(snapshot.brandName ?? row.medicines?.brand_name ?? ''),
+      dosage: String(snapshot.dosage ?? row.medicines?.dosage ?? ''), unit: String(snapshot.unit ?? row.medicines?.unit ?? ''),
+      batchNo: String(batch.batchNo ?? row.medicine_batches?.batch_no ?? ''),
+      manufacturerLot: String(batch.manufacturerLot ?? row.medicine_batches?.manufacturer_lot ?? '') || null }
+  }))
 }
 
 export async function listLowStock(_req: Request, res: Response) {
@@ -168,12 +183,13 @@ export async function listLowStock(_req: Request, res: Response) {
   res.json(
     rows
       .map(toMedicineListRow)
-      .filter((m) => m.qtyOnHand < m.reorderLevel)
+      .filter((m) => m.qtyOnHand <= m.reorderLevel)
       .map((m) => ({
         medicineId: m.id,
         genericName: m.genericName,
         qtyOnHand: m.qtyOnHand,
         reorderLevel: m.reorderLevel,
+        targetStockLevel: m.targetStockLevel,
         unit: m.unit,
       })),
   )
@@ -198,7 +214,7 @@ export async function listExpiring(_req: Request, res: Response) {
   const rows = unwrapList(
     await getSupabaseClient()
       .from('medicine_batches')
-      .select('*, medicines(generic_name)')
+      .select('*, medicines(generic_name, unit)')
       .gt('quantity', 0)
       .lte('expires_at', cutoffDate)
       .order('expires_at'),
@@ -223,7 +239,7 @@ export async function getInventoryStats(_req: Request, res: Response) {
 
   res.json({
     totalMedicines: medicines.length,
-    lowStock: medicines.filter((m) => m.qtyOnHand < m.reorderLevel).length,
+    lowStock: medicines.filter((m) => m.qtyOnHand <= m.reorderLevel).length,
     expiringSoon: days.filter((d) => d >= 0 && d <= window).length,
     expired: days.filter((d) => d < 0).length,
   })
@@ -355,4 +371,74 @@ export async function recordStockOut(req: Request, res: Response) {
   if (!data) throw new HttpError(500, 'Stock-out returned nothing.')
 
   res.status(201).json(toBatch(data))
+}
+
+export async function listAllBatches(req: Request, res: Response) {
+  const { offset, limit } = parseQuery(datedListQuery, req.query)
+  let query = getSupabaseClient().from('medicine_batches').select('*, medicines(generic_name, brand_name, dosage, unit, active)').order('received_at', { ascending: false }).order('id')
+  if (req.query.medicineId) query = query.eq('medicine_id', parseBody(idSchema, req.query.medicineId))
+  const rows = unwrapList(await query.range(offset, offset + limit - 1))
+  res.json(rows.map((row) => ({ ...toBatch(row), medicineName: row.medicines?.generic_name ?? 'Historical medicine', brandName: row.medicines?.brand_name ?? '', dosage: row.medicines?.dosage ?? '', unit: row.medicines?.unit ?? '', medicineActive: row.medicines?.active ?? false })))
+}
+
+export async function listBatchEvents(req: Request, res: Response) {
+  const id = parseBody(idSchema, req.params.id)
+  const { offset, limit } = parseQuery(datedListQuery, req.query)
+  const rows = unwrapList(await getSupabaseClient().from('inventory_batch_events').select('*, profiles(full_name)').eq('batch_id', id).order('occurred_at', { ascending: false }).order('id').range(offset, offset + limit - 1))
+  res.json(rows.map((row) => ({ id: row.id, batchId: row.batch_id, action: row.action, reason: row.reason, createdBy: row.created_by_name ?? row.profiles?.full_name ?? 'Former staff / system', occurredAt: row.occurred_at })))
+}
+
+const receiptSchema = z.object({
+  medicineId: idSchema, batchId: idSchema.optional(),
+  manufacturerLot: z.string().trim().max(64).default(''),
+  quantity: z.number().int().positive(), expiresAt: isoDate('Enter a valid expiry date.'),
+  note: z.string().trim().min(1, 'Describe the receipt.'),
+})
+export async function receiveStock(req: Request, res: Response) {
+  const input = parseBody(receiptSchema, req.body)
+  const { data, error } = await getSupabaseClient().rpc('receive_inventory_stock', {
+    p_medicine_id: input.medicineId, p_manufacturer_lot: input.manufacturerLot,
+    p_quantity: input.quantity, p_expires_at: input.expiresAt, p_note: input.note,
+    p_actor: actor(req), ...(input.batchId ? { p_batch_id: input.batchId } : {}),
+  })
+  if (error) throw dbError(error)
+  if (!data) throw new HttpError(500, 'Receipt returned nothing.')
+  res.status(201).json(toBatch(data))
+}
+
+const movementSchema = z.object({ quantity: z.number().int().refine((value) => value !== 0, 'Quantity cannot be zero.'), reason: z.enum(['dispensed', 'disposed', 'adjustment']), note: z.string().trim().min(1, 'A reason is required.') })
+export async function moveStock(req: Request, res: Response) {
+  const id = parseBody(idSchema, req.params.id)
+  const input = parseBody(movementSchema, req.body)
+  if (input.reason !== 'adjustment' && input.quantity < 0) throw new HttpError(400, 'Enter a positive quantity.')
+  const { data, error } = await getSupabaseClient().rpc('move_inventory_stock', { p_batch_id: id, p_quantity: input.quantity, p_reason: input.reason, p_note: input.note, p_actor: actor(req) })
+  if (error) throw dbError(error)
+  if (!data) throw new HttpError(500, 'Movement returned nothing.')
+  res.json(toBatch(data))
+}
+
+export async function quarantineBatch(req: Request, res: Response) {
+  const id = parseBody(idSchema, req.params.id)
+  const input = parseBody(z.object({ quarantined: z.boolean(), note: z.string().trim().min(1, 'A reason is required.') }), req.body)
+  const { data, error } = await getSupabaseClient().rpc('set_inventory_quarantine', { p_batch_id: id, p_quarantined: input.quarantined, p_note: input.note, p_actor: actor(req) })
+  if (error) throw dbError(error)
+  if (!data) throw new HttpError(500, 'Batch update returned nothing.')
+  res.json(toBatch(data))
+}
+
+export async function reverseMovement(req: Request, res: Response) {
+  const id = parseBody(idSchema, req.params.id)
+  const { note } = parseBody(z.object({ note: z.string().trim().min(1, 'Explain the correction.') }), req.body)
+  const { data, error } = await getSupabaseClient().rpc('reverse_inventory_movement', { p_movement_id: id, p_note: note, p_actor: actor(req) })
+  if (error) throw dbError(error)
+  if (!data) throw new HttpError(500, 'Reversal returned nothing.')
+  res.json(toBatch(data))
+}
+
+export async function archiveMedicine(req: Request, res: Response) {
+  const id = parseBody(idSchema, req.params.id)
+  const { archive } = parseBody(z.object({ archive: z.boolean() }), req.body)
+  const { error } = await getSupabaseClient().rpc('archive_inventory_medicine', { p_medicine_id: id, p_archive: archive, p_actor: actor(req) })
+  if (error) throw dbError(error)
+  await getMedicine(req, res)
 }

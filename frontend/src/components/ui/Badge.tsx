@@ -54,7 +54,7 @@ const STOCK_TONES: Record<StockStatus, Tone> = {
 }
 
 const STOCK_LABELS: Record<StockStatus, string> = {
-  good: 'Good',
+  good: 'In Stock',
   low: 'Low Stock',
   out: 'Out of Stock',
 }

@@ -198,10 +198,10 @@ export async function getUrgentAlerts(_req: Request, res: Response) {
 
   for (const medicine of unwrapList(medicines)
     .map(toMedicineListRow)
-    .filter((m) => m.qtyOnHand < m.reorderLevel)) {
+    .filter((m) => m.qtyOnHand <= m.reorderLevel)) {
     // "Critically low" is a harder signal than "below reorder level" — the
     // design distinguishes the two, and only the first is red.
-    const critical = medicine.qtyOnHand < medicine.reorderLevel / 2
+    const critical = medicine.qtyOnHand === 0 || medicine.qtyOnHand < medicine.reorderLevel / 2
 
     alerts.push({
       id: `alert-stock-${medicine.id}`,
@@ -210,7 +210,7 @@ export async function getUrgentAlerts(_req: Request, res: Response) {
       subject: medicine.genericName,
       message: critical
         ? `is critically low — ${medicine.qtyOnHand} ${medicine.unit} left`
-        : `is below reorder level`,
+        : `has reached its reorder level`,
       detail: critical
         ? 'Reorder recommended'
         : `${medicine.qtyOnHand} ${medicine.unit} left · reorder at ${medicine.reorderLevel}`,

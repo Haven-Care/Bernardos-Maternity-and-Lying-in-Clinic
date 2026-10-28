@@ -42,6 +42,7 @@ const EMPTY: MedicineInput = {
   dosage: '',
   unit: 'pcs',
   reorderLevel: 0,
+  targetStockLevel: null,
   unitCost: 0,
   sellingPrice: 0,
   supplierName: '',
@@ -96,7 +97,8 @@ export function MedicineModal({
   const canSave =
     form.genericName.trim() !== '' &&
     form.dosage.trim() !== '' &&
-    form.reorderLevel > 0
+    Number.isInteger(form.reorderLevel) && form.reorderLevel >= 0 &&
+    (form.targetStockLevel == null || (Number.isInteger(form.targetStockLevel) && form.targetStockLevel >= form.reorderLevel))
 
   async function save() {
     if (inFlight.current || !dirty || !canSave) return
@@ -138,7 +140,7 @@ export function MedicineModal({
       description={
         editing
           ? `${medicine.genericName} · on hand ${medicine.qtyOnHand} ${medicine.unit}`
-          : 'Stock and expiry are added separately, through Record Stock In.'
+          : 'Add stock and expiry separately through Receive Stock.'
       }
       footer={
         <Button onClick={() => void save()} loading={saving} disabled={!dirty || !canSave}>
@@ -152,7 +154,7 @@ export function MedicineModal({
             <img
               src={photo ? preview : currentPhoto.data?.url ?? '/images/medicine-placeholder.png'}
               alt={photo || currentPhoto.data?.url ? `${form.genericName || 'Medicine'} photo` : 'Medicine photo placeholder'}
-              className="h-40 w-full rounded-lg border border-border object-cover object-center"
+              className="h-40 w-full rounded-lg border border-border object-contain object-center bg-white"
             />
             <figcaption className="mt-1.5 text-xs text-gray-500">
               JPG, PNG, or WebP · up to 5 MB
@@ -170,6 +172,25 @@ export function MedicineModal({
                   event.target.value = ''
                 }} />
             </label>
+            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+              <a className="font-medium text-brand-700 underline" target="_blank" rel="noopener noreferrer"
+                href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent([form.brandName, form.genericName, form.dosage, form.dosageForm, 'medicine packaging'].filter(Boolean).join(' '))}`}>
+                Search product photo ↗
+              </a>
+              <label className="cursor-pointer font-medium text-brand-700 underline">
+                Take photo
+                <input className="sr-only" type="file" accept="image/*" capture="environment" disabled={saving}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    if (!file) return
+                    const invalid = medicinePhotoError(file)
+                    setError(invalid)
+                    if (!invalid) { setPhoto(file); setPreview(URL.createObjectURL(file)) }
+                    event.target.value = ''
+                  }} />
+              </label>
+            </div>
+            <p className="mt-2 text-xs text-gray-500">Search opens in a new tab. Verify the brand, strength, and packaging, then upload a photo you have permission to use. No API key or subscription is needed.</p>
             {photo && <button type="button" disabled={saving} className="mt-2 text-xs text-brand-700 underline" onClick={() => setPhoto(undefined)}>Undo photo selection</button>}
             {currentPhoto.error && <p role="alert" className="mt-2 text-xs text-danger-700">Could not load the saved photo. <button type="button" className="underline" onClick={currentPhoto.reload}>Retry</button></p>}
           </figure>
@@ -209,6 +230,7 @@ export function MedicineModal({
           <SelectField
             label="Unit"
             value={form.unit}
+            disabled={medicine?.hasBatchHistory}
             onChange={(v) => set('unit', v)}
             options={UNITS.map((u) => ({ value: u, label: u }))}
           />
@@ -216,20 +238,20 @@ export function MedicineModal({
 
         <Section title="Inventory & Stock Tracking">
           <NumberField
-            label="Reorder Level"
+            label="Reorder Level (alert threshold)"
             required
-            min={1}
-            value={form.reorderLevel === 0 ? '' : form.reorderLevel}
+            min={0}
+            value={form.reorderLevel}
             onChange={(v) => set('reorderLevel', v === '' ? 0 : v)}
             suffix={form.unit}
             placeholder="e.g. 100"
           />
-          {editing && (
-            <div className="self-end pb-2 text-xs text-gray-500">
-              On hand: {medicine.qtyOnHand} {medicine.unit} — changed only by
-              stock movements.
-            </div>
-          )}
+          <NumberField label="Target Stock (optional)" min={form.reorderLevel}
+            value={form.targetStockLevel ?? ''} suffix={form.unit}
+            onChange={(value) => set('targetStockLevel', value === '' ? null : value)}
+            error={form.targetStockLevel != null && form.targetStockLevel < form.reorderLevel ? 'Target must be at least the reorder level.' : undefined} />
+          <p className="text-xs text-gray-500 sm:col-span-2">Low stock starts when available stock is at or below the reorder level. Target stock is the desired balance after replenishment; neither value limits how much you can receive.</p>
+          {medicine?.hasBatchHistory && <p className="text-xs text-gray-500 sm:col-span-2">The unit is locked because batch history exists. Create a separate medicine entry to track a different unit.</p>}
         </Section>
 
         <Section title="Pricing & Financials">
@@ -306,6 +328,7 @@ function toInput(m: MedicineListRow): MedicineInput {
     dosage: m.dosage,
     unit: m.unit,
     reorderLevel: m.reorderLevel,
+    targetStockLevel: m.targetStockLevel ?? null,
     unitCost: m.unitCost,
     sellingPrice: m.sellingPrice,
     supplierName: m.supplierName,

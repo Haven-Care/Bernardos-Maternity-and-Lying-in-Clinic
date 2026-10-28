@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.18"
+  }
   public: {
     Tables: {
       appointment_slots: {
@@ -279,34 +284,91 @@ export type Database = {
           },
         ]
       }
+      inventory_batch_events: {
+        Row: {
+          action: string
+          batch_id: string
+          created_by: string | null
+          created_by_name: string | null
+          id: string
+          occurred_at: string
+          reason: string
+        }
+        Insert: {
+          action: string
+          batch_id: string
+          created_by?: string | null
+          created_by_name?: string | null
+          id?: string
+          occurred_at?: string
+          reason: string
+        }
+        Update: {
+          action?: string
+          batch_id?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          id?: string
+          occurred_at?: string
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_batch_events_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "medicine_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_batch_events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       medicine_batches: {
         Row: {
           batch_no: string
+          closed_reason: string | null
           created_at: string
           expires_at: string
           id: string
+          manufacturer_lot: string | null
           medicine_id: string
           quantity: number
+          quarantine_reason: string | null
+          quarantined: boolean
           received_at: string
           updated_at: string
         }
         Insert: {
           batch_no: string
+          closed_reason?: string | null
           created_at?: string
           expires_at: string
           id?: string
+          manufacturer_lot?: string | null
           medicine_id: string
           quantity?: number
+          quarantine_reason?: string | null
+          quarantined?: boolean
           received_at?: string
           updated_at?: string
         }
         Update: {
           batch_no?: string
+          closed_reason?: string | null
           created_at?: string
           expires_at?: string
           id?: string
+          manufacturer_lot?: string | null
           medicine_id?: string
           quantity?: number
+          quarantine_reason?: string | null
+          quarantined?: boolean
           received_at?: string
           updated_at?: string
         }
@@ -363,6 +425,8 @@ export type Database = {
       medicines: {
         Row: {
           active: boolean
+          archived_at: string | null
+          archived_by: string | null
           brand_name: string
           category: string
           created_at: string
@@ -375,12 +439,15 @@ export type Database = {
           storage_location: string
           supplier_contact: string
           supplier_name: string
+          target_stock_level: number | null
           unit: string
           unit_cost: number
           updated_at: string
         }
         Insert: {
           active?: boolean
+          archived_at?: string | null
+          archived_by?: string | null
           brand_name?: string
           category?: string
           created_at?: string
@@ -393,12 +460,15 @@ export type Database = {
           storage_location?: string
           supplier_contact?: string
           supplier_name?: string
+          target_stock_level?: number | null
           unit?: string
           unit_cost?: number
           updated_at?: string
         }
         Update: {
           active?: boolean
+          archived_at?: string | null
+          archived_by?: string | null
           brand_name?: string
           category?: string
           created_at?: string
@@ -411,11 +481,20 @@ export type Database = {
           storage_location?: string
           supplier_contact?: string
           supplier_name?: string
+          target_stock_level?: number | null
           unit?: string
           unit_cost?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "medicines_archived_by_fkey"
+            columns: ["archived_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notification_prefs: {
         Row: {
@@ -790,7 +869,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
-          price: number | null
+          price?: number | null
           price_is_temporary?: boolean
           updated_at?: string
         }
@@ -809,32 +888,53 @@ export type Database = {
       stock_movements: {
         Row: {
           batch_id: string
+          batch_snapshot: Json | null
           created_by: string | null
+          created_by_name: string | null
           id: string
           medicine_id: string
+          medicine_snapshot: Json | null
           note: string
           occurred_at: string
           quantity: number
+          quantity_after: number | null
+          quantity_before: number | null
+          reason: string
+          reverses_movement_id: string | null
           type: Database["public"]["Enums"]["stock_movement_type"]
         }
         Insert: {
           batch_id: string
+          batch_snapshot?: Json | null
           created_by?: string | null
+          created_by_name?: string | null
           id?: string
           medicine_id: string
+          medicine_snapshot?: Json | null
           note?: string
           occurred_at?: string
           quantity: number
+          quantity_after?: number | null
+          quantity_before?: number | null
+          reason?: string
+          reverses_movement_id?: string | null
           type: Database["public"]["Enums"]["stock_movement_type"]
         }
         Update: {
           batch_id?: string
+          batch_snapshot?: Json | null
           created_by?: string | null
+          created_by_name?: string | null
           id?: string
           medicine_id?: string
+          medicine_snapshot?: Json | null
           note?: string
           occurred_at?: string
           quantity?: number
+          quantity_after?: number | null
+          quantity_before?: number | null
+          reason?: string
+          reverses_movement_id?: string | null
           type?: Database["public"]["Enums"]["stock_movement_type"]
         }
         Relationships: [
@@ -866,6 +966,13 @@ export type Database = {
             referencedRelation: "medicines"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "stock_movements_reverses_movement_id_fkey"
+            columns: ["reverses_movement_id"]
+            isOneToOne: false
+            referencedRelation: "stock_movements"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -873,26 +980,41 @@ export type Database = {
       medicine_stock: {
         Row: {
           active: boolean | null
+          archived_at: string | null
+          archived_by: string | null
+          batch_count: number | null
           brand_name: string | null
           category: string | null
           created_at: string | null
           dosage: string | null
           dosage_form: Database["public"]["Enums"]["dosage_form"] | null
+          expired_qty: number | null
           generic_name: string | null
           id: string | null
           nearest_expiry: string | null
+          physical_qty: number | null
           qty_on_hand: number | null
+          quarantined_qty: number | null
           reorder_level: number | null
           selling_price: number | null
           stock_status: Database["public"]["Enums"]["stock_status"] | null
           storage_location: string | null
           supplier_contact: string | null
           supplier_name: string | null
+          target_stock_level: number | null
           unit: string | null
           unit_cost: number | null
           updated_at: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "medicines_archived_by_fkey"
+            columns: ["archived_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       patient_list: {
         Row: {
@@ -961,6 +1083,36 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      archive_inventory_medicine: {
+        Args: { p_actor: string; p_archive: boolean; p_medicine_id: string }
+        Returns: {
+          active: boolean
+          archived_at: string | null
+          archived_by: string | null
+          brand_name: string
+          category: string
+          created_at: string
+          dosage: string
+          dosage_form: Database["public"]["Enums"]["dosage_form"]
+          generic_name: string
+          id: string
+          reorder_level: number
+          selling_price: number
+          storage_location: string
+          supplier_contact: string
+          supplier_name: string
+          target_stock_level: number | null
+          unit: string
+          unit_cost: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "medicines"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       assert_rls_posture: { Args: never; Returns: undefined }
       book_appointment: {
         Args: {
@@ -1011,6 +1163,80 @@ export type Database = {
           todays_schedule: number
         }[]
       }
+      inventory_actor: { Args: { p_actor: string }; Returns: undefined }
+      inventory_log: {
+        Args: {
+          p_actor: string
+          p_batch: Database["public"]["Tables"]["medicine_batches"]["Row"]
+          p_before: number
+          p_note: string
+          p_qty: number
+          p_reason: string
+          p_reverses?: string
+          p_type: Database["public"]["Enums"]["stock_movement_type"]
+        }
+        Returns: undefined
+      }
+      move_inventory_stock: {
+        Args: {
+          p_actor: string
+          p_batch_id: string
+          p_note: string
+          p_quantity: number
+          p_reason: string
+        }
+        Returns: {
+          batch_no: string
+          closed_reason: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          manufacturer_lot: string | null
+          medicine_id: string
+          quantity: number
+          quarantine_reason: string | null
+          quarantined: boolean
+          received_at: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "medicine_batches"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      receive_inventory_stock: {
+        Args: {
+          p_actor: string
+          p_batch_id?: string
+          p_expires_at: string
+          p_manufacturer_lot: string
+          p_medicine_id: string
+          p_note: string
+          p_quantity: number
+        }
+        Returns: {
+          batch_no: string
+          closed_reason: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          manufacturer_lot: string | null
+          medicine_id: string
+          quantity: number
+          quarantine_reason: string | null
+          quarantined: boolean
+          received_at: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "medicine_batches"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       record_stock_in: {
         Args: {
           p_actor: string
@@ -1022,11 +1248,15 @@ export type Database = {
         }
         Returns: {
           batch_no: string
+          closed_reason: string | null
           created_at: string
           expires_at: string
           id: string
+          manufacturer_lot: string | null
           medicine_id: string
           quantity: number
+          quarantine_reason: string | null
+          quarantined: boolean
           received_at: string
           updated_at: string
         }
@@ -1046,11 +1276,15 @@ export type Database = {
         }
         Returns: {
           batch_no: string
+          closed_reason: string | null
           created_at: string
           expires_at: string
           id: string
+          manufacturer_lot: string | null
           medicine_id: string
           quantity: number
+          quarantine_reason: string | null
+          quarantined: boolean
           received_at: string
           updated_at: string
         }
@@ -1104,6 +1338,57 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "appointments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      reverse_inventory_movement: {
+        Args: { p_actor: string; p_movement_id: string; p_note: string }
+        Returns: {
+          batch_no: string
+          closed_reason: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          manufacturer_lot: string | null
+          medicine_id: string
+          quantity: number
+          quarantine_reason: string | null
+          quarantined: boolean
+          received_at: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "medicine_batches"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_inventory_quarantine: {
+        Args: {
+          p_actor: string
+          p_batch_id: string
+          p_note: string
+          p_quarantined: boolean
+        }
+        Returns: {
+          batch_no: string
+          closed_reason: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          manufacturer_lot: string | null
+          medicine_id: string
+          quantity: number
+          quarantine_reason: string | null
+          quarantined: boolean
+          received_at: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "medicine_batches"
           isOneToOne: true
           isSetofReturn: false
         }

@@ -3,6 +3,7 @@ import { requireStaff } from '../middleware/auth.js'
 import { createMedicinePhotoUpload, getMedicinePhoto, saveMedicinePhoto } from '../controllers/medicinePhotos.controller.js'
 import {
   createMedicine,
+  listAllBatches, listBatchEvents, receiveStock, moveStock, quarantineBatch, reverseMovement, archiveMedicine,
   getInventoryStats,
   getMedicine,
   listBatches,
@@ -26,7 +27,6 @@ import {
 export const inventoryRouter = Router()
 
 inventoryRouter.use(requireStaff)
-
 inventoryRouter.get('/medicines', listMedicines)
 inventoryRouter.post('/medicines', createMedicine)
 inventoryRouter.get('/medicines/:id', getMedicine)
@@ -36,6 +36,13 @@ inventoryRouter.get('/medicines/:id/photo', getMedicinePhoto)
 inventoryRouter.post('/medicines/:id/photo/upload-url', createMedicinePhotoUpload)
 inventoryRouter.put('/medicines/:id/photo', saveMedicinePhoto)
 
+inventoryRouter.get('/batches', listAllBatches)
+inventoryRouter.get('/batches/:id/events', listBatchEvents)
+inventoryRouter.post('/receipts', receiveStock)
+inventoryRouter.post('/batches/:id/move', moveStock)
+inventoryRouter.post('/batches/:id/quarantine', quarantineBatch)
+inventoryRouter.post('/movements/:id/reverse', reverseMovement)
+inventoryRouter.patch('/medicines/:id/archive', archiveMedicine)
 inventoryRouter.get('/movements', listMovements)
 inventoryRouter.get('/low-stock', listLowStock)
 inventoryRouter.get('/expiring', listExpiring)
