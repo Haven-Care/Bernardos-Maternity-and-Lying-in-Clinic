@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import type { BookingRequest } from '../../types/appointment'
 import type { Service } from '../../types/service'
 import * as api from '../../api'
+import { submitBooking } from '../../api/bookingSubmission'
 import { useAsync } from '../../hooks/useAsync'
 import { Button } from '../../components/ui/Button'
 import { LoadingState } from '../../components/ui/states'
@@ -30,7 +31,7 @@ import { Stepper, type BookingStep } from './Stepper'
 type ContactEdits = Partial<Omit<Contact, 'email'>>
 
 /**
- * The public booking form — the patient half of the product, at `/book`.
+ * The patient booking form at `/book`, protected by `RequirePatient`.
  *
  * The patient prototype has four booking screens: service, schedule, details,
  * and review. Submission is deliberately reserved for the review screen.
@@ -41,15 +42,8 @@ type ContactEdits = Partial<Omit<Contact, 'email'>>
  * clean start rather than a half-populated step three pointing at a slot that
  * may since have filled.
  *
- * **Steps 1 and 2 are public; steps 3 and 4 require an account.** Browsing services
- * and times is how a patient decides whether the clinic is worth registering
- * with, so demanding a sign-up before either would cost bookings. But the
- * booking itself hangs off an account — that is what makes My Bookings,
- * cancellation and reschedule requests possible at all, and what stops a slot
- * being held for an address nobody owns.
- *
- * The draft survives the sign-in round trip (see `lib/draftBooking`), so the
- * gate costs a patient their password and nothing else.
+ * Every step requires a signed-in patient. The checks below also preserve the
+ * selected service and time if the account expires while the wizard is open.
  */
 export function BookingPage() {
   const navigate = useNavigate()
@@ -66,7 +60,7 @@ export function BookingPage() {
    * the re-gate effect further down parks the choices again — it waits for the
    * account request, so it always runs after this clear.
    */
-  const [draft] = useState(readDraftBooking)
+  const [draft, setDraft] = useState(readDraftBooking)
 
   useEffect(() => {
     if (draft) clearDraftBooking()
@@ -79,14 +73,15 @@ export function BookingPage() {
     slotTime: draft?.slotTime ?? '',
   })
   const [edits, setEdits] = useState<ContactEdits>({})
+  const [savePersonalDetails, setSavePersonalDetails] = useState(false)
+  const [personalDetailsStatus, setPersonalDetailsStatus] = useState<'saved' | 'failed'>()
 
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string>()
   const [confirmed, setConfirmed] = useState<BookingRequest>()
 
-  // Null when signed out. The wizard runs either way — this only decides
-  // whether Continue advances or diverts to sign-in, and what step 3 is
-  // prefilled with.
+  // The route checks identity before mounting; this request loads contact
+  // details and catches an account that expires after the route check.
   const account = useAsync(() => api.patientAuth.getAccount().catch(() => null))
   const services = useAsync(() => api.services.listActiveServices())
 
@@ -180,15 +175,17 @@ export function BookingPage() {
       // The email is deliberately not sent: it comes from the signed-in
       // account, so a booking cannot be made under somebody else's address.
       // The name and number are passed as overrides for the day.
-      const booking = await api.appointments.createBooking({
+      const result = await submitBooking({
         patientName: contact.patientName,
         contactNumber: contact.contactNumber,
         reasonForVisit: contact.reasonForVisit,
         serviceId: service.id,
         scheduledDate: schedule.scheduledDate,
         slotTime: schedule.slotTime,
-      })
-      setConfirmed(booking)
+      }, savePersonalDetails)
+      if (result.profile) account.updateData(result.profile)
+      setPersonalDetailsStatus(result.profile ? 'saved' : result.detailsSaveFailed ? 'failed' : undefined)
+      setConfirmed(result.booking)
     } catch (error) {
       setSubmitError(
         error instanceof Error
@@ -201,18 +198,21 @@ export function BookingPage() {
   }
 
   function reset() {
+    setDraft(null)
     setConfirmed(undefined)
     setSubmitError(undefined)
     setPicked(null)
     setSchedule({ scheduledDate: '', slotTime: '' })
     setEdits({})
+    setSavePersonalDetails(false)
+    setPersonalDetailsStatus(undefined)
     setStep(0)
   }
 
   if (confirmed) {
     return (
       <PublicShell narrow>
-        <BookingConfirmed booking={confirmed} onBookAnother={reset} />
+        <BookingConfirmed booking={confirmed} personalDetailsStatus={personalDetailsStatus} onBookAnother={reset} />
       </PublicShell>
     )
   }
@@ -258,6 +258,8 @@ export function BookingPage() {
             <DetailsStep
               value={contact}
               onChange={(patch) => setEdits((e) => ({ ...e, ...patch }))}
+              savePersonalDetails={savePersonalDetails}
+              onSavePersonalDetailsChange={setSavePersonalDetails}
               service={service}
               scheduledDate={schedule.scheduledDate}
               slotTime={schedule.slotTime}
@@ -274,6 +276,7 @@ export function BookingPage() {
             scheduledDate={schedule.scheduledDate}
             slotTime={schedule.slotTime}
             contact={contact}
+            savePersonalDetails={savePersonalDetails}
             submitting={submitting}
             error={submitError}
             onSubmit={() => void handleSubmit()}

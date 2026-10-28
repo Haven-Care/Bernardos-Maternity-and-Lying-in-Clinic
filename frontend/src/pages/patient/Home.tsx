@@ -14,14 +14,14 @@ export function Home() {
   const bookings = useAsync(() => api.myBookings.listMyBookings())
   const next = bookings.data && filterBookings(bookings.data, 'upcoming', isoDate(today()))[0]
   const recent = bookings.data && filterBookings(bookings.data, 'all', isoDate(today())).slice(0, 2)
-  const firstName = account.data?.fullName.trim().split(/\s+/)[0] || 'there'
+  const firstName = account.data?.fullName?.trim().split(/\s+/)[0] || 'there'
 
   return (
     <PublicShell>
       <div className="grid min-w-0 gap-6 lg:grid-cols-2">
-      <div className="lg:col-span-2 rounded-2xl bg-gradient-to-br from-brand-700 to-brand-500 px-5 py-7 text-white shadow-sm">
+      <div className="min-w-0 rounded-2xl sm:px-8 sm:py-10 lg:col-span-2 bg-gradient-to-br from-brand-700 to-brand-500 px-5 py-7 text-white shadow-sm">
         <p className="text-sm text-brand-100">Welcome back</p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight">Hello, {firstName}!</h1>
+        <h1 className="mt-1 break-words text-2xl font-bold sm:text-3xl tracking-tight">Hello, {firstName}!</h1>
         <p className="mt-2 max-w-sm text-sm text-brand-50">Your appointments and clinic services, all in one place.</p>
       </div>
 
@@ -34,8 +34,8 @@ export function Home() {
           <ErrorState error={bookings.error} onRetry={bookings.reload} />
         ) : next ? (
           <div className="rounded-2xl border border-brand-200 bg-white p-5 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
-              <div>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0 flex-1 basis-40 break-words">
                 <p className="font-semibold text-gray-900">{next.serviceName}</p>
                 <p className="mt-1 text-sm text-gray-600">{formatDateLong(next.scheduledDate)} · {formatTime(next.slotTime)}</p>
                 <p className="mt-2 text-xs text-gray-500">Reference {next.referenceNo}</p>

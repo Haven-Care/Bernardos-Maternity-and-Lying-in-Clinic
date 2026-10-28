@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import * as api from '../../api'
 import { useConfirmLeave } from '../../hooks/useUnsavedChanges'
 import { useAsync } from '../../hooks/useAsync'
-import { ConfirmModal } from '../ui/Modal'
+import { ConfirmModal, Modal } from '../ui/Modal'
 import { useToast } from '../ui/toast-context'
 import {
   BellIcon,
@@ -16,21 +16,14 @@ import {
 } from './icons'
 
 const NAV = [
-  { to: '/admin', end: true, label: 'Dashboard', Icon: DashboardIcon },
-  { to: '/admin/appointments', label: 'Appointment', Icon: CalendarIcon },
-  { to: '/admin/inventory', label: 'Inventory', Icon: InventoryIcon },
-  { to: '/admin/patients', label: 'Patient Records', Icon: PatientsIcon },
-  { to: '/admin/administration', label: 'Administration', Icon: SettingsIcon },
+  { to: '/admin', end: true, label: 'Dashboard', mobileLabel: 'Home', Icon: DashboardIcon },
+  { to: '/admin/appointments', label: 'Appointment', mobileLabel: 'Visits', Icon: CalendarIcon },
+  { to: '/admin/inventory', label: 'Inventory', mobileLabel: 'Inventory', Icon: InventoryIcon },
+  { to: '/admin/patients', label: 'Patient Records', mobileLabel: 'Patients', Icon: PatientsIcon },
+  { to: '/admin/administration', label: 'Administration', mobileLabel: 'Settings', Icon: SettingsIcon },
 ]
 
-/**
- * The command center shell — sidebar, header with live date, user footer.
- *
- * Desktop-first on purpose: the clinic runs Windows 10 desktops (feasibility
- * interview), and every frame of the prototype is a desktop layout. The sidebar
- * collapses to icons below `lg` so a tablet still works, but this is not the
- * patient-facing surface and shouldn't be optimised for phones.
- */
+/** Sidebar on desktop and tablet; full-width content and bottom navigation on phones. */
 export function PortalLayout() {
   const navigate = useNavigate()
   const { confirmLeave, cancelLeave } = useConfirmLeave()
@@ -42,7 +35,7 @@ export function PortalLayout() {
   const [loggingOut, setLoggingOut] = useState(false)
 
   async function handleLogout() {
-    if (!confirmLeave()) { setConfirmLogout(false); return }
+    if (!await confirmLeave()) { setConfirmLogout(false); return }
     setLoggingOut(true)
     try {
       await api.account.logout()
@@ -58,10 +51,10 @@ export function PortalLayout() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <Header clinicName={clinic.data?.name} />
+      <Header clinicName={clinic.data?.name} onLogout={() => setConfirmLogout(true)} />
       <div className="flex min-h-0 flex-1">
-        <aside className="sticky top-[72px] flex h-[calc(100dvh-72px)] w-16 shrink-0 flex-col border-r border-border bg-surface lg:w-60">
-          <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
+        <aside className="sticky top-[72px] hidden h-[calc(100dvh-72px)] w-16 shrink-0 flex-col border-r border-border bg-surface md:flex lg:w-60">
+          <nav aria-label="Staff navigation" className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
             {NAV.map(({ to, end, label, Icon }) => (
               <NavLink
                 key={to}
@@ -98,7 +91,7 @@ export function PortalLayout() {
                 onClick={() => setConfirmLogout(true)}
                 aria-label="Log out"
                 title="Log out"
-                className="flex size-7 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                className="flex size-10 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 lg:size-8"
               >
                 <LogoutIcon className="size-4" />
               </button>
@@ -117,29 +110,40 @@ export function PortalLayout() {
         />
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <main className="flex-1 overflow-x-hidden p-4 lg:p-6">
+          <main className="min-w-0 flex-1 p-3 pb-[calc(6rem_+_env(safe-area-inset-bottom))] sm:p-4 sm:pb-[calc(6rem_+_env(safe-area-inset-bottom))] md:pb-4 lg:p-6">
             <Outlet />
           </main>
         </div>
       </div>
+      <nav aria-label="Staff mobile navigation" className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
+        <div className="grid grid-cols-5 gap-1 px-1 py-2">
+          {NAV.map(({ to, end, label, mobileLabel, Icon }) => (
+            <NavLink key={to} to={to} end={end} title={label} aria-label={label}
+              className={({ isActive }) => `flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-md px-1 text-center text-[10px] leading-tight font-medium ${isActive ? 'bg-brand-50 text-brand-700' : 'text-gray-600'}`}>
+              <Icon className="size-5 shrink-0" />
+              <span>{mobileLabel}</span>
+            </NavLink>
+          ))}
+        </div>
+      </nav>
     </div>
   )
 }
 
-function Header({ clinicName }: { clinicName?: string }) {
+function Header({ clinicName, onLogout }: { clinicName?: string; onLogout: () => void }) {
   const notifications = useAsync(() => api.dashboard.listNotifications())
   const [open, setOpen] = useState(false)
   const unread = notifications.data?.filter((n) => !n.read).length ?? 0
 
   return (
-    <header className="sticky top-0 z-20 flex h-[72px] shrink-0 items-center gap-3 border-b border-border bg-surface px-4 lg:px-6">
-      <div className="flex min-w-0 flex-1 items-center gap-3">
+    <header className="sticky top-0 z-20 flex h-[72px] shrink-0 items-center gap-2 border-b border-border bg-surface px-3 sm:gap-3 sm:px-4 lg:px-6">
+      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
         <Logo />
         <div className="min-w-0">
-          <p className="text-sm leading-tight font-semibold italic text-brand-700 sm:text-base lg:text-lg">
+          <p className="line-clamp-2 text-xs leading-tight font-semibold italic text-brand-700 sm:text-base lg:text-lg">
             {clinicName ?? "Bernardo's Maternity and Lying-in Clinic"}
           </p>
-          <p className="text-xs italic text-brand-600 sm:text-sm">HavenCare System</p>
+          <p className="truncate text-[10px] italic text-brand-600 sm:text-sm">Clinic Management System</p>
         </div>
       </div>
       <LiveDate />
@@ -147,7 +151,7 @@ function Header({ clinicName }: { clinicName?: string }) {
       <div className="relative shrink-0">
         <button
           onClick={() => setOpen((o) => !o)}
-          className="relative flex size-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+          className="relative flex size-11 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700"
           aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`}
         >
           <BellIcon />
@@ -156,14 +160,7 @@ function Header({ clinicName }: { clinicName?: string }) {
           )}
         </button>
 
-        {open && (
-          <>
-            {/* Click-away layer, so the panel closes on any outside click. */}
-            <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-            <div className="absolute right-0 z-20 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-card border border-border bg-surface shadow-lg">
-              <p className="border-b border-border px-4 py-2.5 text-sm font-semibold text-gray-900">
-                Notifications
-              </p>
+        <Modal open={open} onClose={() => setOpen(false)} title="Notifications" size="sm">
               <ul className="max-h-80 divide-y divide-border overflow-y-auto">
                 {notifications.data?.map((n) => (
                   <li
@@ -179,10 +176,11 @@ function Header({ clinicName }: { clinicName?: string }) {
                   </li>
                 )}
               </ul>
-            </div>
-          </>
-        )}
+        </Modal>
       </div>
+      <button type="button" onClick={onLogout} aria-label="Log out" className="flex size-11 shrink-0 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 md:hidden">
+        <LogoutIcon className="size-5" />
+      </button>
     </header>
   )
 }
@@ -206,7 +204,7 @@ function LiveDate() {
   })
 
   return (
-    <p className="hidden shrink-0 text-xs text-gray-500 md:block lg:text-sm">
+    <p className="hidden shrink-0 text-xs text-gray-500 xl:block xl:text-sm">
       {formatted.replace(' at ', ' at ')}
     </p>
   )

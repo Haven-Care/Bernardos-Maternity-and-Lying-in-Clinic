@@ -17,28 +17,28 @@ export function PublicShell({ children, narrow = false }: { children: ReactNode;
   const account = useAsync(() => api.patientAuth.getAccount().catch((error) => { if (isSessionError(error)) return null; throw error }))
 
   return (
-    <div className="flex min-h-full flex-col bg-brand-50/40">
+    <div className="flex min-h-dvh min-w-0 flex-col bg-brand-50/40">
       <header className="border-b border-border bg-surface">
-        <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6 lg:gap-6 lg:px-8 lg:py-4">
           <Logo />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm leading-tight font-semibold text-brand-700">
+            <p className="text-sm leading-tight font-semibold text-brand-700 sm:text-base lg:max-w-sm">
               {clinic.data?.name ?? 'Bernardo’s Maternity & Lying-in Clinic'}
             </p>
             <p className="truncate text-xs text-gray-400">
-              Book an appointment
+              Patient portal
             </p>
           </div>
           <PatientNav account={account.data} loading={account.loading} error={!!account.error} onRetry={account.reload} />
         </div>
       </header>
 
-      <main className={`mx-auto w-full min-w-0 flex-1 px-4 py-5 pb-28 sm:py-8 ${narrow ? 'max-w-4xl' : 'max-w-6xl'}`}>
+      <main className={`mx-auto w-full min-w-0 flex-1 px-4 pt-5 pb-[calc(7rem_+_env(safe-area-inset-bottom))] sm:px-6 sm:pt-8 md:pb-8 lg:px-8 ${narrow ? 'max-w-5xl' : 'max-w-7xl'}`}>
         {children}
       </main>
 
-      <footer className="hidden border-t border-border bg-surface sm:block">
-        <div className="mx-auto w-full max-w-6xl px-4 py-5 text-xs text-gray-500">
+      <footer className="hidden border-t border-border bg-surface md:block">
+        <div className="mx-auto w-full max-w-7xl px-6 py-5 text-xs text-gray-500 lg:px-8">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <p className="mb-1.5 font-semibold text-gray-700">Visit us</p>
@@ -68,7 +68,7 @@ export function PublicShell({ children, narrow = false }: { children: ReactNode;
           </div>
 
           <p className="mt-5 text-xs text-gray-400">
-            © {new Date().getFullYear()} HavenCare. All rights reserved.
+            © {new Date().getFullYear()} Bernardo’s Maternity &amp; Lying-in Clinic. All rights reserved.
           </p>
         </div>
       </footer>
@@ -106,11 +106,11 @@ function PatientNav({ account, loading, error, onRetry }: { account: PatientAcco
   }
 
   async function logOut() {
-    if (!confirmLeave()) { setConfirming(false); return }
+    if (!await confirmLeave()) { setConfirming(false); return }
     setLoggingOut(true)
     try {
       await api.patientAuth.logout()
-      navigate('/book', { replace: true })
+      navigate('/login', { replace: true })
       // The header, the bookings list and the wizard all hold account-derived
       // state. Reloading is blunt but it is the one thing that cannot leave a
       // stale signed-in fragment on screen after signing out.
@@ -129,28 +129,21 @@ function PatientNav({ account, loading, error, onRetry }: { account: PatientAcco
   }
 
   return (
-    <div className="hidden shrink-0 items-center gap-3 sm:flex">
-      <NavLink to="/patient/home" className="text-sm font-medium text-gray-600 hover:text-brand-700">Home</NavLink>
-      <NavLink to="/book" className="text-sm font-medium text-gray-600 hover:text-brand-700">Book</NavLink>
-      <Link
-        to="/patient/bookings"
-        className="text-xs font-medium text-gray-600 transition-colors hover:text-gray-900"
-      >
-        History
-      </Link>
-      <Link
-        to="/patient/account"
-        className="text-xs font-medium text-gray-600 transition-colors hover:text-gray-900"
-      >
-        Account
-      </Link>
-      <button
-        type="button"
-        onClick={() => setConfirming(true)}
-        className="text-xs font-medium text-gray-400 transition-colors hover:text-gray-700"
-      >
-        Log out
-      </button>
+    <>
+      <nav aria-label="Patient desktop navigation" className="hidden w-full items-center gap-1 border-t border-border pt-2 md:flex lg:w-auto lg:shrink-0 lg:border-0 lg:pt-0">
+        {patientTabs.map(({ to, label }) => (
+          <NavLink key={to} to={to} className={({ isActive }) => `inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium transition-colors ${isActive ? 'bg-brand-50 text-brand-700' : 'text-gray-600 hover:bg-brand-50 hover:text-brand-700'}`}>
+            {label === 'Book' ? 'Book appointment' : label === 'History' ? 'Booking history' : label === 'Profile' ? 'My profile' : label}
+          </NavLink>
+        ))}
+        <button
+          type="button"
+          onClick={() => setConfirming(true)}
+          className="ml-auto min-h-11 rounded-lg px-3 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700 lg:ml-2"
+        >
+          Log out
+        </button>
+      </nav>
 
       <ConfirmModal
         open={confirming}
@@ -161,7 +154,7 @@ function PatientNav({ account, loading, error, onRetry }: { account: PatientAcco
         confirmLabel="Log out"
         loading={loggingOut}
       />
-    </div>
+    </>
   )
 }
 
@@ -176,7 +169,7 @@ function PatientBottomNav() {
   const location = useLocation()
 
   return (
-    <nav aria-label="Patient navigation" className="fixed inset-x-0 bottom-0 z-30 border-t border-brand-100 bg-white/95 shadow-[0_-4px_18px_rgba(13,93,92,0.08)] backdrop-blur sm:hidden">
+    <nav aria-label="Patient navigation" className="fixed inset-x-0 bottom-0 z-30 border-t border-brand-100 bg-white/95 shadow-[0_-4px_18px_rgba(13,93,92,0.08)] backdrop-blur md:hidden">
       <div className="mx-auto grid max-w-6xl grid-cols-4 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
         {patientTabs.map(({ to, label, icon: Icon }) => {
           const active = to === '/book' ? location.pathname === to : location.pathname.startsWith(to)

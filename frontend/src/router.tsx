@@ -24,12 +24,11 @@ import { Account } from './pages/patient/Account.tsx'
 import { Home } from './pages/patient/Home.tsx'
 import { UnsavedChangesGuard } from './components/UnsavedChangesGuard'
 import { NotFound } from './pages/NotFound.tsx'
+import { RouteError } from './pages/RouteError.tsx'
 
 /** Shared login routes by server-verified role; legacy patient links stay valid. */
-export const router = createBrowserRouter([{ element: <UnsavedChangesGuard />, children: [
+export const router = createBrowserRouter([{ element: <UnsavedChangesGuard />, errorElement: <RouteError />, children: [
   { path: '/', element: <Navigate to="/login" replace /> },
-
-  { path: '/book', element: <BookingPage /> },
 
   { path: '/login', element: <Login /> },
   { path: '/admin/login', element: <Login /> },
@@ -51,6 +50,7 @@ export const router = createBrowserRouter([{ element: <UnsavedChangesGuard />, c
   {
     element: <RequirePatient />,
     children: [
+      { path: '/book', element: <BookingPage /> },
       { path: '/patient/home', element: <Home /> },
       { path: '/patient/bookings', element: <MyBookings /> },
       { path: '/patient/account', element: <Account /> },

@@ -6,6 +6,8 @@ import { AuthShell, BackToLogin } from './AuthShell'
 import { CodeInput } from './CodeInput'
 import { useAuthRealm } from './realm'
 
+const CODE_LENGTH = 6
+
 export function VerifyCode() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -32,7 +34,7 @@ export function VerifyCode() {
   if (!email) return <Navigate to={realm.forgotPath} replace />
 
   async function submit(value: string) {
-    if (inFlight.current || !/^\d{6}$/.test(value)) return
+    if (inFlight.current || value.length !== CODE_LENGTH || !/^\d+$/.test(value)) return
     inFlight.current = true
     setSubmitting(true)
     setError(undefined)
@@ -80,8 +82,9 @@ export function VerifyCode() {
       >
         <CodeInput
           value={code}
+          length={CODE_LENGTH}
           onChange={setCode}
-          // Submit as soon as the sixth digit lands — no reason to make someone
+          // Submit as soon as the final digit lands — no reason to make someone
           // reach for the button once the code is complete.
           onComplete={(value) => void submit(value)}
         />
@@ -93,7 +96,7 @@ export function VerifyCode() {
         )}
 
         <p className="text-center text-xs text-gray-500">
-          If an account exists, check its inbox and spam folder. Enter the six-digit code here, or open the reset link in the email.
+          If an account exists, check its inbox and spam folder. Enter the {CODE_LENGTH}-digit code here, or open the reset link in the email.
         </p>
         {resendWait > 0 && <p role="status" className="text-center text-xs text-gray-500">New email requested. Please wait a minute before requesting another.</p>}
         <button type="button" disabled={submitting || resending || resendWait > 0} onClick={() => void resend()} className="text-xs font-medium text-brand-600 disabled:text-gray-400">
@@ -103,7 +106,7 @@ export function VerifyCode() {
         <Button
           type="submit"
           loading={submitting}
-          disabled={code.length !== 6 || resending}
+          disabled={code.length !== CODE_LENGTH || resending}
           className="w-full"
         >
           Verify Code

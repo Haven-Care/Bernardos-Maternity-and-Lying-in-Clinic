@@ -19,8 +19,8 @@ export function AuthShell({
   onLogoClick?: () => void
 }) {
   return (
-    <div className="flex min-h-full items-center justify-center bg-brand-50/40 p-4">
-      <div className="w-full max-w-md rounded-card border border-border bg-surface p-5 sm:p-7 shadow-sm">
+    <div className="flex min-h-dvh min-w-0 items-center justify-center bg-brand-50/40 px-4 py-6 sm:py-10">
+      <div className="w-full min-w-0 max-w-md rounded-card border border-border bg-surface p-5 sm:p-7 shadow-sm">
         {before}
 
         <div className="flex flex-col items-center gap-2 text-center">
@@ -62,7 +62,7 @@ export function AuthShell({
         {footer && <div className="mt-4">{footer}</div>}
 
         <p className="mt-6 text-center text-xs text-gray-400">
-          © {new Date().getFullYear()} HavenCare. All rights reserved.
+          © {new Date().getFullYear()} Bernardo’s Maternity &amp; Lying-in Clinic. All rights reserved.
         </p>
       </div>
     </div>

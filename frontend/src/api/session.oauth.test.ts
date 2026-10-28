@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-const { auth, apiFetch } = vi.hoisted(() => ({ auth: { signInWithOAuth: vi.fn(), getSession: vi.fn(), signOut: vi.fn() }, apiFetch: vi.fn() }))
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+const { auth, apiFetch } = vi.hoisted(() => ({ auth: { signInWithIdToken: vi.fn(), getSession: vi.fn(), signOut: vi.fn() }, apiFetch: vi.fn() }))
 vi.mock('../lib/supabase', () => ({ supabase: { auth }, RECOVERY_USER_KEY: 'recovery' }))
 vi.mock('./client', () => ({ apiFetch }))
 vi.mock('../lib/api', () => ({ isSessionError: (error: { status?: number }) => [401, 403, 404].includes(error.status ?? 0) }))
@@ -9,19 +9,71 @@ beforeEach(() => {
   vi.stubGlobal('sessionStorage', { removeItem: vi.fn() })
   vi.stubGlobal('window', { location: { origin: 'https://clinic.example', assign: vi.fn() } })
 })
+afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals() })
 describe('Google role-based login', () => {
-  it('preserves the requested destination in the callback', async () => {
+  it('ends a stalled Google token exchange with a retryable timeout', async () => {
+    vi.useFakeTimers()
     const { loginWithGoogle } = await import('./session')
-    auth.signInWithOAuth.mockResolvedValue({ data: { url: 'https://accounts.google.com/auth' }, error: null })
-    await loginWithGoogle('/book')
-    expect(auth.signInWithOAuth).toHaveBeenCalledWith({ provider: 'google', options: { redirectTo: 'https://clinic.example/auth/callback?next=%2Fbook', skipBrowserRedirect: true } })
-    expect(window.location.assign).toHaveBeenCalledWith('https://accounts.google.com/auth')
+    auth.signInWithIdToken.mockReturnValue(new Promise(() => {}))
+    const rejection = expect(loginWithGoogle('token', 'nonce')).rejects.toMatchObject({ name: 'TimeoutError' })
+    await vi.advanceTimersByTimeAsync(15_000)
+    await rejection
+    expect(apiFetch).not.toHaveBeenCalled()
+  })
+  it('ends a stalled confirmation callback with a retryable timeout', async () => {
+    vi.useFakeTimers()
+    const { completeOAuthLogin } = await import('./session')
+    auth.getSession.mockReturnValue(new Promise(() => {}))
+    const rejection = expect(completeOAuthLogin()).rejects.toMatchObject({ name: 'TimeoutError' })
+    await vi.advanceTimersByTimeAsync(15_000)
+    await rejection
+    expect(apiFetch).not.toHaveBeenCalled()
+  })
+  it('exchanges the Google credential with its original nonce and uses the server role', async () => {
+    const { loginWithGoogle } = await import('./session')
+    auth.signInWithIdToken.mockResolvedValue({ data: { session: { user: { user_metadata: { role: 'administrator' } } } }, error: null })
+    apiFetch.mockResolvedValue({ role: 'patient' })
+    expect(await loginWithGoogle('google-id-token', 'raw-nonce')).toEqual({ role: 'patient' })
+    expect(auth.signInWithIdToken).toHaveBeenCalledWith({ provider: 'google', token: 'google-id-token', nonce: 'raw-nonce' })
+    expect(sessionStorage.removeItem).toHaveBeenCalledWith('recovery')
+    expect(window.location.assign).not.toHaveBeenCalled()
   })
   it('keeps the feature unavailable until enabled', async () => {
     vi.stubEnv('VITE_GOOGLE_LOGIN_ENABLED', 'false')
     const { loginWithGoogle } = await import('./session')
-    await expect(loginWithGoogle()).rejects.toThrow('not enabled')
-    expect(auth.signInWithOAuth).not.toHaveBeenCalled()
+    await expect(loginWithGoogle('token', 'nonce')).rejects.toThrow('not enabled')
+    expect(auth.signInWithIdToken).not.toHaveBeenCalled()
+  })
+  it.each([['', 'nonce'], ['token', '']])('rejects an absent token or nonce (%s, %s)', async (token, nonce) => {
+    const { loginWithGoogle } = await import('./session')
+    await expect(loginWithGoogle(token, nonce)).rejects.toThrow('valid credential')
+    expect(auth.signInWithIdToken).not.toHaveBeenCalled()
+  })
+  it('does not query the backend after a rejected Google token', async () => {
+    const { loginWithGoogle } = await import('./session')
+    auth.signInWithIdToken.mockResolvedValue({ data: { session: null }, error: new Error('Invalid nonce') })
+    await expect(loginWithGoogle('token', 'nonce')).rejects.toThrow('Invalid nonce')
+    expect(apiFetch).not.toHaveBeenCalled()
+  })
+  it('does not reuse an old session when token exchange returns no new session', async () => {
+    const { loginWithGoogle } = await import('./session')
+    auth.signInWithIdToken.mockResolvedValue({ data: { session: null }, error: null })
+    await expect(loginWithGoogle('token', 'nonce')).rejects.toThrow('create a session')
+    expect(apiFetch).not.toHaveBeenCalled()
+  })
+  it.each([401, 403, 404])('signs out Google users rejected by server authorization (%s)', async (status) => {
+    const { loginWithGoogle } = await import('./session')
+    auth.signInWithIdToken.mockResolvedValue({ data: { session: {} }, error: null })
+    apiFetch.mockRejectedValue(Object.assign(new Error('Denied'), { status }))
+    await expect(loginWithGoogle('token', 'nonce')).rejects.toThrow('Denied')
+    expect(auth.signOut).toHaveBeenCalled()
+  })
+  it('preserves the Google session when the account API is temporarily unavailable', async () => {
+    const { loginWithGoogle } = await import('./session')
+    auth.signInWithIdToken.mockResolvedValue({ data: { session: {} }, error: null })
+    apiFetch.mockRejectedValue(Object.assign(new Error('Unavailable'), { status: 503 }))
+    await expect(loginWithGoogle('token', 'nonce')).rejects.toThrow('Unavailable')
+    expect(auth.signOut).not.toHaveBeenCalled()
   })
   it('does not query a role when the OAuth return contains no session', async () => {
     const { completeOAuthLogin } = await import('./session')

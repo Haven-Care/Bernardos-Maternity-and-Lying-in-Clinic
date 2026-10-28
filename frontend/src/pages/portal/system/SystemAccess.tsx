@@ -122,7 +122,7 @@ export function SystemAccess() {
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">System Access</h1>
         <p className="mt-0.5 text-sm text-gray-500">
-          Staff accounts for the HavenCare portal. There is no self sign-up —
+          Staff accounts for the Bernardo Clinic portal. There is no self sign-up —
           accounts are created here.
         </p>
       </div>
@@ -252,7 +252,7 @@ function AddStaffModal({
           required
           value={form.email}
           onChange={(v) => set('email', v)}
-          placeholder="e.g. hannahp@havencare.ph"
+          placeholder="e.g. staff@example.com"
         />
         <TextField
           label="Contact Number"

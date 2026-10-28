@@ -89,7 +89,7 @@ export function ScheduleStep({
       </p>
 
       <div
-        className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-2"
+        className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-7 sm:px-0"
         role="group"
         aria-label="Appointment date"
       >
@@ -104,7 +104,7 @@ export function ScheduleStep({
               disabled={!open}
               aria-pressed={selected}
               onClick={() => onChange({ scheduledDate: date, slotTime: '' })}
-              className={`flex w-14 shrink-0 flex-col items-center gap-0.5 rounded-card border py-2 transition-colors ${
+              className={`flex w-14 shrink-0 flex-col sm:w-full items-center gap-0.5 rounded-card border py-2 transition-colors ${
                 selected
                   ? 'border-brand-500 bg-brand-500 text-white'
                   : open
@@ -158,7 +158,7 @@ function SlotGrid({
 
   return (
     <div role="group" aria-label="Appointment time">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {offered.map((row) => {
           const left = row.capacity - row.booked
           const selected = value.slotTime === row.time
