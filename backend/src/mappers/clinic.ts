@@ -52,8 +52,7 @@ export function toService(row: ServiceRow): Service {
     category: row.category,
     // numeric(10,2) arrives as a JSON number, but a string would slip through
     // typing and only show up as "₱NaN" on a price tag.
-    price: Number(row.price),
-    priceIsTemporary: row.price_is_temporary,
+    price: row.price === null ? null : Number(row.price),
     active: row.active,
   }
 }

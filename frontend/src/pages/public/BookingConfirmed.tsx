@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Button } from '../../components/ui/Button'
 import { formatDateLong, formatTime } from '../../lib/format'
 
-/** A saved booking holds its slot while awaiting staff confirmation. */
+/** A saved booking is accepted immediately and holds its slot. */
 export function BookingConfirmed({
   booking,
   personalDetailsStatus,
@@ -39,7 +39,7 @@ export function BookingConfirmed({
           {formatDateLong(booking.scheduledDate)},{' '}
           {formatTime(booking.slotTime)}
         </span>
-        . The clinic will confirm your appointment. Check History for status updates and bring your reference number when you arrive.
+        . Please arrive at the scheduled time and bring your reference number. Check History for updates.
       </p>
 
       <div className="mt-5 rounded-card border border-brand-200 bg-brand-50 px-4 py-3">

@@ -3,8 +3,7 @@ import type { Service } from '../../types/service'
 import * as api from '../../api'
 import { useAsync } from '../../hooks/useAsync'
 import { AsyncBoundary, EmptyState } from '../../components/ui/states'
-import { formatPeso } from '../../lib/format'
-import { groupServicesByCategory } from '../../lib/services'
+import { formatServicePrice, groupServicesByCategory } from '../../lib/services'
 import { ClinicServiceCatalog } from '../../components/ClinicServiceCatalog'
 
 /**
@@ -138,8 +137,7 @@ function ServiceGroups({
                         {service.name}
                       </span>
                       <span className="shrink-0 text-sm font-semibold text-brand-700">
-                        {formatPeso(service.price)}
-                        {service.priceIsTemporary && <span className="block text-xs font-normal text-warning-700">Temporary price</span>}
+                        {formatServicePrice(service.price)}
                       </span>
                     </button>
                   </li>

@@ -3,7 +3,6 @@ import type { AppointmentStatus, BookingRequest } from '../types/appointment'
 /** Patient cancellation/reschedule are allowed before arrival. */
 export const ACTIONABLE: ReadonlySet<AppointmentStatus> = new Set([
   'pending',
-  'confirmed',
   'rescheduled',
 ])
 
@@ -29,7 +28,7 @@ export function isBookingFilter(value: string | null): value is BookingFilter {
  * Decided by calendar day, not by the minute: an appointment stays upcoming
  * for the whole of its day, so a patient running late still finds it there.
  * A live booking whose day has gone without being marked completed stays in
- * All. Only staff-confirmed completed visits appear in Completed.
+ * All. Only staff-recorded completed visits appear in Completed.
  *
  * `today` is `YYYY-MM-DD`, passed in so the filter is a pure function.
  */

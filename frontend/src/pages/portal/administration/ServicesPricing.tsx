@@ -11,7 +11,7 @@ import { NumberField, TextField } from '../../../components/ui/fields'
 import { Table, type Column } from '../../../components/ui/Table'
 import { AsyncBoundary, EmptyState } from '../../../components/ui/states'
 import { useToast } from '../../../components/ui/toast-context'
-import { formatPeso } from '../../../lib/format'
+import { formatServicePrice } from '../../../lib/services'
 import type { Service, ServiceInput } from '../../../types/service'
 import { clinicServices, clinicServiceGroups } from '../../../lib/clinicServices'
 
@@ -21,7 +21,7 @@ export function ServicesPricing() {
 
   const [editing, setEditing] = useState<Service | null>(null)
   const [adding, setAdding] = useState(false)
-  const [draft, setDraft] = useState<Pick<ServiceInput, 'name' | 'category'> | null>(null)
+  const [draft, setDraft] = useState<ServiceInput | null>(null)
 
   const pendingIds = useRef(new Set<string>())
   const [pending, setPending] = useState<ReadonlySet<string>>(new Set())
@@ -59,7 +59,7 @@ export function ServicesPricing() {
       header: 'Price',
       align: 'right',
       render: (s) => (
-        <span className="tabular-nums font-medium">{formatPeso(s.price)}{s.priceIsTemporary && <span className="block text-xs font-normal text-warning-700">Temporary price</span>}</span>
+        <span className="tabular-nums font-medium">{formatServicePrice(s.price)}</span>
       ),
     },
     {
@@ -132,26 +132,28 @@ export function ServicesPricing() {
       </Card>
 
       {services.data && <Card className="p-4">
-        <h2 className="text-sm font-semibold text-gray-900">Clinic’s printed service list</h2>
+        <h2 className="text-sm font-semibold text-gray-900">Clinic’s service and price list</h2>
         <p className="mt-1 text-xs text-gray-500">
-          {clinicServices.length} services appear on the clinic poster. Set a price to add a service to online booking; saving makes it bookable immediately.
+          {clinicServices.length} services are listed by the clinic. Hearing Test is currently unavailable; contact the clinic for Norifam pricing.
         </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {clinicServiceGroups.map((group) => (
             <div key={group.category}>
               <h3 className="text-xs font-semibold text-brand-700">{group.category}</h3>
               <ul className="mt-2 space-y-2">
-                {group.services.map(({ name }) => {
+                {group.services.map(({ name, price, available }) => {
                   const configured = services.data?.find((service) => service.name.toLowerCase() === name.toLowerCase())
                   return (
                     <li key={name} className="flex items-center justify-between gap-2 text-xs text-gray-700">
-                      <span>{name}</span>
+                      <span>{name}<span className="mt-0.5 block text-gray-500">{formatServicePrice(price)}{!available && ' · Currently unavailable'}</span></span>
                       {configured ? (
                         <span className="shrink-0 text-gray-400">{configured.active ? 'Bookable' : 'Configured'}</span>
+                      ) : !available ? (
+                        <span className="shrink-0 text-gray-400">Unavailable</span>
                       ) : (
                         <button
                           type="button"
-                          onClick={() => { setDraft({ name, category: group.category }); setAdding(true) }}
+                          onClick={() => { setDraft({ name, category: group.category, price }); setAdding(true) }}
                           className="shrink-0 font-semibold text-brand-600 hover:underline"
                         >
                           Set up
@@ -197,7 +199,7 @@ function ServiceModal({
   onSaved,
 }: {
   service?: Service
-  initial?: Pick<ServiceInput, 'name' | 'category'>
+  initial?: ServiceInput
   open: boolean
   onClose: () => void
   onSaved: () => void
@@ -205,13 +207,12 @@ function ServiceModal({
   const [form, setForm] = useState<ServiceInput>({
     name: service?.name ?? initial?.name ?? '',
     category: service?.category ?? initial?.category ?? '',
-    price: service?.price ?? 0,
-    priceIsTemporary: service?.priceIsTemporary ?? false,
+    price: service ? service.price : initial?.price ?? null,
   })
   const [saving, setSaving] = useState(false)
   const toast = useToast()
 
-  const dirty = JSON.stringify(form) !== JSON.stringify({ name: service?.name ?? initial?.name ?? '', category: service?.category ?? initial?.category ?? '', price: service?.price ?? 0, priceIsTemporary: service?.priceIsTemporary ?? false })
+  const dirty = !service || JSON.stringify(form) !== JSON.stringify({ name: service?.name ?? initial?.name ?? '', category: service?.category ?? initial?.category ?? '', price: service ? service.price : initial?.price ?? null })
 
   async function save() {
     setSaving(true)
@@ -239,7 +240,7 @@ function ServiceModal({
         <Button
           onClick={() => void save()}
           loading={saving}
-          disabled={!dirty || form.name.trim() === '' || form.price <= 0}
+          disabled={!dirty || form.name.trim() === '' || (form.price !== null && (!Number.isFinite(form.price) || form.price < 0))}
         >
           Save
         </Button>
@@ -261,17 +262,13 @@ function ServiceModal({
         />
         <NumberField
           label="Price"
-          required
-          min={1}
-          value={form.price === 0 ? '' : form.price}
-          onChange={(v) => setForm({ ...form, price: v === '' ? 0 : v })}
+          min={0}
+          value={form.price ?? ''}
+          onChange={(v) => setForm({ ...form, price: v === '' ? null : v })}
           suffix="₱"
           placeholder="e.g. 300"
         />
-        <label className="flex items-center gap-2 text-sm text-gray-700">
-          <input type="checkbox" checked={form.priceIsTemporary ?? false} onChange={(event) => setForm({ ...form, priceIsTemporary: event.target.checked })} />
-          Temporary price — awaiting the clinic’s final rate
-        </label>
+        <p className="text-xs text-gray-500">Leave the price blank when it has not been provided. Patients will see “Contact clinic for price”.</p>
       </div>
     </Modal>
   )

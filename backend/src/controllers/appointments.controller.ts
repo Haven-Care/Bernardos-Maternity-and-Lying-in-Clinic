@@ -77,7 +77,7 @@ export async function getBookingByReference(req: Request, res: Response) {
  * Moves a booking to a new status.
  *
  * Guarded by which transitions make sense: a cancelled booking is finished, and
- * confirming or completing one would silently resurrect an appointment the
+ * arriving or completing one would silently resurrect an appointment the
  * patient was told was off.
  */
 async function setStatus(req: Request, next: Status) {
@@ -108,9 +108,6 @@ export async function declineOpenRescheduleRequest(bookingId: string) {
   if (error) throw dbError(error)
 }
 
-export async function confirmBooking(req: Request, res: Response) {
-  res.json(toBooking(await setStatus(req, 'confirmed')))
-}
 export async function arriveBooking(req: Request, res: Response) {
   res.json(toBooking(await setStatus(req, 'arrived')))
 }

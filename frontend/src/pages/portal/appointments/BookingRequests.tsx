@@ -113,7 +113,7 @@ export function BookingRequests({ visits = false, onChanged }: { visits?: boolea
 
   return (
     <>
-      {visits && <p className="text-sm text-gray-600">Today’s active visits. Open a booking to confirm, record arrival, complete the visit, or mark a no-show. Change or clear the dates to view other visits.</p>}
+      {visits && <p className="text-sm text-gray-600">Today’s active visits. Open a booking to record arrival, complete the visit, or mark a no-show. Change or clear the dates to view other visits.</p>}
       <Card className="appointments-list-card">
         <div className="flex flex-wrap items-end gap-3 border-b border-border p-4">
           <div className="w-40">

@@ -293,13 +293,16 @@ regenerate them against a disposable migrated local database when available.
 ## Visit management, services, and batch numbers
 
 Apply migrations 17–20 in order. Migration 17 commits the `arrived` and `no_show`
-enum values before migration 18 uses them. Existing confirmed appointments keep
-their status; new submissions become `pending` (labelled **Booked**) and continue
-to reserve capacity immediately. Visit management defaults to today's active
-appointments and supports custom dates, reference search, confirmation, arrival,
-completion, cancellation, and no-show recording. Confirmation can happen before
-the appointment day. Arrival/completion are allowed from the appointment date;
-no-show is allowed after the scheduled time. Rescheduling is available before
+enum values before migration 18 uses them. Apply migration 23 for automatic
+booking acceptance: successful submissions are **Booked** (`pending` in the
+database) and reserve capacity immediately. Existing `confirmed` rows become
+Booked; the Confirm action and Confirmed status have been removed.
+
+Visit management defaults to today's active appointments and supports custom
+dates, reference search, arrival, completion, cancellation, and no-show recording.
+Booked and rescheduled appointments can move directly to Arrived from the
+appointment date; completion follows arrival. No-show is allowed after the
+scheduled time. Rescheduling is available before
 arrival. Arrived patients must be managed by staff.
 
 Staff transitions run in a row-locked database function, append an audit event,
@@ -309,12 +312,14 @@ no-show bookings continue to count toward their original slot, like completed
 visits; cancellation releases a slot. Patient history shows current statuses.
 These are in-app updates; SMTP email delivery is a separate integration.
 
-Migration 19 adds all missing poster services without replacing configured prices
-or reactivating previously deactivated services. The 16 missing entries on a fresh
-seed receive **₱100 temporary prices**, clearly labelled in administration and
-booking/review. Staff can edit the price and clear the temporary-price checkbox
-once the clinic supplies its final rate. The fresh seed has 20 active entries:
-17 poster services plus the existing Consultation, Ultrasound, and Follow-up.
+Migration 19 originally added placeholder poster rates. Migration 22 replaces
+those with the clinic-supplied service and price list, with separate entries for
+PhilHealth delivery rates and first/subsequent prenatal visits. It preserves
+service IDs, appointment snapshots, and staff deactivations; superseded prototype
+offerings remain inactive. Hearing Test is ₱650 and inactive. Norifam has a null
+price and displays **Contact clinic for price**, rather than an invented rate.
+Temporary-price badges and the administration checkbox have been removed. Apply
+migration 22 before running the updated API; the fresh seed uses the same rates.
 
 Stock In generates an editable batch number. Custom values accept up to 64
 letters, numbers, spaces, hyphens, #, underscore, slash, and period, with at least
@@ -325,7 +330,7 @@ are awaiting clinic decisions.
 
 `supabase/tests/visit_workflow.sql` exercises reservation, same-day transitions,
 terminal-state protection, cancellation/request cleanup, audit events, batch
-validation, placeholder rates, and RLS posture on a disposable migrated/seeded DB.
+validation, clinic rates, and RLS posture on a disposable migrated/seeded DB.
 It rolls its synthetic records back. The test also passed with PGlite using minimal
 Auth/Storage schema stubs; that verifies PostgreSQL rules, not hosted GoTrue,
 PostgREST, Storage uploads, or concurrent HTTP requests. The full Supabase

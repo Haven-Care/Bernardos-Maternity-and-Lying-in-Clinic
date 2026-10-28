@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { Service } from '../types/service'
-import { groupServicesByCategory } from './services'
+import { formatServicePrice, groupServicesByCategory } from './services'
+
+describe('service price display', () => {
+  it('keeps an unspecified rate distinct from a free service', () => {
+    expect(formatServicePrice(null)).toBe('Contact clinic for price')
+    expect(formatServicePrice(0)).toBe('₱0')
+    expect(formatServicePrice(2500)).toBe('₱2,500')
+  })
+})
 
 function service(name: string, category: string): Service {
   return { id: name, name, category, price: 0, active: true }

@@ -2,12 +2,22 @@ import type { Request, Response } from 'express'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 const { getClient, rpc } = vi.hoisted(() => ({ getClient: vi.fn(), rpc: vi.fn() }))
 vi.mock('../config/supabase.js', () => ({ getSupabaseClient: getClient }))
-import { arriveBooking, completeBooking, confirmBooking, noShowBooking } from './appointments.controller.js'
+import { arriveBooking, completeBooking, noShowBooking } from './appointments.controller.js'
+import { toBooking } from '../mappers/appointment.js'
 const id = 'a6e591be-05e4-4da9-8a7a-5a0af373b57a'
 const req = { params: { id }, staff: { userId: 'verified-staff' } } as unknown as Request
 beforeEach(() => { vi.resetAllMocks(); getClient.mockReturnValue({ rpc }) })
 describe('staff visit transitions', () => {
-  it.each([[confirmBooking, 'confirmed'], [arriveBooking, 'arrived'], [completeBooking, 'completed'], [noShowBooking, 'no_show']] as const)('records %s using the guarded actor and atomic transition', async (handler, status) => {
+  it('exposes an existing confirmed booking as Booked during migration rollout', () => {
+    expect(toBooking({
+      id, account_id: null, patient_id: null, patient_name: 'Test Patient',
+      contact_number: '09123456789', email: 'patient@example.test',
+      reference_no: 'BR-0812', service_id: id, service_name: 'Check-up',
+      scheduled_date: '2026-10-28', slot_time: '09:00', status: 'confirmed',
+      reason_for_visit: '', submitted_at: '', updated_at: '',
+    })).toMatchObject({ id, status: 'pending' })
+  })
+  it.each([[arriveBooking, 'arrived'], [completeBooking, 'completed'], [noShowBooking, 'no_show']] as const)('records %s using the guarded actor and atomic transition', async (handler, status) => {
     rpc.mockResolvedValue({ data: { id, status }, error: null })
     const json = vi.fn()
     await handler(req, { json } as unknown as Response)

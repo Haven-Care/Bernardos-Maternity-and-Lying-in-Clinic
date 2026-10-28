@@ -24,7 +24,7 @@ import { daysBetween, toMedicineListRow } from '../mappers/inventory.js'
  *                count the same things and two implementations would drift
  *   here         the alert sentences, because they are UI copy
  *
- * Nothing on this screen is stored. Confirm a booking or dispense stock and
+ * Nothing on this screen is stored. Record a visit or dispense stock and
  * these numbers move on the next load, with no denormalised counter to go
  * stale.
  */
@@ -125,12 +125,15 @@ export async function getAppointmentsOverview(req: Request, res: Response) {
   if (range === 'custom') {
     const db = getSupabaseClient()
     const pairs = await Promise.all(APPOINTMENT_STATUSES.map(async (status) => [status, await exactCount(
-      db.from('appointments').select('id', { count: 'exact', head: true }).gte('scheduled_date', from!).lte('scheduled_date', to!).eq('status', status),
+      db.from('appointments').select('id', { count: 'exact', head: true }).gte('scheduled_date', from!).lte('scheduled_date', to!).in('status', status === 'pending' ? ['pending', 'confirmed'] : [status]),
     )] as const))
     counts = new Map(pairs)
   } else {
     const rows = unwrapList(await getSupabaseClient().rpc('appointment_status_counts', { p_range: range }))
     counts = new Map(rows.map((row) => [row.status, Number(row.count ?? 0)]))
+    // Fold legacy accepted bookings into Booked during the migration rollout.
+    counts.set('pending', (counts.get('pending') ?? 0) + (counts.get('confirmed') ?? 0))
+    counts.delete('confirmed')
   }
 
   const total = [...counts.values()].reduce((sum, n) => sum + n, 0)
@@ -195,10 +198,10 @@ export async function getUrgentAlerts(_req: Request, res: Response) {
 
   for (const medicine of unwrapList(medicines)
     .map(toMedicineListRow)
-    .filter((m) => m.qtyOnHand < m.reorderLevel)) {
+    .filter((m) => m.qtyOnHand <= m.reorderLevel)) {
     // "Critically low" is a harder signal than "below reorder level" — the
     // design distinguishes the two, and only the first is red.
-    const critical = medicine.qtyOnHand < medicine.reorderLevel / 2
+    const critical = medicine.qtyOnHand === 0 || medicine.qtyOnHand < medicine.reorderLevel / 2
 
     alerts.push({
       id: `alert-stock-${medicine.id}`,
@@ -207,7 +210,7 @@ export async function getUrgentAlerts(_req: Request, res: Response) {
       subject: medicine.genericName,
       message: critical
         ? `is critically low — ${medicine.qtyOnHand} ${medicine.unit} left`
-        : `is below reorder level`,
+        : `has reached its reorder level`,
       detail: critical
         ? 'Reorder recommended'
         : `${medicine.qtyOnHand} ${medicine.unit} left · reorder at ${medicine.reorderLevel}`,

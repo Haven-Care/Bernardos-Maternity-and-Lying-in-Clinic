@@ -1,11 +1,10 @@
 import type { DateString, DateTimeString, TimeString } from './common'
 
-/** Staff workflow: Booked (stored as pending) → Confirmed → Arrived → Completed.
+/** Staff workflow: Booked (stored as pending) → Arrived → Completed; no approval step.
  * Cancelled/no_show are terminal; rescheduled keeps a moved slot visible.
  */
 export type AppointmentStatus =
   | 'pending'
-  | 'confirmed'
   | 'rescheduled'
   | 'cancelled'
   | 'completed'
@@ -14,7 +13,6 @@ export type AppointmentStatus =
 
 export const APPOINTMENT_STATUSES: AppointmentStatus[] = [
   'pending',
-  'confirmed',
   'rescheduled',
   'cancelled',
   'completed',
@@ -27,7 +25,7 @@ export const APPOINTMENT_STATUSES: AppointmentStatus[] = [
  *
  * One row of the Bookings table and one chip on the Calendar. `scheduledDate`
  * and `slotTime` are the appointment, not a preference: the seat is held the
- * moment the row exists, before staff confirmation.
+ * moment the row exists. Staff record attendance when the patient arrives.
  */
 export interface BookingRequest {
   id: string
@@ -101,8 +99,8 @@ export type RescheduleRequestStatus = 'pending' | 'approved' | 'declined'
  * slot held until staff decide, so a patient cannot rewrite a date the clinic
  * is working to.
  *
- * Note `pending` below is this table's own status and is very much alive —
- * unlike the appointment status of the same name.
+ * `pending` here means a reschedule proposal awaiting staff review. Appointment
+ * `pending` is the legacy database value for an accepted booking (Booked).
  *
  * Staff rescheduling from their own modal does not create one of these — they
  * act directly, because it is their schedule.

@@ -33,7 +33,7 @@ export function BookingDetail({
   const [confirmingCancel, setConfirmingCancel] = useState(false)
   const [visitAction, setVisitAction] = useState<VisitAction>()
   const actions = visitActions(booking, clinicDate(new Date().toISOString()), new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date()))
-  const visitApi = { confirm: api.appointments.confirmBooking, arrive: api.appointments.arriveBooking, complete: api.appointments.completeBooking, 'no-show': api.appointments.noShowBooking }
+  const visitApi = { arrive: api.appointments.arriveBooking, complete: api.appointments.completeBooking, 'no-show': api.appointments.noShowBooking }
 
   function finish(title: string, message: string) {
     toast.success(title, message)

@@ -19,16 +19,19 @@ declare
   v_missed appointments;
   v_batch medicine_batches;
 begin
-  select id into v_service from services where name = 'Consultation' and active limit 1;
+  select id into v_service from services where name = 'Pre-natal Check-up (first visit)' and active limit 1;
   select d::date into v_date from generate_series(clinic_today() + 14, clinic_today() + 21, interval '1 day') as d
     where exists (select 1 from appointment_slots where weekday = weekday_of(d::date) and slot_time = '09:00' and is_open)
     order by d limit 1;
   select booked into v_before from slot_availability(v_date) where slot_time = '09:00';
   v_booking := book_appointment(v_account, v_service, v_date, '09:00', 'Visit Test Patient', '09123456789', 'visit-patient@example.test', 'Synthetic workflow test');
-  assert v_booking.status = 'pending', 'New bookings must await staff confirmation';
+  assert v_booking.status = 'pending', 'A successful booking must be accepted as Booked';
   select booked into v_after from slot_availability(v_date) where slot_time = '09:00';
-  assert v_after = v_before + 1, 'An unconfirmed booking must reserve capacity';
-  v_booking := transition_appointment(v_booking.id, 'confirmed', v_actor);
+  assert v_after = v_before + 1, 'Booking must reserve capacity immediately';
+  begin
+    perform transition_appointment(v_booking.id, 'confirmed', v_actor);
+    raise exception 'Confirmation must not be a supported transition';
+  exception when sqlstate 'HC409' then null; end;
   begin
     perform transition_appointment(v_booking.id, 'arrived', v_actor);
     raise exception 'Future arrival should fail';
@@ -44,9 +47,9 @@ begin
   assert not exists(select 1 from reschedule_requests where booking_id = v_booking.id and status = 'pending'), 'Arrival must close stale reschedule requests';
   v_booking := transition_appointment(v_booking.id, 'completed', v_actor);
   assert v_booking.status = 'completed', 'An arrived visit can complete on the same day';
-  assert (select count(*) from appointment_status_events where booking_id = v_booking.id) = 3, 'Transitions must retain staff audit events';
+  assert (select count(*) from appointment_status_events where booking_id = v_booking.id) = 2, 'Arrival and completion must retain staff audit events';
   begin
-    perform transition_appointment(v_booking.id, 'confirmed', v_actor);
+    perform transition_appointment(v_booking.id, 'arrived', v_actor);
     raise exception 'Completed visits must remain terminal';
   exception when sqlstate 'HC409' then null; end;
   begin
@@ -62,7 +65,7 @@ begin
   assert v_after = v_before - 1, 'Cancellation must release the reserved seat';
   assert not exists(select 1 from reschedule_requests where booking_id = v_cancel.id and status = 'pending'), 'Cancellation must close reschedule requests';
   begin
-    perform transition_appointment(v_cancel.id, 'confirmed', v_actor);
+    perform transition_appointment(v_cancel.id, 'arrived', v_actor);
     raise exception 'Cancelled visits must remain terminal';
   exception when sqlstate 'HC409' then null; end;
 
@@ -95,8 +98,12 @@ begin
     perform record_stock_in(v_medicine, 'LOT;<script>', 1, clinic_today() + 90, 'Invalid batch', v_actor);
     raise exception 'Unsupported batch punctuation should fail';
   exception when sqlstate 'HC400' then null; end;
-  assert exists(select 1 from services where name = 'IUD' and active and price_is_temporary and price = 100), 'Missing services must have labelled temporary prices';
-  assert exists(select 1 from services where name = 'Pre-natal Check-up' and price = 300 and not price_is_temporary), 'Existing rates must survive catalog setup';
+  assert exists(select 1 from services where name = 'IUD' and active and not price_is_temporary and price = 1500), 'IUD must use the clinic rate';
+  assert exists(select 1 from services where name = 'Pre-natal Check-up (first visit)' and price = 100), 'First prenatal visit must cost 100';
+  assert exists(select 1 from services where name = 'Pre-natal Check-up (subsequent visit)' and price = 50), 'Subsequent prenatal visits must cost 50';
+  assert exists(select 1 from services where name = 'Hearing Test' and price = 650 and not active), 'Hearing Test must be unavailable';
+  assert exists(select 1 from services where name = 'Norifam' and price is null), 'Norifam must not have an invented price';
+  assert not exists(select 1 from services where price_is_temporary), 'Clinic rates must have no temporary flags';
 end;
 $$;
 select public.assert_rls_posture();

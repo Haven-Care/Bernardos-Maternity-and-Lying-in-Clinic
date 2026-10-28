@@ -11,6 +11,8 @@ import { StockMovements } from './StockMovements'
 import { LowStock } from './LowStock'
 import { ExpirationTracker } from './ExpirationTracker'
 import { MedicineModal } from './MedicineModal'
+import { ReceiptModal } from './ReceiptModal'
+import { Batches } from './Batches'
 
 /**
  * Tab ids are load-bearing — the Dashboard's Urgent Alerts link straight to
@@ -19,6 +21,7 @@ import { MedicineModal } from './MedicineModal'
  */
 const TABS: Tab[] = [
   { id: 'medicines', label: 'Medicine List' },
+  { id: 'batches', label: 'Batches & History' },
   { id: 'movements', label: 'Stock Movement' },
   { id: 'low-stock', label: 'Low Stock' },
   { id: 'expiring', label: 'Expiring Soon' },
@@ -27,6 +30,7 @@ const TABS: Tab[] = [
 export function Inventory() {
   const active = useActiveTab(TABS)
   const [adding, setAdding] = useState(false)
+  const [receiving, setReceiving] = useState(false)
 
   const stats = useAsync(() => api.inventory.getInventoryStats())
   // One version counter shared by every tab: a stock movement changes the
@@ -51,7 +55,7 @@ export function Inventory() {
           </p>
         </div>
 
-        <Button onClick={() => setAdding(true)}>+ Add New Medicine</Button>
+        <div className="flex flex-wrap gap-2"><Button variant="secondary" onClick={() => setAdding(true)}>+ Add New Medicine</Button><Button onClick={() => setReceiving(true)}>Receive Stock</Button></div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
@@ -89,10 +93,12 @@ export function Inventory() {
       {active === 'medicines' && (
         <MedicineList version={version} onChanged={refresh} />
       )}
-      {active === 'movements' && <StockMovements version={version} />}
+      {active === 'batches' && <Batches version={version} onChanged={refresh} />}
+      {active === 'movements' && <StockMovements version={version} onChanged={refresh} />}
       {active === 'low-stock' && <LowStock version={version} />}
-      {active === 'expiring' && <ExpirationTracker version={version} />}
+      {active === 'expiring' && <ExpirationTracker version={version} onChanged={refresh} />}
 
+      {receiving && <ReceiptModal onClose={() => setReceiving(false)} onSaved={refresh} />}
       {adding && (
         <MedicineModal
           open={adding}

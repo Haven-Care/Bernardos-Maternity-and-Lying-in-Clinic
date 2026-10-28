@@ -41,8 +41,10 @@ export interface Medicine {
   unit: MedicineUnit
 
   // Inventory & Stock Tracking
-  /** Low Stock tab compares total on-hand against this. */
+  /** Low stock is triggered when usable quantity reaches or falls below this. */
   reorderLevel: number
+  /** Desired stock balance after replenishment; not a hard limit. */
+  targetStockLevel?: number | null
 
   // Pricing & Financials
   unitCost: Peso
@@ -54,6 +56,7 @@ export interface Medicine {
   storageLocation: string
 
   active: boolean
+  archivedAt?: DateTimeString | null
 }
 
 /**
@@ -73,6 +76,10 @@ export interface MedicineBatch {
   quantity: number
   expiresAt: DateString
   receivedAt: DateString
+  manufacturerLot?: string | null
+  quarantined?: boolean
+  quarantineReason?: string | null
+  state?: BatchState
 }
 
 /**
@@ -91,6 +98,17 @@ export interface StockMovement {
   note: string
   occurredAt: DateTimeString
   createdBy: string
+  reason?: MovementReason
+  quantityBefore?: number | null
+  quantityAfter?: number | null
+  reversesMovementId?: string | null
+  reversed?: boolean
+  medicineName?: string
+  brandName?: string
+  dosage?: string
+  unit?: string
+  batchNo?: string
+  manufacturerLot?: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -101,11 +119,15 @@ export type StockStatus = 'good' | 'low' | 'out'
 
 /** A row of the Medicine List tab. */
 export interface MedicineListRow extends Medicine {
-  /** Sum of `quantity` across this medicine's batches. */
+  /** Usable quantity, excluding expired and quarantined batches. */
   qtyOnHand: number
   /** Soonest `expiresAt` across its batches; `null` when it has none. */
   nearestExpiry: DateString | null
   stockStatus: StockStatus
+  physicalQty?: number
+  expiredQty?: number
+  quarantinedQty?: number
+  hasBatchHistory?: boolean
 }
 
 /** A row of the Low Stock tab. */
@@ -114,6 +136,8 @@ export interface LowStockRow {
   genericName: string
   qtyOnHand: number
   reorderLevel: number
+  /** Desired stock balance after replenishment; not a hard limit. */
+  targetStockLevel?: number | null
   unit: MedicineUnit
 }
 
@@ -122,6 +146,10 @@ export interface ExpiringBatchRow {
   batchId: string
   medicineId: string
   genericName: string
+  quantity: number
+  manufacturerLot: string | null
+  quarantined: boolean
+  unit?: string
   batchNo: string
   expiresAt: DateString
   /** Negative once expired. The design renders these in red. */
@@ -144,6 +172,8 @@ export interface MedicineInput {
   dosage: string
   unit: MedicineUnit
   reorderLevel: number
+  /** Desired stock balance after replenishment; not a hard limit. */
+  targetStockLevel?: number | null
   unitCost: Peso
   sellingPrice: Peso
   supplierName: string
@@ -164,5 +194,31 @@ export interface StockInInput {
 export interface StockOutInput {
   batchId: string
   quantity: number
+  note: string
+}
+
+export type BatchState = 'available' | 'expired' | 'quarantined' | 'depleted' | 'disposed'
+export type MovementReason = 'legacy' | 'received' | 'dispensed' | 'disposed' | 'adjustment' | 'reversal'
+export interface BatchListRow extends MedicineBatch {
+  medicineName: string
+  brandName: string
+  dosage: string
+  unit: string
+  medicineActive: boolean
+}
+export interface BatchEvent {
+  id: string
+  batchId: string
+  action: 'quarantined' | 'released'
+  reason: string
+  createdBy: string
+  occurredAt: DateTimeString
+}
+export interface ReceiveStockInput {
+  medicineId: string
+  manufacturerLot: string
+  batchId?: string
+  quantity: number
+  expiresAt: DateString
   note: string
 }

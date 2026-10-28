@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { clinicServiceCategories, clinicServices } from '../lib/clinicServices'
+import { formatServicePrice } from '../lib/services'
 
 type Category = typeof clinicServiceCategories[number]
 
@@ -15,7 +16,7 @@ export function ClinicServiceCatalog() {
         Clinic services
       </h2>
       <p className="mt-1 text-sm text-gray-500">
-        Browse all {clinicServices.length} services offered. Contact the clinic for prices and availability.
+        Browse {clinicServices.length} services and clinic rates. Hearing Test is currently unavailable.
       </p>
       <div role="group" aria-label="Service categories" className="-mx-1 mt-4 flex gap-2 overflow-x-auto lg:flex-wrap px-1 pb-2">
         {clinicServiceCategories.map((option) => (
@@ -33,7 +34,9 @@ export function ClinicServiceCatalog() {
       <ul aria-label={category} className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {visible.map((service) => (
           <li key={service.name} className="rounded-lg border border-border px-3 py-2 text-sm text-gray-700">
-            {service.name}
+            <p className="font-medium">{service.name}</p>
+            <p className="mt-1 text-brand-700">{formatServicePrice(service.price)}</p>
+            {!service.available && <p className="mt-1 text-xs text-gray-500">Currently unavailable</p>}
           </li>
         ))}
       </ul>
