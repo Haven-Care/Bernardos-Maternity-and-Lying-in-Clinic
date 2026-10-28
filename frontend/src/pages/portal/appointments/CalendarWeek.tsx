@@ -89,10 +89,14 @@ export function CalendarWeek() {
         <AsyncBoundary state={bookings}>
           {() => (
             <div role="region" aria-label="Weekly appointment calendar" tabIndex={0} className="min-w-0 overflow-x-auto">
-              <table className="w-full min-w-[820px] border-collapse">
+              <table className="w-full min-w-[820px] table-fixed border-collapse">
+                <colgroup>
+                  <col className="w-20" />
+                  <col span={days.length} />
+                </colgroup>
                 <thead>
                   <tr>
-                    <th className="w-20 border-b border-border px-2 py-2" />
+                    <th className="border-b border-border px-2 py-2" />
                     {days.map((day) => {
                       const iso = isoDate(day)
                       const isToday = iso === todayIso
@@ -146,6 +150,7 @@ export function CalendarWeek() {
                                 <button
                                   key={booking.id}
                                   type="button"
+                                  title={`${booking.patientName} — ${booking.serviceName}`}
                                   onClick={() => setSelected(booking)}
                                   className={`w-full rounded px-1.5 py-1 text-left text-xs leading-tight transition-colors ${CHIP[booking.status] ?? CHIP.pending}`}
                                 >
