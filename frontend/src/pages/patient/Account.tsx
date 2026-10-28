@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import * as api from '../../api'
 import type { PatientAccount } from '../../types/patientAccount'
 import { useConfirmLeave, useUnsavedChanges } from '../../hooks/useUnsavedChanges'
@@ -122,6 +122,12 @@ function AccountContent({ account }: { account: PatientAccount }) {
       <form onSubmit={changePassword} className="min-w-0 self-start rounded-2xl border border-border bg-white p-5 shadow-sm">
         <h2 className="text-base font-semibold text-gray-900">Change password</h2>
         <div className="mt-4"><ChangePasswordFields value={form} onChange={setForm} /></div>
+        <p className="mt-3 text-right text-xs text-gray-500">
+          Forgot your password?{' '}
+          <Link to="/patient/forgot-password" state={{ email: account.email }} className="font-semibold text-brand-600 hover:text-brand-700 hover:underline">
+            Reset it here
+          </Link>
+        </p>
         {passwordError && <p role="alert" className="mt-3 text-sm text-danger-700">{passwordError}</p>}
         <Button type="submit" loading={savingPassword} disabled={!isPasswordChangeReady(form)} className="mt-5 w-full justify-center">Update password</Button>
       </form>

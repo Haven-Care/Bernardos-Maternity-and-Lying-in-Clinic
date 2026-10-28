@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import * as api from '../../api'
 import { Button } from '../../components/ui/Button'
 import { TextField } from '../../components/ui/fields'
@@ -8,8 +8,10 @@ import { useAuthRealm } from './realm'
 
 export function ForgotPassword() {
   const navigate = useNavigate()
+  const location = useLocation()
   const realm = useAuthRealm()
-  const [email, setEmail] = useState('')
+  const initialEmail = (location.state as { email?: unknown } | null)?.email
+  const [email, setEmail] = useState(typeof initialEmail === 'string' ? initialEmail : '')
   const [error, setError] = useState<string>()
   const [submitting, setSubmitting] = useState(false)
 
