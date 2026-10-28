@@ -45,6 +45,7 @@ export function MedicalHistory({ patientId, patientName, onClose }: {
 }
 
 function AddRecord({ patientId, onClose, onSaved }: { patientId: string; onClose: () => void; onSaved: () => void }) {
+  const [latestRecordTime] = useState(() => new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().slice(0, 16))
   const [input, setInput] = useState<historyApi.ClinicalRecordInput>({ occurredAt: '', title: '', findings: '', provider: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -70,9 +71,9 @@ function AddRecord({ patientId, onClose, onSaved }: { patientId: string; onClose
       footer={<><Button variant="secondary" disabled={saving} onClick={() => { if (dirty) setConfirmingDiscard(true); else onClose() }}>Cancel</Button><Button loading={saving} disabled={!valid || !dirty} onClick={() => void save()}>Save Record</Button></>}>
       <div className="space-y-4">
         <TextField label="Consultation / Scan" required value={input.title} onChange={(title) => setInput({ ...input, title })} />
-        <TextField label="Date & Time" type="datetime-local" required value={input.occurredAt} onChange={(occurredAt) => setInput({ ...input, occurredAt })} />
-        <TextArea label="Diagnosis & Findings" required value={input.findings} onChange={(findings) => setInput({ ...input, findings })} />
-        <TextField label="Provider" required value={input.provider} onChange={(provider) => setInput({ ...input, provider })} />
+        <TextField label="Date & Time" max={latestRecordTime} type="datetime-local" required value={input.occurredAt} onChange={(occurredAt) => setInput({ ...input, occurredAt })} />
+        <TextArea maxLength={10000} label="Diagnosis & Findings" required value={input.findings} onChange={(findings) => setInput({ ...input, findings })} />
+        <TextField validation="name" label="Provider" required value={input.provider} onChange={(provider) => setInput({ ...input, provider })} />
         {error && <p role="alert" className="text-sm text-danger-700">{error}</p>}
       </div>
     </Modal>

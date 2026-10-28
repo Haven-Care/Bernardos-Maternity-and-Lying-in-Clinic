@@ -147,7 +147,7 @@ export function CalendarWeek() {
                                   key={booking.id}
                                   type="button"
                                   onClick={() => setSelected(booking)}
-                                  className={`w-full rounded px-1.5 py-1 text-left text-xs leading-tight transition-colors ${CHIP[booking.status] ?? CHIP.confirmed}`}
+                                  className={`w-full rounded px-1.5 py-1 text-left text-xs leading-tight transition-colors ${CHIP[booking.status] ?? CHIP.pending}`}
                                 >
                                   <span className="block truncate font-semibold">
                                     {booking.patientName}
@@ -196,10 +196,9 @@ export function CalendarWeek() {
 /** Calendar chips carry status as well as identity. */
 
 const CHIP: Record<string, string> = {
-  pending: 'bg-warning-50 text-warning-700 hover:bg-warning-100',
+  pending: 'bg-brand-50 text-brand-700 hover:bg-brand-100',
   arrived: 'bg-success-50 text-success-700 hover:bg-success-100',
   no_show: 'bg-gray-100 text-gray-600 hover:bg-gray-200',
-  confirmed: 'bg-brand-50 text-brand-700 hover:bg-brand-100',
   rescheduled: 'bg-blue-50 text-blue-700 hover:bg-blue-100',
   completed: 'bg-gray-100 text-gray-500 hover:bg-gray-200',
 }

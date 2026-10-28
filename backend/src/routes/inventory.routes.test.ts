@@ -47,7 +47,7 @@ describe.skipIf(!up)('inventory', () => {
       expect(para.nearestExpiry).toMatch(/^\d{4}-\d{2}-\d{2}$/)
     })
 
-    it('flags exactly the medicines below their reorder level', async () => {
+    it('flags medicines at or below their reorder level', async () => {
       const res = await request(app)
         .get('/api/inventory/low-stock')
         .set(auth())
@@ -63,6 +63,7 @@ describe.skipIf(!up)('inventory', () => {
         qtyOnHand: expect.any(Number),
         reorderLevel: expect.any(Number),
         unit: expect.any(String),
+        targetStockLevel: null,
       })
     })
 
@@ -118,6 +119,7 @@ describe.skipIf(!up)('inventory', () => {
         batchNo: expect.any(String),
         expiresAt: expect.any(String),
         daysLeft: expect.any(Number),
+        quantity: expect.any(Number), manufacturerLot: null, unit: expect.any(String),
       })
 
       // Seeded at +3 and +5 days. If this drifts by one, clinic_today() is
@@ -227,6 +229,8 @@ describe.skipIf(!up)('inventory', () => {
     })
 
     it('keeps concurrent receipts with different expiry dates in separate outcomes', async () => {
+      const raceMedicine = await request(app).post('/api/inventory/medicines').set(auth())
+        .send({ genericName: `Race Medicine ${crypto.randomUUID()}`, dosageForm: 'Tablet', dosage: '100mg', reorderLevel: 0 }).expect(201)
       const batchNo = `RACE-${crypto.randomUUID()}`
       const deliveries = [
         { quantity: 7, expiresAt: '2028-01-01' },
@@ -234,28 +238,19 @@ describe.skipIf(!up)('inventory', () => {
       ]
       const results = await Promise.all(deliveries.map(delivery => request(app)
         .post('/api/inventory/stock-in').set(auth())
-        .send({ medicineId, batchNo, ...delivery, note: 'Concurrent expiry validation' })))
+        .send({ medicineId: raceMedicine.body.id, batchNo, ...delivery, note: 'Concurrent expiry validation' })))
       expect(results.map(result => result.status).sort()).toEqual([201, 409])
       const winner = results.findIndex(result => result.status === 201)
       const db = getSupabaseClient()
-      try {
-        const { data: batch, error } = await db.from('medicine_batches').select('*')
-          .eq('medicine_id', medicineId).eq('batch_no', batchNo).single()
-        expect(error).toBeNull()
-        expect(batch).toMatchObject({ quantity: deliveries[winner]!.quantity, expires_at: deliveries[winner]!.expiresAt })
-        const { data: movements, error: movementError } = await db.from('stock_movements')
-          .select('quantity').eq('batch_id', batch!.id)
-        expect(movementError).toBeNull()
-        expect(movements).toEqual([{ quantity: deliveries[winner]!.quantity }])
-      } finally {
-        // Later stock assertions concern only the original T-001 receipt.
-        const { data: batch } = await db.from('medicine_batches').select('id')
-          .eq('medicine_id', medicineId).eq('batch_no', batchNo).maybeSingle()
-        if (batch) {
-          await db.from('stock_movements').delete().eq('batch_id', batch.id)
-          await db.from('medicine_batches').delete().eq('id', batch.id)
-        }
-      }
+      const { data: batch, error } = await db.from('medicine_batches').select('*')
+        .eq('medicine_id', raceMedicine.body.id).eq('batch_no', batchNo).single()
+      expect(error).toBeNull()
+      expect(batch).toMatchObject({ quantity: deliveries[winner]!.quantity, expires_at: deliveries[winner]!.expiresAt })
+      const { data: movements, error: movementError } = await db.from('stock_movements')
+        .select('quantity').eq('batch_id', batch!.id)
+      expect(movementError).toBeNull()
+      expect(movements).toEqual([{ quantity: deliveries[winner]!.quantity }])
+      // Keep the receipt and its ledger; the disposable stack resets between runs.
     })
 
     it('leaves fields a PATCH does not mention alone', async () => {
@@ -320,7 +315,7 @@ describe.skipIf(!up)('inventory', () => {
         .send({ batchId: batch.id, quantity: before + 1, note: 'Too much' })
 
       expect(res.status).toBe(409)
-      expect(res.body.error).toMatch(/only \d+ remaining/)
+      expect(res.body.error).toMatch(/Only \d+ units remain/)
 
       const after = await request(app)
         .get(`/api/inventory/medicines/${medicineId}/batches`)

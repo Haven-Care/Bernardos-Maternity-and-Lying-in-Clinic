@@ -11,6 +11,7 @@ import {
   TextField,
 } from '../../../components/ui/fields'
 import { useToast } from '../../../components/ui/toast-context'
+import { clinicDate } from '../../../lib/dateRange'
 import { formatTimestamp } from '../../../lib/format'
 import type {
   BloodType,
@@ -158,7 +159,7 @@ export function PatientModal({
       ) : (
         <div className="flex flex-col gap-5">
           <Section title="Personal Information">
-            <TextField
+            <TextField validation="name"
               label="Full Name"
               required
               value={values.fullName}
@@ -168,7 +169,7 @@ export function PatientModal({
                 back as null instead of an empty string the schema would have
                 to special-case. */}
             <TextField
-              label="Date of Birth"
+              label="Date of Birth" max={clinicDate(new Date().toISOString())}
               type="date"
               value={values.dateOfBirth ?? ''}
               onChange={(v) => set('dateOfBirth', v || null)}
@@ -195,7 +196,7 @@ export function PatientModal({
                 { value: 'separated', label: 'Separated' },
               ]}
             />
-            <TextField
+            <TextField validation="phone" maxLength={30}
               label="Contact Number"
               required
               value={values.contactNumber}
@@ -220,24 +221,24 @@ export function PatientModal({
               options={BLOOD_TYPES.map((b) => ({ value: b, label: b }))}
             />
             <div className="sm:col-span-2">
-              <TextArea
+              <TextArea maxLength={1000}
                 label="Address"
                 rows={2}
                 value={values.address}
                 onChange={(v) => set('address', v)}
               />
             </div>
-            <TextField
+            <TextField validation="name"
               label="Emergency Contact"
               value={values.emergencyContactName}
               onChange={(v) => set('emergencyContactName', v)}
             />
-            <TextField
+            <TextField validation="phone" maxLength={30}
               label="Emergency Contact Number"
               value={values.emergencyContactNumber}
               onChange={(v) => set('emergencyContactNumber', v)}
             />
-            <TextField
+            <TextField maxLength={100}
               label="Relationship"
               value={values.emergencyContactRelation}
               onChange={(v) => set('emergencyContactRelation', v)}
@@ -251,13 +252,13 @@ export function PatientModal({
           )}
           <Section title="Maternity & Medical Info">
             <TextField
-              label="Last Menstrual Period"
+              label="Last Menstrual Period" max={clinicDate(new Date().toISOString())}
               type="date"
               value={values.lastMenstrualPeriod ?? ''}
               onChange={(v) => set('lastMenstrualPeriod', v || null)}
             />
             <TextField
-              label="Expected Delivery Date"
+              label="Expected Delivery Date" min={values.lastMenstrualPeriod ?? undefined}
               type="date"
               value={values.expectedDeliveryDate ?? ''}
               onChange={(v) => set('expectedDeliveryDate', v || null)}
@@ -269,12 +270,13 @@ export function PatientModal({
               placeholder="Pregnancies"
             />
             <NumberField
-              label="Para"
+              label="Para" max={values.gravida ?? undefined}
+              error={values.para != null && values.gravida != null && values.para > values.gravida ? 'Para cannot exceed gravida.' : undefined}
               value={values.para ?? ''}
               onChange={(v) => set('para', v === '' ? null : v)}
               placeholder="Births"
             />
-            <TextField
+            <TextField validation="name"
               label="Attending Physician"
               value={values.attendingPhysician}
               onChange={(v) => set('attendingPhysician', v)}
@@ -341,13 +343,17 @@ export function PatientModal({
 
 function Documents({ patientId }: { patientId: string }) {
   const documents = useAsync(() => api.patients.listDocuments(patientId))
+  const [uploadError, setUploadError] = useState<string>()
   const [uploading, setUploading] = useState<PatientDocumentType | null>(null)
 
   async function upload(docType: PatientDocumentType, file: File) {
     setUploading(docType)
+    setUploadError(undefined)
     try {
       await api.patients.uploadDocument(patientId, docType, file)
       documents.reload()
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'Could not upload the document.')
     } finally {
       setUploading(null)
     }
@@ -355,6 +361,8 @@ function Documents({ patientId }: { patientId: string }) {
 
   return (
     <div className="flex flex-col divide-y divide-border rounded-md border border-border">
+      <p className="p-3 text-xs text-gray-500">JPG, PNG, WebP, HEIC, or PDF · up to 10 MB</p>
+      {uploadError && <p role="alert" className="p-3 text-sm text-danger-700">{uploadError}</p>}
       {DOCUMENT_TYPES.map((type) => {
         const existing = documents.data?.find((d) => d.docType === type.id)
 
@@ -379,7 +387,8 @@ function Documents({ patientId }: { patientId: string }) {
                   ? 'Replace'
                   : 'Upload'}
               <input
-                type="file"
+                type="file" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf"
+                disabled={uploading !== null}
                 className="sr-only"
                 onChange={(e) => {
                   const file = e.target.files?.[0]

@@ -13,8 +13,7 @@ import type { AppointmentsOverviewSlice } from '../../types/dashboard'
  */
 const SLICE_COLORS: Record<AppointmentStatus, string> = {
   completed: '#00A39B',
-  confirmed: '#4667D9',
-  pending: '#C77700',
+  pending: '#4667D9',
   rescheduled: '#9061F9',
   cancelled: '#E5484D',
   arrived: '#14756A',
@@ -23,7 +22,6 @@ const SLICE_COLORS: Record<AppointmentStatus, string> = {
 
 const LABELS: Record<AppointmentStatus, string> = {
   completed: 'Completed',
-  confirmed: 'Confirmed',
   pending: 'Booked',
   rescheduled: 'Rescheduled',
   cancelled: 'Cancelled',

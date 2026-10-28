@@ -1,12 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Request, Response } from 'express'
 import { afterClinicDay } from '../lib/dateRange.js'
-import { getStats, rangeQuerySchema } from './dashboard.controller.js'
+import { getAppointmentsOverview, getStats, rangeQuerySchema } from './dashboard.controller.js'
 const { getClient } = vi.hoisted(() => ({ getClient: vi.fn() }))
 vi.mock('../config/supabase.js', () => ({ getSupabaseClient: getClient }))
 beforeEach(() => getClient.mockReset())
 
 describe('custom dashboard range', () => {
+  it('counts legacy confirmed rows as Booked without losing chart totals', async () => {
+    getClient.mockReturnValue({ rpc: vi.fn(async () => ({ data: [
+      { status: 'pending', count: 2 }, { status: 'confirmed', count: 3 }, { status: 'completed', count: 5 },
+    ], error: null })) })
+    const json = vi.fn()
+    await getAppointmentsOverview({ query: { range: 'today' } } as unknown as Request, { json } as unknown as Response)
+    expect(json).toHaveBeenCalledWith([
+      { status: 'pending', count: 5, percentage: 50 },
+      { status: 'completed', count: 5, percentage: 50 },
+    ])
+  })
   it.each([
     { range: 'custom' },
     { range: 'custom', from: '2026-10-22', to: '2026-10-21' },

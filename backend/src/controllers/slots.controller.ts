@@ -1,3 +1,4 @@
+import { wholeNumber } from '../lib/inputValidation.js'
 import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
@@ -22,7 +23,7 @@ const slotInputSchema = z.object({
   time: z
     .string()
     .regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/, 'Time must look like 08:00.'),
-  capacity: z.number().int().positive('Capacity must be at least 1.'),
+  capacity: wholeNumber().positive('Capacity must be at least 1.'),
 })
 
 const slotPatchSchema = slotInputSchema

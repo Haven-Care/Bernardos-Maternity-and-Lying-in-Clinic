@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import * as api from '../../../api'
 import { useAsync } from '../../../hooks/useAsync'
 import { Badge } from '../../../components/ui/Badge'
@@ -5,7 +6,8 @@ import { Card } from '../../../components/ui/Card'
 import { Table, type Column } from '../../../components/ui/Table'
 import { AsyncBoundary, EmptyState } from '../../../components/ui/states'
 import { formatDate, formatDaysLeft } from '../../../lib/format'
-import type { ExpiringBatchRow } from '../../../types/medicine'
+import { BatchActionModal, type BatchAction } from './BatchActionModal'
+import type { BatchListRow, ExpiringBatchRow } from '../../../types/medicine'
 
 /**
  * Batches nearing expiry — one row per lot, not per medicine.
@@ -14,8 +16,22 @@ import type { ExpiringBatchRow } from '../../../types/medicine'
  * medicine holding 700 units across two lots expiring months apart has two
  * different answers to "when does this expire", and the clinic needs both.
  */
-export function ExpirationTracker({ version }: { version: number }) {
+export function ExpirationTracker({ version, onChanged }: { version: number; onChanged: () => void }) {
   const rows = useAsync(() => api.inventory.listExpiring(), [version])
+  const [selected, setSelected] = useState<{ batch: BatchListRow; action: BatchAction }>()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string>()
+  async function act(row: ExpiringBatchRow, action: BatchAction) {
+    if (loading) return
+    setLoading(true); setError(undefined)
+    try {
+      const batches = await api.inventory.listAllBatches(row.medicineId)
+      const batch = batches.find((batch) => batch.id === row.batchId)
+      if (!batch) throw new Error('Batch no longer exists. Refresh and try again.')
+      setSelected({ batch, action })
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not load this batch.') }
+    finally { setLoading(false) }
+  }
 
   const columns: Column<ExpiringBatchRow>[] = [
     {
@@ -27,9 +43,10 @@ export function ExpirationTracker({ version }: { version: number }) {
     },
     {
       key: 'batch',
-      header: 'Batch No.',
-      render: (r) => <span className="tabular-nums">{r.batchNo}</span>,
+      header: 'Manufacturer Lot / Internal Ref.',
+      render: (r) => <div><p>{r.manufacturerLot || 'Lot not recorded'}</p><p className="text-xs text-gray-400">{r.batchNo}</p></div>,
     },
+    { key: 'quantity', header: 'Remaining', align: 'right', render: (r) => `${r.quantity} ${r.unit ?? ''}` },
     {
       key: 'expires',
       header: 'Expiration Date',
@@ -69,10 +86,14 @@ export function ExpirationTracker({ version }: { version: number }) {
         </Badge>
       ),
     },
+    { key: 'action', header: 'Action', align: 'right', render: (r) => <div className="flex justify-end gap-3 whitespace-nowrap text-xs"><button type="button" className="py-2 font-medium text-danger-700 underline disabled:opacity-40" disabled={loading} onClick={() => void act(r, 'disposed')}>Record disposal</button></div> },
   ]
 
   return (
+    <>
     <Card className="portal-table-card">
+      <p className="border-b border-border p-4 text-xs text-gray-500">Expired stock is already excluded from availability. Record disposal only after physical disposal. Completed disposals remain in Batches &amp; History.</p>
+      {error && <p role="alert" className="p-4 text-sm text-danger-700">{error}</p>}
       <AsyncBoundary
         state={rows}
         empty={
@@ -87,5 +108,7 @@ export function ExpirationTracker({ version }: { version: number }) {
         )}
       </AsyncBoundary>
     </Card>
+    {selected && <BatchActionModal {...selected} onClose={() => setSelected(undefined)} onSaved={onChanged} />}
+    </>
   )
 }

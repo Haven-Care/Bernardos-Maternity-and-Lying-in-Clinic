@@ -11,7 +11,7 @@ export interface PasswordRule {
  * minimum is looser, so these are the effective rules.
  */
 export const PASSWORD_RULES: PasswordRule[] = [
-  { label: 'Use at least 8 characters', test: (v) => v.length >= 8 },
+  { label: 'Use 8–128 characters', test: (v) => v.length >= 8 && v.length <= 128 },
   {
     label: 'Contains at least one uppercase letter (A–Z)',
     test: (v) => /[A-Z]/.test(v),

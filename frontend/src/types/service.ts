@@ -11,14 +11,12 @@ export interface Service {
   id: string
   name: string
   category: string
-  price: Peso
-  priceIsTemporary?: boolean
+  price: Peso | null
   active: boolean
 }
 
 export interface ServiceInput {
   name: string
   category: string
-  price: Peso
-  priceIsTemporary?: boolean
+  price: Peso | null
 }

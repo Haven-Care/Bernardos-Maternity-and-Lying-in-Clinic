@@ -12,7 +12,7 @@ import { apiFetch } from './client'
  * Everything here is aggregated across the other domains, which is why this was
  * the last file to swap — the backend needed every other table in place first.
  *
- * Nothing on this screen is stored or cached. Confirm a booking or dispense
+ * Nothing on this screen is stored or cached. Record a visit or dispense
  * stock and these numbers move on the next load.
  */
 

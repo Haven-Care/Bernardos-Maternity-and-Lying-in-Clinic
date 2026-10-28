@@ -36,6 +36,11 @@ export function toMedicineListRow(row: StockViewRow): MedicineListRow {
     supplierContact: row.supplier_contact!,
     storageLocation: row.storage_location!,
     active: row.active!,
+    targetStockLevel: row.target_stock_level,
+    archivedAt: row.archived_at,
+    physicalQty: Number(row.physical_qty ?? row.qty_on_hand ?? 0),
+    expiredQty: Number(row.expired_qty ?? 0),
+    hasBatchHistory: Number(row.batch_count ?? 0) > 0,
 
     qtyOnHand: Number(row.qty_on_hand ?? 0),
     nearestExpiry: row.nearest_expiry,
@@ -51,6 +56,8 @@ export function toBatch(row: BatchRow): MedicineBatch {
     quantity: row.quantity,
     expiresAt: row.expires_at,
     receivedAt: row.received_at,
+    manufacturerLot: row.manufacturer_lot,
+    state: row.quantity === 0 ? row.closed_reason === 'disposed' ? 'disposed' : 'depleted' : row.expires_at < new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' }) ? 'expired' : 'available',
   }
 }
 
@@ -69,12 +76,16 @@ export function toMovement(
     // The contract carries a name — the log reads "Hannah Puerta", not a uuid.
     // Null once a staff member is removed, which the log has to survive.
     createdBy,
+    reason: row.reason as StockMovement['reason'],
+    quantityBefore: row.quantity_before,
+    quantityAfter: row.quantity_after,
+    reversesMovementId: row.reverses_movement_id,
   }
 }
 
 /** A row of the Expiration Tracker tab. Negative days mean already expired. */
 export function toExpiringRow(
-  row: BatchRow & { medicines: { generic_name: string } | null },
+  row: BatchRow & { medicines: { generic_name: string; unit?: string } | null },
   today: string,
 ): ExpiringBatchRow {
   return {
@@ -82,6 +93,9 @@ export function toExpiringRow(
     medicineId: row.medicine_id,
     genericName: row.medicines?.generic_name ?? 'Unknown',
     batchNo: row.batch_no,
+    quantity: row.quantity,
+    manufacturerLot: row.manufacturer_lot,
+    unit: row.medicines?.unit ?? 'units',
     expiresAt: row.expires_at,
     daysLeft: daysBetween(today, row.expires_at),
   }

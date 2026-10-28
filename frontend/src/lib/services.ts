@@ -1,4 +1,9 @@
 import type { Service } from '../types/service'
+import { formatPeso } from './format'
+
+export function formatServicePrice(price: Service['price']): string {
+  return price === null ? 'Contact clinic for price' : formatPeso(price)
+}
 
 export interface ServiceGroup {
   category: string

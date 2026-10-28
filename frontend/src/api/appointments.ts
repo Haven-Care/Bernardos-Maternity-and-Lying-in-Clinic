@@ -41,7 +41,7 @@ export async function getBookingByReference(
  * `apiFetch` surfaces as-is.
  *
  * Comes back Booked (`pending`), with its slot reserved immediately.
- * Staff confirmation and arrival are recorded separately.
+ * The patient is expected at that time; staff record arrival at the visit.
  */
 export async function createBooking(
   input: CreateBookingInput,
@@ -50,10 +50,6 @@ export async function createBooking(
     method: 'POST',
     body: JSON.stringify(input),
   })
-}
-
-export async function confirmBooking(id: string): Promise<BookingRequest> {
-  return apiFetch<BookingRequest>(`/bookings/${id}/confirm`, { method: 'POST' })
 }
 
 /** Cancels rather than deletes — the Dashboard charts cancellations. */

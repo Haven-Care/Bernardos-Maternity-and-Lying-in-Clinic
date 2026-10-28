@@ -12,7 +12,7 @@ const booking: BookingRequest = {
   id: 'booking', referenceNo: 'BR-1000', patientId: 'patient', patientName: 'Booking name',
   contactNumber: '09170000000', email: 'booking@example.test', serviceId: 'service',
   serviceName: 'Consultation', scheduledDate: '2026-10-28', slotTime: '09:00',
-  status: 'confirmed', reasonForVisit: 'Routine check-up', submittedAt: '2026-10-27T08:00:00Z',
+  status: 'pending', reasonForVisit: 'Routine check-up', submittedAt: '2026-10-27T08:00:00Z',
 }
 
 function render(value = booking) {

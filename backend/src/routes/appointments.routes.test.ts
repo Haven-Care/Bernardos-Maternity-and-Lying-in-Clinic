@@ -57,7 +57,7 @@ describe.skipIf(!up)('bookings', () => {
 
     const services = await request(app).get('/api/services').expect(200)
     serviceId = services.body.find(
-      (s: { name: string }) => s.name === 'Consultation',
+      (s: { name: string }) => s.name === 'Pre-natal Check-up (first visit)',
     ).id
   })
 
@@ -120,10 +120,10 @@ describe.skipIf(!up)('bookings', () => {
         })
         .expect(201)
 
-      // New bookings reserve a seat while awaiting staff confirmation.
+      // New bookings are accepted and reserve a seat immediately.
       expect(first.body).toMatchObject({
         status: 'pending',
-        serviceName: 'Consultation',
+        serviceName: 'Pre-natal Check-up (first visit)',
         patientName: 'Alice A',
       })
       expect(first.body.referenceNo).toMatch(/^BR-\d{4}$/)
@@ -199,7 +199,7 @@ describe.skipIf(!up)('bookings', () => {
 
       await request(app)
         .post('/api/bookings')
-        .send({ serviceId, scheduledDate: date, slotTime: '10:00', reasonForVisit: '' })
+        .send({ serviceId, scheduledDate: date, slotTime: '10:00', reasonForVisit: 'Routine check-up' })
         .expect(401)
     })
 
@@ -211,7 +211,7 @@ describe.skipIf(!up)('bookings', () => {
           serviceId,
           scheduledDate: '2020-01-06',
           slotTime: '08:00',
-          reasonForVisit: '',
+          reasonForVisit: 'Routine check-up',
         })
       expect(past.status).toBe(400)
       expect(past.body.error).toMatch(/already passed/)
@@ -228,7 +228,7 @@ describe.skipIf(!up)('bookings', () => {
           serviceId,
           scheduledDate: wednesday.toISOString().slice(0, 10),
           slotTime: '13:00',
-          reasonForVisit: '',
+          reasonForVisit: 'Routine check-up',
         })
       expect(blocked.status).toBe(409)
       // A blocked slot is indistinguishable from one that does not exist.
@@ -241,7 +241,7 @@ describe.skipIf(!up)('bookings', () => {
           serviceId,
           scheduledDate: monday,
           slotTime: '23:00',
-          reasonForVisit: '',
+          reasonForVisit: 'Routine check-up',
         })
       expect(noSuchTime.status).toBe(409)
     })
@@ -260,7 +260,7 @@ describe.skipIf(!up)('bookings', () => {
               serviceId,
               scheduledDate: date,
               slotTime: '09:00',
-              reasonForVisit: 'Race',
+              reasonForVisit: 'Race booking test',
             }),
         ),
       )
@@ -488,7 +488,7 @@ describe.skipIf(!up)('bookings', () => {
           serviceId,
           scheduledDate: '2026-02-30',
           slotTime: '08:00',
-          reasonForVisit: '',
+          reasonForVisit: 'Routine check-up',
         })
 
       expect(res.status).toBe(400)
@@ -552,7 +552,7 @@ describe.skipIf(!up)('bookings', () => {
           request(app)
             .post('/api/bookings')
             .set(asAlice())
-            .send({ serviceId, scheduledDate: date, slotTime: '09:00', reasonForVisit: 'Race' }),
+            .send({ serviceId, scheduledDate: date, slotTime: '09:00', reasonForVisit: 'Race booking test' }),
         ),
       ])
 
@@ -661,25 +661,11 @@ describe.skipIf(!up)('bookings', () => {
       expect(booking.body.status).toBe('rescheduled')
     })
 
-    /**
-     * The one live use left for POST /confirm.
-     *
-     * Bookings arrive confirmed, so the endpoint is no longer part of that
-     * flow — but a rescheduled appointment is one the clinic and the patient
-     * have since agreed on, and settling it back to `confirmed` is a real
-     * transition. Without this the endpoint would have no coverage at all and
-     * would rot unnoticed.
-     */
-    it('settles a rescheduled booking back to confirmed', async () => {
-      const settled = await request(app)
-        .post(`/api/bookings/${bookingId}/confirm`)
-        .set(asStaff())
-        .expect(200)
-
-      expect(settled.body.status).toBe('confirmed')
-      // The agreed time survives the transition; confirming is not a revert.
-      expect(settled.body.scheduledDate).toBe(proposedDate)
-      expect(settled.body.slotTime).toBe('11:00')
+    it('keeps a rescheduled appointment booked at its new time without confirmation', async () => {
+      const booking = await request(app).get(`/api/bookings/${bookingId}`).set(asStaff()).expect(200)
+      expect(booking.body.status).toBe('rescheduled')
+      expect(booking.body.scheduledDate).toBe(proposedDate)
+      expect(booking.body.slotTime).toBe('11:00')
     })
 
     it('refuses to decide the same request twice', async () => {
@@ -721,17 +707,13 @@ describe.skipIf(!up)('bookings', () => {
       bookingId = res.body.id
     })
 
-    it('confirms a booked appointment once and rejects a duplicate confirmation', async () => {
-      await request(app).post(`/api/bookings/${bookingId}/confirm`).set(asStaff()).expect(200)
-      const res = await request(app)
-        .post(`/api/bookings/${bookingId}/confirm`)
-        .set(asStaff())
-        .expect(409)
-
-      expect(res.body.error).toMatch(/confirmed appointment cannot be marked/i)
+    it('accepts a booking immediately and has no confirmation endpoint', async () => {
+      const booking = await request(app).get(`/api/bookings/${bookingId}`).set(asStaff()).expect(200)
+      expect(booking.body.status).toBe('pending')
+      await request(app).post(`/api/bookings/${bookingId}/confirm`).set(asStaff()).expect(404)
     })
 
-    it('records same-day arrival before completing a confirmed visit', async () => {
+    it('records same-day arrival directly from Booked before completing a visit', async () => {
       await request(app).post(`/api/bookings/${bookingId}/complete`).set(asStaff()).expect(409)
       // clinicDate() deliberately chooses a future Monday; attendance needs today.
       const { error: updateError } = await getSupabaseClient()
@@ -747,10 +729,9 @@ describe.skipIf(!up)('bookings', () => {
     })
 
     it('will not resurrect a finished appointment', async () => {
-      // Completed is terminal: confirming it again would tell the patient an
-      // appointment they already attended is upcoming.
+      // Completed is terminal: a second arrival must not reopen the visit.
       await request(app)
-        .post(`/api/bookings/${bookingId}/confirm`)
+        .post(`/api/bookings/${bookingId}/arrive`)
         .set(asStaff())
         .expect(409)
 

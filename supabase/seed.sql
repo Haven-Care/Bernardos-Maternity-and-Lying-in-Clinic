@@ -52,41 +52,31 @@ insert into operating_hours (key, label, opens_at, closes_at, closed) values
 -- ---------------------------------------------------------------------------
 -- Services
 --
--- Prices are the prototype's own and are UNCONFIRMED — the clinic sets its
--- pricing, and the Figma disagrees with itself across screens. See CONFLICTS.md.
+-- Clinic-supplied rates. Norifam has no listed price; Hearing Test is unavailable.
+-- Legacy prototype entries remain inactive for historical references.
 -- ---------------------------------------------------------------------------
 
 insert into services (id, name, category, price, active) values
-  ('5e1c0000-0000-4000-8000-000000000001', 'Pre-natal Check-up', 'Consultation', 300, true),
-  ('5e1c0000-0000-4000-8000-000000000002', 'Consultation',       'Consultation', 200, true),
-  ('5e1c0000-0000-4000-8000-000000000003', 'Ultrasound',         'Diagnostic',   500, true),
-  ('5e1c0000-0000-4000-8000-000000000004', 'Follow-up',          'Consultation', 200, true),
-  -- Retained for historical references, but no longer offered for booking.
-  ('5e1c0000-0000-4000-8000-000000000005', 'Other',              'Consultation',   0, false);
-
--- Placeholder prices are explicitly marked; existing configured rates are preserved.
-insert into public.services (name, category, price, active, price_is_temporary)
-select v.name, v.category, 100, true, true
-from (values
-  ('Normal Deliveries', 'Maternity & newborn'),
-  ('Pre-natal Check-up', 'Check-ups'),
-  ('Post-natal Check-up', 'Check-ups'),
-  ('OB-GYNE Check-up', 'Check-ups'),
-  ('Pedia Check-up', 'Check-ups'),
-  ('Newborn Care', 'Maternity & newborn'),
-  ('BCG Immunization', 'Maternity & newborn'),
-  ('Hepa-B Immunization', 'Maternity & newborn'),
-  ('Hearing Test', 'Maternity & newborn'),
-  ('Newborn Screening', 'Maternity & newborn'),
-  ('Ear Piercing', 'Maternity & newborn'),
-  ('Pap Smear', 'Women’s health & family planning'),
-  ('Family Planning Counseling', 'Women’s health & family planning'),
-  ('DMPA (Injectable)', 'Women’s health & family planning'),
-  ('Implant', 'Women’s health & family planning'),
-  ('IUD', 'Women’s health & family planning'),
-  ('Pills', 'Women’s health & family planning')
-) as v(name, category)
-where not exists (select 1 from public.services s where lower(trim(s.name)) = lower(v.name));
+  ('5e1c0000-0000-4000-8000-000000000006', 'Normal Deliveries (with PhilHealth)', 'Maternity & newborn', 2500, true),
+  ('5e1c0000-0000-4000-8000-000000000007', 'Normal Deliveries (without PhilHealth)', 'Maternity & newborn', 10000, true),
+  ('5e1c0000-0000-4000-8000-000000000001', 'Pre-natal Check-up (first visit)', 'Check-ups', 100, true),
+  ('5e1c0000-0000-4000-8000-000000000009', 'Pre-natal Check-up (subsequent visit)', 'Check-ups', 50, true),
+  ('5e1c0000-0000-4000-8000-000000000010', 'OB-GYNE Check-up', 'Check-ups', 400, true),
+  ('5e1c0000-0000-4000-8000-000000000011', 'Pedia Check-up', 'Check-ups', 400, true),
+  ('5e1c0000-0000-4000-8000-000000000012', 'BCG Immunization', 'Maternity & newborn', 450, true),
+  ('5e1c0000-0000-4000-8000-000000000013', 'Hearing Test', 'Maternity & newborn', 650, false),
+  ('5e1c0000-0000-4000-8000-000000000014', 'Newborn Screening', 'Maternity & newborn', 1800, true),
+  ('5e1c0000-0000-4000-8000-000000000015', 'Ear Piercing', 'Maternity & newborn', 250, true),
+  ('5e1c0000-0000-4000-8000-000000000016', 'DMPA (Injectable)', 'Women’s health & family planning', 250, true),
+  ('5e1c0000-0000-4000-8000-000000000017', 'Norifam', 'Women’s health & family planning', null, true),
+  ('5e1c0000-0000-4000-8000-000000000018', 'Implant', 'Women’s health & family planning', 1500, true),
+  ('5e1c0000-0000-4000-8000-000000000019', 'IUD', 'Women’s health & family planning', 1500, true),
+  ('5e1c0000-0000-4000-8000-000000000020', 'Pap Smear', 'Women’s health & family planning', 350, true),
+  ('5e1c0000-0000-4000-8000-000000000021', 'Pills', 'Women’s health & family planning', 150, true),
+  ('5e1c0000-0000-4000-8000-000000000002', 'Consultation', 'Consultation', 200, false),
+  ('5e1c0000-0000-4000-8000-000000000003', 'Ultrasound', 'Diagnostic', 500, false),
+  ('5e1c0000-0000-4000-8000-000000000004', 'Follow-up', 'Consultation', 200, false),
+  ('5e1c0000-0000-4000-8000-000000000005', 'Other', 'Consultation', 0, false);
 
 -- ---------------------------------------------------------------------------
 -- Appointment slots
@@ -209,7 +199,7 @@ insert into clinical_records (id, patient_id, occurred_at, title, findings, prov
 -- the slot grid the moment either changed.
 --
 -- The spread mirrors the prototype: a history of completed visits, today's
--- schedule, and confirmed bookings ahead.
+-- schedule, and booked appointments ahead.
 --
 -- No `pending` rows. Bookings are accepted on submission, so seeding a queue of
 -- unreviewed requests would demo a screen that no longer exists and leave the
@@ -221,11 +211,11 @@ with spec(day_offset, status) as (
     (-21, 'completed'), (-18, 'completed'), (-16, 'cancelled'), (-14, 'completed'),
     (-11, 'completed'), ( -9, 'rescheduled'), (-7, 'completed'), (-6, 'completed'),
     ( -4, 'cancelled'), ( -3, 'completed'), (-2, 'completed'),   (-1, 'completed'),
-    (  0, 'confirmed'), (  0, 'confirmed'),  ( 0, 'confirmed'),  ( 0, 'completed'),
-    (  0, 'confirmed'), (  1, 'confirmed'),  ( 1, 'confirmed'),  ( 2, 'confirmed'),
-    (  2, 'rescheduled'), (3, 'confirmed'),  ( 4, 'confirmed'),
-    (  2, 'confirmed'), (  3, 'confirmed'),  ( 5, 'confirmed'),  ( 6, 'confirmed'),
-    (  8, 'confirmed')
+    (  0, 'pending'), (  0, 'pending'),  ( 0, 'pending'),  ( 0, 'completed'),
+    (  0, 'pending'), (  1, 'pending'),  ( 1, 'pending'),  ( 2, 'pending'),
+    (  2, 'rescheduled'), (3, 'pending'),  ( 4, 'pending'),
+    (  2, 'pending'), (  3, 'pending'),  ( 5, 'pending'),  ( 6, 'pending'),
+    (  8, 'pending')
 ),
 -- Sunday has no slots, so a booking that lands there moves to Monday rather
 -- than being silently dropped.
@@ -314,7 +304,7 @@ join lateral (
 join lateral (
   select id, name
   from services
-  where name <> 'Other'
+  where active
   order by name
   offset (a.n - 1) % 4
   limit 1

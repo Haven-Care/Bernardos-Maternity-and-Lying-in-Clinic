@@ -26,7 +26,8 @@ export function toBooking(row: AppointmentRow): BookingRequest {
     scheduledDate: row.scheduled_date,
     slotTime: row.slot_time,
 
-    status: row.status,
+    // Older rows use confirmed; the API exposes all accepted bookings as Booked.
+    status: row.status === 'confirmed' ? 'pending' : row.status,
     reasonForVisit: row.reason_for_visit,
 
     submittedAt: row.submitted_at,

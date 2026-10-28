@@ -44,8 +44,8 @@ export async function uploadMedicinePhoto(id: string, file: File): Promise<void>
 
 // --- Reads ------------------------------------------------------------------
 
-export async function listMedicines(): Promise<MedicineListRow[]> {
-  return apiFetch<MedicineListRow[]>('/inventory/medicines')
+export async function listMedicines(includeArchived = false): Promise<MedicineListRow[]> {
+  return apiFetch<MedicineListRow[]>(`/inventory/medicines${includeArchived ? '?includeArchived=true' : ''}`)
 }
 
 export async function getMedicine(id: string): Promise<MedicineListRow> {
@@ -53,11 +53,11 @@ export async function getMedicine(id: string): Promise<MedicineListRow> {
 }
 
 export async function listBatches(medicineId: string): Promise<MedicineBatch[]> {
-  return apiFetch<MedicineBatch[]>(`/inventory/medicines/${medicineId}/batches`)
+  return datedList<MedicineBatch>(`/inventory/medicines/${medicineId}/batches`)
 }
 
-export async function listMovements(dates?: { from: string; to: string }): Promise<StockMovement[]> {
-  return datedList<StockMovement>('/inventory/movements', dates)
+export async function listMovements(dates?: { from: string; to: string }, batchId?: string): Promise<StockMovement[]> {
+  return datedList<StockMovement>(`/inventory/movements${batchId ? `?batchId=${encodeURIComponent(batchId)}` : ''}`, dates)
 }
 
 export async function listLowStock(): Promise<LowStockRow[]> {
@@ -125,4 +125,24 @@ export async function recordStockOut(
     method: 'POST',
     body: JSON.stringify(input),
   })
+}
+
+export function listAllBatches(medicineId?: string): Promise<import('../types/medicine').BatchListRow[]> {
+  return datedList(`/inventory/batches${medicineId ? `?medicineId=${encodeURIComponent(medicineId)}` : ''}`)
+}
+export function listBatchEvents(id: string): Promise<import('../types/medicine').BatchEvent[]> {
+  return datedList(`/inventory/batches/${id}/events`)
+}
+export function receiveStock(input: import('../types/medicine').ReceiveStockInput): Promise<MedicineBatch> {
+  return apiFetch('/inventory/receipts', { method: 'POST', body: JSON.stringify(input) })
+}
+export function moveStock(id: string, input: { quantity: number; reason: 'dispensed' | 'disposed' | 'adjustment'; note: string }): Promise<MedicineBatch> {
+  return apiFetch(`/inventory/batches/${id}/move`, { method: 'POST', body: JSON.stringify(input) })
+}
+
+export function reverseMovement(id: string, note: string): Promise<MedicineBatch> {
+  return apiFetch(`/inventory/movements/${id}/reverse`, { method: 'POST', body: JSON.stringify({ note }) })
+}
+export function archiveMedicine(id: string, archive: boolean): Promise<MedicineListRow> {
+  return apiFetch(`/inventory/medicines/${id}/archive`, { method: 'PATCH', body: JSON.stringify({ archive }) })
 }

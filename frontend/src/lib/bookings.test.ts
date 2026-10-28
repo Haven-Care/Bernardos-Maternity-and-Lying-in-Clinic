@@ -28,11 +28,11 @@ function booking(
 }
 
 const ROWS = [
-  booking('next-week', '2026-10-17', 'confirmed'),
-  booking('today-late', TODAY, 'confirmed', '13:00'),
+  booking('next-week', '2026-10-17', 'pending'),
+  booking('today-late', TODAY, 'pending', '13:00'),
   booking('today-early', TODAY, 'rescheduled', '08:00'),
   booking('last-week', '2026-10-03', 'completed'),
-  booking('missed', '2026-10-09', 'confirmed'),
+  booking('missed', '2026-10-09', 'pending'),
   booking('dropped', '2026-10-20', 'cancelled'),
   booking('legacy', '2026-10-12', 'pending'),
 ]

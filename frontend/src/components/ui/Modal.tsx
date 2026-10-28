@@ -115,7 +115,7 @@ export function Modal({
         {children && <div className="min-h-0 min-w-0 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">{children}</div>}
 
         {footer && (
-          <footer className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-border px-4 py-3 sm:px-5">
+          <footer data-validation-footer className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-border px-4 py-3 sm:px-5">
             {footer}
           </footer>
         )}

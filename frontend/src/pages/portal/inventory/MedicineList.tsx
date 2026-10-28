@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import * as api from '../../../api'
 import { useAsync } from '../../../hooks/useAsync'
 import { Card } from '../../../components/ui/Card'
@@ -9,7 +10,8 @@ import { AsyncBoundary, EmptyState } from '../../../components/ui/states'
 import { formatDate } from '../../../lib/format'
 import type { MedicineListRow } from '../../../types/medicine'
 import { MedicineModal } from './MedicineModal'
-import { StockModal } from './StockModal'
+import { ConfirmModal } from '../../../components/ui/Modal'
+import { useToast } from '../../../components/ui/toast-context'
 
 export function MedicineList({
   version,
@@ -18,16 +20,27 @@ export function MedicineList({
   version: number
   onChanged: () => void
 }) {
-  const medicines = useAsync(() => api.inventory.listMedicines(), [version])
+  const medicines = useAsync(() => api.inventory.listMedicines(true), [version])
 
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('')
   const [status, setStatus] = useState('')
   const [editing, setEditing] = useState<MedicineListRow | null>(null)
-  const [stock, setStock] = useState<{
-    medicine: MedicineListRow
-    direction: 'in' | 'out'
-  } | null>(null)
+  const [catalogue, setCatalogue] = useState('active')
+  const [archiving, setArchiving] = useState<MedicineListRow>()
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string>()
+  const toast = useToast()
+  async function archive() {
+    if (!archiving || saving) return
+    setSaving(true); setError(undefined)
+    try {
+      await api.inventory.archiveMedicine(archiving.id, archiving.active)
+      toast.success(archiving.active ? 'Medicine archived' : 'Medicine restored', 'Batch and movement history have been retained.')
+      setArchiving(undefined); onChanged()
+    } catch (err) { setError(err instanceof Error ? err.message : 'Could not update this medicine.'); setArchiving(undefined) }
+    finally { setSaving(false) }
+  }
 
   const categories = useMemo(
     () => [...new Set((medicines.data ?? []).map((m) => m.category).filter((category) => category.trim() !== ''))].sort(),
@@ -37,6 +50,7 @@ export function MedicineList({
   const rows = useMemo(() => {
     const term = search.trim().toLowerCase()
     return (medicines.data ?? [])
+      .filter((m) => catalogue === 'all' || (catalogue === 'active' ? m.active : !m.active))
       .filter((m) => (category ? m.category === category : true))
       .filter((m) => (status ? m.stockStatus === status : true))
       .filter((m) =>
@@ -45,7 +59,7 @@ export function MedicineList({
             m.brandName.toLowerCase().includes(term)
           : true,
       )
-  }, [medicines.data, search, category, status])
+  }, [medicines.data, search, category, status, catalogue])
 
   const columns: Column<MedicineListRow>[] = [
     {
@@ -64,17 +78,15 @@ export function MedicineList({
     { key: 'dosage', header: 'Dosage', render: (m) => m.dosage },
     {
       key: 'qty',
-      header: 'Qty on Hand',
+      header: 'Available / Physical',
       align: 'right',
       render: (m) => (
-        <span className="tabular-nums">
-          {m.qtyOnHand} {m.unit}
-        </span>
+        <div className="tabular-nums"><p className="font-medium">{m.qtyOnHand} {m.unit} available</p><p className="text-xs text-gray-500">{m.physicalQty ?? m.qtyOnHand} physical · {m.expiredQty ?? 0} expired</p></div>
       ),
     },
     {
       key: 'expiry',
-      header: 'Expiration Date',
+      header: 'Next Usable Expiry',
       render: (m) =>
         m.nearestExpiry ? (
           formatDate(m.nearestExpiry)
@@ -85,7 +97,7 @@ export function MedicineList({
     {
       key: 'status',
       header: 'Status',
-      render: (m) => <StockBadge status={m.stockStatus} />,
+      render: (m) => <div><StockBadge status={m.stockStatus} /><p className="mt-1 text-xs text-gray-500">Reorder at ≤ {m.reorderLevel} {m.unit}</p>{!m.active && <p className="text-xs text-gray-400">Archived</p>}</div>,
     },
     {
       key: 'action',
@@ -93,21 +105,7 @@ export function MedicineList({
       align: 'right',
       render: (m) => (
         <div className="flex justify-end gap-2 text-xs font-medium whitespace-nowrap">
-          <button
-            type="button"
-            onClick={() => setStock({ medicine: m, direction: 'in' })}
-            className="text-brand-600 hover:underline"
-          >
-            Stock In
-          </button>
-          <button
-            type="button"
-            onClick={() => setStock({ medicine: m, direction: 'out' })}
-            disabled={m.qtyOnHand === 0}
-            className="text-gray-600 hover:underline disabled:cursor-not-allowed disabled:text-gray-300 disabled:no-underline"
-          >
-            Stock Out
-          </button>
+          <Link className="py-2 text-brand-700 hover:underline" to={`?tab=batches&medicineId=${encodeURIComponent(m.id)}`}>Batches</Link>
           <button
             type="button"
             onClick={() => setEditing(m)}
@@ -115,6 +113,10 @@ export function MedicineList({
           >
             Edit
           </button>
+          <button type="button" className="py-2 text-gray-600 hover:underline disabled:cursor-not-allowed disabled:text-gray-300"
+            disabled={m.active && (m.physicalQty ?? m.qtyOnHand) > 0}
+            title={m.active && (m.physicalQty ?? m.qtyOnHand) > 0 ? 'Resolve remaining physical stock before archiving.' : undefined}
+            onClick={() => setArchiving(m)}>{m.active ? 'Archive' : 'Restore'}</button>
         </div>
       ),
     },
@@ -142,12 +144,13 @@ export function MedicineList({
               onChange={setStatus}
               options={[
                 { value: '', label: 'All Status' },
-                { value: 'good', label: 'Good' },
+                { value: 'good', label: 'In Stock' },
                 { value: 'low', label: 'Low Stock' },
                 { value: 'out', label: 'Out of Stock' },
               ]}
             />
           </div>
+          <div className="w-48"><SelectField label="Catalogue" value={catalogue} onChange={setCatalogue} options={[{ value: 'active', label: 'Active medicines' }, { value: 'archived', label: 'Archived medicines' }, { value: 'all', label: 'All medicines' }]} /></div>
           <div className="ml-auto w-full sm:w-64">
             <SearchField
               value={search}
@@ -157,6 +160,8 @@ export function MedicineList({
           </div>
         </div>
 
+        <p className="px-4 py-2 text-xs text-gray-500">Available stock excludes expired batches. Physical stock includes all remaining units. Use Batches to record stock changes.</p>
+        {error && <p role="alert" className="px-4 py-2 text-sm text-danger-700">{error}</p>}
         <AsyncBoundary
           state={medicines}
           empty={
@@ -186,15 +191,10 @@ export function MedicineList({
         />
       )}
 
-      {stock && (
-        <StockModal
-          medicine={stock.medicine}
-          direction={stock.direction}
-          open={stock !== null}
-          onClose={() => setStock(null)}
-          onSaved={onChanged}
-        />
-      )}
+      {archiving && <ConfirmModal open onClose={() => setArchiving(undefined)} onConfirm={() => void archive()} loading={saving}
+        title={archiving.active ? 'Archive Medicine?' : 'Restore Medicine?'} tone="primary" confirmLabel={archiving.active ? 'Archive' : 'Restore'}
+        message={`${archiving.genericName} will be ${archiving.active ? 'removed from the active catalogue' : 'returned to the active catalogue'}. Batch and stock movement history will remain available.`} />}
+
     </>
   )
 }

@@ -2,9 +2,37 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Request, Response } from 'express'
 import { getSupabaseClient } from '../config/supabase.js'
 import { createService, listServices, updateService } from './services.controller.js'
+import { toService } from '../mappers/clinic.js'
+import type { Database } from '../db/types.js'
 
 vi.mock('../config/supabase.js', () => ({ getSupabaseClient: vi.fn() }))
 beforeEach(() => vi.clearAllMocks())
+
+describe('service pricing', () => {
+  it('preserves an unspecified price instead of converting null to zero', () => {
+    const row: Database['public']['Tables']['services']['Row'] = {
+      id: 'norifam', name: 'Norifam', category: 'Family planning', price: null,
+      active: true, price_is_temporary: false, created_at: '', updated_at: '',
+    }
+    expect(toService(row)).toEqual({
+      id: 'norifam', name: 'Norifam', category: 'Family planning', price: null, active: true,
+    })
+  })
+
+  it('accepts a null price when creating a service', async () => {
+    const input = { name: 'Norifam', category: 'Family planning', price: null }
+    const insert = vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({
+      single: vi.fn().mockResolvedValue({ data: { ...input, id: 'norifam', active: true }, error: null }),
+    }) })
+    vi.mocked(getSupabaseClient).mockReturnValue({ from: vi.fn().mockReturnValue({ insert }) } as unknown as ReturnType<typeof getSupabaseClient>)
+    const json = vi.fn()
+    const status = vi.fn().mockReturnValue({ json })
+    await createService({ body: input } as Request, { status } as unknown as Response)
+    expect(insert).toHaveBeenCalledWith(input)
+    expect(status).toHaveBeenCalledWith(201)
+    expect(json).toHaveBeenCalledWith({ ...input, id: 'norifam', active: true })
+  })
+})
 
 describe('retired generic service', () => {
   it.each(['Other', ' other ', 'OTHER'])('rejects creation of %s before accessing the database', async (name) => {

@@ -1,3 +1,4 @@
+import { text, money } from '../lib/inputValidation.js'
 import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
@@ -6,11 +7,10 @@ import { parseBody } from '../lib/validate.js'
 import { toService } from '../mappers/clinic.js'
 
 const serviceInputSchema = z.object({
-  name: z.string().trim().min(1, 'Service name is required.')
+  name: text().min(1, 'Service name is required.')
     .refine((name) => name.toLowerCase() !== 'other', 'Choose a specific service name.'),
-  category: z.string().trim().default(''),
-  price: z.number().min(0, 'Price cannot be negative.'),
-  priceIsTemporary: z.boolean().optional(),
+  category: text(100).default(''),
+  price: money().nullable(),
 })
 
 // PATCH carries either a full edit or just the active toggle, so every field is
@@ -23,7 +23,7 @@ const serviceInputSchema = z.object({
 const servicePatchSchema = serviceInputSchema
   .partial()
   .extend({
-    category: z.string().trim().optional(),
+    category: text(100).optional(),
     active: z.boolean().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, 'Nothing to update.')
@@ -54,7 +54,7 @@ export async function createService(req: Request, res: Response) {
   const row = unwrap(
     await getSupabaseClient()
       .from('services')
-      .insert({ name: input.name, category: input.category, price: input.price, price_is_temporary: input.priceIsTemporary ?? false })
+      .insert(input)
       .select('*')
       .single(),
   )
@@ -65,12 +65,11 @@ export async function createService(req: Request, res: Response) {
 export async function updateService(req: Request, res: Response) {
   const id = parseBody(idSchema, req.params.id)
   const input = parseBody(servicePatchSchema, req.body)
-  const { priceIsTemporary, ...fields } = input
 
   const row = unwrap(
     await getSupabaseClient()
       .from('services')
-      .update({ ...fields, ...(priceIsTemporary !== undefined ? { price_is_temporary: priceIsTemporary } : {}) })
+      .update(input)
       .eq('id', id)
       .select('*')
       .maybeSingle(),
