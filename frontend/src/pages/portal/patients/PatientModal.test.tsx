@@ -8,6 +8,8 @@ const { getPatient, listDocuments, uploadDocument, updatePatient, onClose, onSav
   getPatient: vi.fn(), listDocuments: vi.fn(), uploadDocument: vi.fn(), updatePatient: vi.fn(), onClose: vi.fn(), onSaved: vi.fn(),
 }))
 vi.mock('../../../api', () => ({ patients: { getPatient, listDocuments, uploadDocument, updatePatient } }))
+// MedicalHistory imports this API separately from the patient API barrel.
+vi.mock('../../../api/clinicalHistory', () => ({ list: vi.fn(), create: vi.fn() }))
 vi.mock('../../../components/ui/toast-context', () => ({ useToast: () => ({ success: vi.fn(), error: vi.fn() }) }))
 import { PatientModal } from './PatientModal'
 
