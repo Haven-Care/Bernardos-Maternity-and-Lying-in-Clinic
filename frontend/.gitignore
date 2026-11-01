@@ -23,6 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 
-# Local env
-.env
+# Local env (every variant except the committed example)
+.env*
+!.env.example
 supabase/.temp/

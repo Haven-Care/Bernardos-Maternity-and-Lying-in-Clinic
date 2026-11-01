@@ -8,6 +8,10 @@
  *
  *   npm run seed:staff            # from backend/
  *   SEED_STAFF_PASSWORD=... npm run seed:staff
+ *   SEED_STAFF_PASSWORD=... npm run seed:staff -- --allow-hosted   # staging only
+ *
+ * These are demonstration accounts. A production project gets its first real
+ * administrator from `npm run create:admin` instead.
  *
  * Idempotent: an account that already exists is reported and skipped.
  */
@@ -15,11 +19,12 @@
 import { createStaffAccount } from '../services/staff.js'
 import { HttpError } from '../middleware/errorHandler.js'
 import { env } from '../config/env.js'
+import { DEV_STAFF_PASSWORD, isLocalSupabaseUrl } from '../lib/supabaseTarget.js'
 
 // A known-weak local password. The guard below is what stops it reaching
 // anything real — this is for a laptop running `supabase start`, and it is
 // printed to the terminal on every run so nobody mistakes it for a secret.
-const DEV_PASSWORD = 'HavenCare!2026'
+const DEV_PASSWORD = DEV_STAFF_PASSWORD
 
 const STAFF = [
   {
@@ -47,12 +52,20 @@ async function main() {
   // a confirmed administrator on a hosted project with a password printed in
   // this repository.
   const { hostname } = new URL(env.supabaseUrl)
-  const isLocal = ['localhost', '127.0.0.1', '[::1]'].includes(hostname)
+  const hosted = env.nodeEnv === 'production' || !isLocalSupabaseUrl(env.supabaseUrl)
 
-  if (!process.env.SEED_STAFF_PASSWORD && (env.nodeEnv === 'production' || !isLocal)) {
+  if (hosted && !process.argv.includes('--allow-hosted')) {
+    throw new Error(
+      `Refusing to seed demonstration staff into ${hostname}, which is not a local stack. ` +
+        'For a staging project, rerun with `-- --allow-hosted`. ' +
+        'For production, create the first administrator with `npm run create:admin`.',
+    )
+  }
+
+  if (hosted && (!process.env.SEED_STAFF_PASSWORD || process.env.SEED_STAFF_PASSWORD === DEV_PASSWORD)) {
     throw new Error(
       'Refusing to seed a non-local project with the built-in development ' +
-        'password. Set SEED_STAFF_PASSWORD.',
+        'password. Set SEED_STAFF_PASSWORD to a private one.',
     )
   }
 

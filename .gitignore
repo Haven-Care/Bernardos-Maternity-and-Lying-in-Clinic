@@ -8,8 +8,9 @@ node_modules
 supabase/.branches
 supabase/.temp
 
-.env
-.env.local
+# Every env file except the committed examples (.env.production, .env.staging…).
+.env*
+!.env.example
 .DS_Store
 
 # Private database exports, seed datasets, and account credentials.

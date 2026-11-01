@@ -2,6 +2,16 @@ import { createHash } from 'node:crypto'
 
 export const SEED_KEY = 'havencare-demo-20261028-v2'
 export const ADMIN_EMAILS = ['berndo.clinic@gmail.com', 'havencare.org@gmail.com']
+// Hosted projects that hold only demonstration data. The reset truncates every
+// patient table, so any other project is refused before anything is read.
+// Adding a ref is a reviewed code change; never add the clinic's production project.
+export const DEMO_PROJECT_REFS = ['camqzzctawwqlwmqqpop']
+
+export function assertDemoProject(ref) {
+  if (!DEMO_PROJECT_REFS.includes(ref)) {
+    throw new Error(`Refusing to reset ${ref}: it is not a listed demonstration project (scripts/demo-seed-plan.mjs).`)
+  }
+}
 
 export function seedId(label) {
   const hex = createHash('sha256').update(`${SEED_KEY}:${label}`).digest('hex')

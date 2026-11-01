@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { allAuthUsers, projectClient, projectRoot, verifyBackup } from './backup-supabase.mjs'
-import { ADMIN_EMAILS, SEED_KEY, buildDemoPlan } from './demo-seed-plan.mjs'
+import { ADMIN_EMAILS, SEED_KEY, assertAdminTarget, assertClientOwnership, assertDemoProject, buildDemoPlan } from './demo-seed-plan.mjs'
 const require = createRequire(resolve(projectRoot, 'backend/package.json'))
 const { parse } = require('dotenv')
 const { createClient } = require('@supabase/supabase-js')
@@ -91,6 +91,7 @@ export function resetSql(plan, tables, users) {
 async function main() {
   const [command, directory, planPath, secretsPath, ref] = process.argv.slice(2)
   if (!['plan','apply','verify'].includes(command) || !directory || !planPath || !ref) throw new Error('Usage: plan|apply|verify BACKUP_DIR PLAN_JSON CREDENTIALS_ENV PROJECT_REF')
+  assertDemoProject(ref)
   const manifest = await verifyBackup(directory)
   const { url, client } = await projectClient()
   if (manifest.projectHost !== `${ref}.supabase.co` || new URL(url).hostname !== manifest.projectHost) throw new Error('Explicit target, backup, and configured project must agree')
@@ -112,7 +113,13 @@ async function main() {
   if((await stat(secretsPath)).mode&0o077) throw new Error('Credentials file must be mode 600')
   const secrets=parse(await readFile(secretsPath))
   if(!secrets.SEED_ADMIN_PASSWORD || !secrets.SEED_CLIENT_PASSWORD) throw new Error('Both requested account passwords are required')
+  // Checked before apply writes anything: verification runs against the deployment that serves this demo project, named explicitly.
+  const api=process.env.HAVENCARE_API_URL?.replace(/\/+$/,'')
+  if(!api || new URL(api).protocol!=='https:') throw new Error('Set HAVENCARE_API_URL to the https API deployment that serves this demo project, e.g. https://havencare-backend.vercel.app/api')
   const users=await allAuthUsers(client)
+  for(const a of plan.admins) assertAdminTarget(a.email)
+  // Only accounts this seed already marked as its own may have their password reset; a real patient never carries the marker.
+  for(const c of plan.clients) assertClientOwnership(users.find(x=>x.email===c.email))
   for(const a of [...plan.admins,...plan.clients]) {
     const u=users.find(x=>x.email===a.email), admin=ADMIN_EMAILS.includes(a.email)
     if(!u || (u.app_metadata.user_type==='staff')!==admin) throw new Error('Account must already exist in its intended realm: '+a.email)
@@ -142,20 +149,20 @@ async function main() {
     const {data,error}=await auth.auth.signInWithPassword({email:a.email,password:admin?secrets.SEED_ADMIN_PASSWORD:secrets.SEED_CLIENT_PASSWORD})
     if(error || !data.session) throw new Error('Login failed for '+a.email+': '+error?.message)
     const headers={Authorization:'Bearer '+data.session.access_token}
-    const session=await fetch('https://havencare-backend.vercel.app/api/account/session',{headers})
+    const session=await fetch(api+'/account/session',{headers})
     if(!session.ok) throw new Error('Session routing failed for '+a.email)
     const identity=await session.json()
     if(identity.role!==(admin?'administrator':'patient')) throw new Error('Wrong account realm: '+a.email)
     if(admin) {
-      const profile=await fetch('https://havencare-backend.vercel.app/api/account/me',{headers})
+      const profile=await fetch(api+'/account/me',{headers})
       const account=await profile.json()
       if(!profile.ok || account.fullName!==a.full_name) throw new Error('Administrator display name mismatch: '+a.email)
     }
-    const bookings=await fetch('https://havencare-backend.vercel.app/api/'+(admin?'bookings':'me/bookings'),{headers})
+    const bookings=await fetch(api+'/'+(admin?'bookings':'me/bookings'),{headers})
     if(!bookings.ok) throw new Error('Booking access failed for '+a.email)
     const rows=await bookings.json()
     if(!admin && (rows.length!==6 || rows.some(row=>row.email!==a.email))) throw new Error('Booking isolation failed: '+a.email)
-    const denied=await fetch('https://havencare-backend.vercel.app/api/'+(admin?'me/bookings':'inventory/stats'),{headers})
+    const denied=await fetch(api+'/'+(admin?'me/bookings':'inventory/stats'),{headers})
     if(denied.status!==403) throw new Error('Cross-realm access was not rejected: '+a.email)
     report.accounts.push({email:a.email,role:admin?'administrator':'patient',login:true,authorization:true,...(!admin?{bookings:rows.length}:{})})
     await auth.auth.signOut({scope:'local'})

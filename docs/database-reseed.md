@@ -10,6 +10,14 @@ npm run db:backup:project -- private-backups/UNIQUE_DIRECTORY
 
 The reseed tool uses that checked snapshot, the configured Supabase project, an explicit matching project ref, and a private credential file containing `SEED_ADMIN_PASSWORD` and `SEED_CLIENT_PASSWORD`. Passwords have no source-code defaults. Its only account targets are the two administrators and five `client01`–`client05` demo addresses in the plan. Those accounts must already exist in the correct realm. Other Auth users, staff profiles, and patient account profiles are retained.
 
+Three guards run before any write:
+
+- The project ref must be listed in `DEMO_PROJECT_REFS` in `scripts/demo-seed-plan.mjs`. Every other project is refused before the backup is even read. Adding a ref is a reviewed code change. The clinic's production project must never be listed.
+- Each administrator must be in `ADMIN_EMAILS`.
+- Each client account must already carry `app_metadata.havencare_demo_seed` equal to the current `SEED_KEY`. A real patient account never carries that marker, so its password can't be reset by mistake.
+
+The `apply` and `verify` commands check logins against a deployed API. Set `HAVENCARE_API_URL` to the HTTPS API that serves this demo project, for example `https://havencare-backend.vercel.app/api`. The tool no longer assumes a fixed deployment.
+
 ```sh
 npm run db:reseed:demo -- plan BACKUP_DIRECTORY PLAN_JSON CREDENTIALS_ENV PROJECT_REF
 ```

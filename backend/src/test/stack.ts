@@ -1,4 +1,5 @@
 import { env } from '../config/env.js'
+import { DEV_STAFF_PASSWORD, isLocalSupabaseUrl } from '../lib/supabaseTarget.js'
 
 /**
  * Helpers for tests that need the real local stack.
@@ -10,29 +11,52 @@ import { env } from '../config/env.js'
  *
  * Run `npm run db:start && npm run db:reset && npm run seed:staff` first. When
  * the stack is not up the suites skip rather than fail, so a contributor who
- * has not started Docker sees "skipped", not a wall of red — and so CI, which
- * has no Supabase service yet, stays honest instead of appearing to test this.
+ * has not started Docker sees "skipped", not a wall of red. Set REQUIRE_DB=1
+ * where a skip would be a false pass, as in a CI job that starts Supabase:
+ * the suites then fail instead.
+ *
+ * Only a local stack counts as up. These suites create staff, sign up patients
+ * and delete accounts, so a hosted SUPABASE_URL left in the terminal must never
+ * be mistaken for a disposable database.
  */
 
 const ANON_KEY =
   process.env.SUPABASE_ANON_KEY ??
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
 
-export const STAFF_PASSWORD = process.env.SEED_STAFF_PASSWORD ?? 'HavenCare!2026'
+export const STAFF_PASSWORD = process.env.SEED_STAFF_PASSWORD ?? DEV_STAFF_PASSWORD
 
 export const ADMIN_EMAIL = 'hannahp@havencare.ph'
 export const STAFF_EMAIL = 'staff@havencare.ph'
 
 export async function stackIsUp(): Promise<boolean> {
+  const required = process.env.REQUIRE_DB === '1'
+  const url = process.env.SUPABASE_URL ?? ''
+
+  if (!isLocalSupabaseUrl(url)) {
+    if (required) {
+      throw new Error(
+        `REQUIRE_DB=1 but SUPABASE_URL (${url || 'unset'}) is not a local Supabase stack. ` +
+          'Integration suites only run against `supabase start`.',
+      )
+    }
+    return false
+  }
+
   try {
     const res = await fetch(`${env.supabaseUrl}/auth/v1/health`, {
       headers: { apikey: ANON_KEY },
       signal: AbortSignal.timeout(2000),
     })
-    return res.ok
+    if (res.ok) return true
   } catch {
-    return false
+    // Unreachable; handled below.
   }
+
+  if (required) {
+    throw new Error(`REQUIRE_DB=1 but the local Supabase stack at ${url} is not responding.`)
+  }
+  return false
 }
 
 /** Signs in through GoTrue exactly as the browser does, and returns the JWT. */

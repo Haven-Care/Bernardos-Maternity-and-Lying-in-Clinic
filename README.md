@@ -98,7 +98,8 @@ On Windows, use `npm.cmd` if PowerShell blocks `npm.ps1`.
 | `npm run db:status` | Display local endpoints and keys |
 | `npm run db:reset` | **Erase/rebuild the local database**, then apply migrations and seed |
 | `npm run db:stop` | Stop local Supabase and retain data volumes |
-| `npm --prefix backend run seed:staff` | Provision staff; use local credentials for tests |
+| `npm --prefix backend run seed:staff` | Provision demo staff; local only unless `-- --allow-hosted` (staging) |
+| `npm --prefix backend run create:admin -- --project-ref <ref>` | Create a project's first real administrator from `ADMIN_*` variables |
 | `npm --prefix backend run dev` | Start Express on port 6101 |
 | `npm --prefix frontend run dev` | Start Vite on port 6100 |
 | `npm --prefix backend test` | Run backend unit and integration tests |
@@ -156,6 +157,8 @@ later revisions.
 
 Hosted email, OAuth, deployment, and UI acceptance need separate checks. See
 [the hosted guide](docs/LOCAL_DEVELOPMENT.md) and [UI audit](docs/figma-ui-audit.md).
+Production environments, keys, and hosted settings are tracked in
+[the production configuration checklist](docs/PRODUCTION_CONFIG.md).
 
 ## Contributing
 

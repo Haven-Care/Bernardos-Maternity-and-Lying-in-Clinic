@@ -87,9 +87,13 @@ For a fresh clone, copy `backend/.env.example` to `backend/.env`, and
 `frontend/.env.example` to `frontend/.env`. VS Code's Explorer can copy and rename
 the files. Do not overwrite an existing configured `.env`.
 
-The examples include the hosted project URL and public publishable key. Obtain
-your backend secret key privately from the maintainer. Both packages must use the same Supabase project. Do not use
-the production project's credentials for team testing.
+The examples default to the local Docker stack. For this hosted guide, use the
+commented **hosted staging** values in each example instead: the project URL and
+public publishable key are listed there. Obtain your backend secret key privately
+from the maintainer. Both packages must use the same Supabase project. The staging
+project holds demonstration data only. The clinic's production project and its
+keys are never used for team development or testing (see
+[PRODUCTION_CONFIG.md](PRODUCTION_CONFIG.md)).
 
 Set `backend/.env` to:
 
