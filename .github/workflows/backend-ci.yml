@@ -10,16 +10,21 @@ name: Backend CI
 # The push trigger exists because `pull_request` alone verifies nothing after
 # the merge button: a PR that was green against an older base can still break
 # the branch it lands on.
+#
+# deployment/prep is the integration branch for production-readiness work
+# until it is merged to main, so it is checked like the others.
 on:
   pull_request:
     branches:
       - main
+      - deployment/prep
       - backend-main
       - frontend-main
       - feat/backend-clinic-workflows
   push:
     branches:
       - main
+      - deployment/prep
       - backend-main
       - frontend-main
       - feat/backend-clinic-workflows

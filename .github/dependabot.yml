@@ -1,11 +1,15 @@
 # Weekly dependency updates. Minor and patch bumps arrive grouped, one pull
-# request per package, so security fixes are not buried under noise. Each
-# package targets its team's integration branch, as CONTRIBUTING.md requires.
+# request per package, so security fixes are not buried under noise.
+#
+# Every update targets deployment/prep, the integration branch for
+# production-readiness work. GitHub reads this file only from the default
+# branch, so it takes effect once deployment/prep is merged to main; retarget
+# to main then if deployment/prep is retired.
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /backend
-    target-branch: backend-main
+    target-branch: deployment/prep
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -15,7 +19,7 @@ updates:
 
   - package-ecosystem: npm
     directory: /frontend
-    target-branch: frontend-main
+    target-branch: deployment/prep
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -25,12 +29,12 @@ updates:
 
   - package-ecosystem: npm
     directory: /
-    target-branch: backend-main
+    target-branch: deployment/prep
     schedule:
       interval: monthly
 
   - package-ecosystem: github-actions
     directory: /
-    target-branch: backend-main
+    target-branch: deployment/prep
     schedule:
       interval: monthly
