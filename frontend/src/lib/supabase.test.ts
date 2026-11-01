@@ -35,6 +35,10 @@ describe('portal and recovery session isolation', () => {
     expect(options(0).detectSessionInUrl(url, params)).toBe(false)
     expect(options(1).detectSessionInUrl(url, params)).toBe(true)
   })
+  it.each(['/book', '/patient/home', '/admin'])('ignores credentials planted in the URL of %s', (path) => {
+    const url = new URL(`https://clinic.example${path}`)
+    expect(options(0).detectSessionInUrl(url, { access_token: 'attacker-token', refresh_token: 'attacker-refresh' })).toBe(false)
+  })
   it('keeps OAuth and email confirmation callbacks on the portal client', () => {
     const url = new URL('https://clinic.example/auth/callback')
     expect(options(0).detectSessionInUrl(url, { access_token: 'login-token' })).toBe(true)

@@ -43,6 +43,16 @@ Repository guard-rails that enforce part of this:
 | `npm --prefix backend run seed:staff` | Refuses hosted projects unless `-- --allow-hosted` is passed. On a hosted project, also refuses the documented development password |
 | `npm run db:reseed:demo` | Refuses any ref outside `DEMO_PROJECT_REFS`. Resets only accounts that carry the demo-seed marker. Verifies against `HAVENCARE_API_URL` |
 | `npm --prefix backend run create:admin` | Requires `--project-ref` to match `SUPABASE_URL`, and a private password of 12 or more characters |
+| Clinical tables (migration 26) | `TRUNCATE` on patients, clinical records, documents, appointments and their status history is refused unless `private.deployment.environment = 'demo'`. Deleting a patient or booking that has records or history is refused |
+| Browser keys (migration 26) | `anon` and `authenticated` hold no table privileges; `assert_rls_posture()` checks this on every migration |
+
+**After migration 26 reaches staging**, mark staging as a demonstration database once, in its SQL editor, before the next demo reset:
+
+```sql
+update private.deployment set environment = 'demo';
+```
+
+New projects start as `production`. Never run this on the clinic's project. The local `seed.sql` marks local databases itself.
 
 ## Creating the production project
 
@@ -111,6 +121,8 @@ Docker only.
 - After the split, a Preview frontend would therefore call the production backend with a staging token and get 401.
 - Make Preview honor its own API URL in the same change that points Preview at staging.
 - On 2 Nov 2026, `VITE_API_URL` was set for both Preview and Production, so check its values before relying on it.
+
+**Content Security Policy:** `frontend/vercel.json` currently allows any `https://*.supabase.co` project, because the production project does not exist yet. Once it does, replace the wildcard with the exact project origin(s) for staging and production.
 
 **Before commercial use:** upgrade the Vercel team to **Pro**. The Hobby plan does not permit commercial use.
 

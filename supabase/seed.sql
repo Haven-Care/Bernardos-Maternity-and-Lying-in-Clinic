@@ -14,6 +14,11 @@
 
 begin;
 
+-- This file is for local and demonstration databases only. Marking the
+-- database as a demonstration is what lets the truncate below past the
+-- clinical-table guard (migration 26); a production project is never marked.
+update private.deployment set environment = 'demo';
+
 -- Idempotent: `supabase db reset` replays migrations then this file, but
 -- `npm run db:seed` can be run against an already-seeded database.
 truncate

@@ -1,4 +1,5 @@
 import { env } from '../config/env.js'
+import { getSupabaseClient } from '../config/supabase.js'
 import { DEV_STAFF_PASSWORD, isLocalSupabaseUrl } from '../lib/supabaseTarget.js'
 
 /**
@@ -124,6 +125,60 @@ export async function signUpPatient(
   })
 
   return { token: await signIn(email, password), userId: body.id }
+}
+
+/**
+ * Lifts the per-account booking cap and the booking window for a suite.
+ *
+ * The contract suites book one account into many separate weeks, well past
+ * the clinic's defaults of 3 upcoming bookings and 90 days ahead. The limits
+ * themselves are asserted in supabase/tests/security_hardening.sql. Returns the
+ * function that puts the clinic's values back.
+ */
+export async function relaxBookingLimits(): Promise<() => Promise<void>> {
+  const db = getSupabaseClient()
+  const { data: before, error } = await db
+    .from('clinic_settings')
+    .select('max_active_bookings_per_account, max_booking_days_ahead')
+    .eq('id', 1)
+    .single()
+  if (error) throw new Error(`Could not read booking limits: ${error.message}`)
+
+  await db.from('clinic_settings')
+    .update({ max_active_bookings_per_account: 1000, max_booking_days_ahead: 3650 })
+    .eq('id', 1)
+
+  return async () => {
+    await db.from('clinic_settings').update(before).eq('id', 1)
+  }
+}
+
+/**
+ * Removes a test account's bookings and patient record.
+ *
+ * Status history and clinical records refuse to cascade (migration 26), so
+ * they go first, explicitly. This is the only place anything deletes them.
+ */
+export async function removeTestBookings(filter: { accountId: string } | { bookingId: string }) {
+  const db = getSupabaseClient()
+  const bookings = 'bookingId' in filter
+    ? [filter.bookingId]
+    : ((await db.from('appointments').select('id').eq('account_id', filter.accountId)).data ?? []).map((row) => row.id)
+
+  if (bookings.length > 0) {
+    await db.from('appointment_status_events').delete().in('booking_id', bookings)
+    await db.from('appointments').delete().in('id', bookings)
+  }
+
+  if ('accountId' in filter) {
+    const { data: patients } = await db.from('patients').select('id').eq('account_id', filter.accountId)
+    const ids = (patients ?? []).map((row) => row.id)
+    if (ids.length > 0) {
+      await db.from('clinical_records').delete().in('patient_id', ids)
+      await db.from('patient_documents').delete().in('patient_id', ids)
+      await db.from('patients').delete().in('id', ids)
+    }
+  }
 }
 
 /** A unique address per run, so repeated runs do not collide on sign-up. */

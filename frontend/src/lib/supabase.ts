@@ -34,7 +34,12 @@ export const supabase = createClient(url, anonKey, {
     // OAuth and email confirmation keep using the portal client. A predicate
     // must check credentials as well as the path: it replaces Supabase's own
     // implicit-callback detection, including on ordinary page loads.
-    detectSessionInUrl: (callbackUrl, params) => callbackUrl.pathname !== '/auth/recovery' && Boolean(params.access_token || params.error || params.error_description || params.error_code),
+    //
+    // Only /auth/callback, the one address those flows return to. Accepting
+    // tokens on any page let a crafted link such as /book#access_token=… sign a
+    // visitor into someone else's account, so their booking details landed in
+    // the attacker's.
+    detectSessionInUrl: (callbackUrl, params) => callbackUrl.pathname === '/auth/callback' && Boolean(params.access_token || params.error || params.error_description || params.error_code),
   },
 })
 

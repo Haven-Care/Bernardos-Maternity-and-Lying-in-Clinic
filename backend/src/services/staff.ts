@@ -2,6 +2,7 @@ import { personName, phoneNumber, emailAddress } from '../lib/inputValidation.js
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
 import { HttpError } from '../middleware/errorHandler.js'
+import { dbError } from '../lib/db.js'
 import { toStaffProfile } from '../mappers/account.js'
 import type { StaffProfile } from '../contract/account.js'
 
@@ -53,7 +54,8 @@ export async function createStaffAccount(
     if (error.status === 422) {
       throw new HttpError(409, 'An account with that email already exists.')
     }
-    throw new HttpError(502, `Could not create the account: ${error.message}`)
+    console.error('Staff account creation failed', { status: error.status, code: error.code, message: error.message })
+    throw new HttpError(502, 'Could not create the account. Please try again.')
   }
 
   const profile = await findStaff(data.user.id)
@@ -76,7 +78,7 @@ export async function findStaff(id: string): Promise<StaffProfile | null> {
     .eq('id', id)
     .maybeSingle()
 
-  if (error) throw new HttpError(500, error.message)
+  if (error) throw dbError(error)
 
   return data ? toStaffProfile(data) : null
 }
@@ -87,9 +89,22 @@ export async function listStaff(): Promise<StaffProfile[]> {
     .select('*')
     .order('employee_id')
 
-  if (error) throw new HttpError(500, error.message)
+  if (error) throw dbError(error)
 
   return data.map(toStaffProfile)
+}
+
+/** Active administrators: the people who can still provision anyone else. */
+export async function countActiveAdministrators(): Promise<number> {
+  const { count, error } = await getSupabaseClient()
+    .from('profiles')
+    .select('id', { count: 'exact', head: true })
+    .eq('role', 'administrator')
+    .eq('status', 'active')
+
+  if (error) throw dbError(error)
+
+  return count ?? 0
 }
 
 /**
@@ -111,7 +126,7 @@ export async function setStaffStatus(
     .select('*')
     .maybeSingle()
 
-  if (error) throw new HttpError(500, error.message)
+  if (error) throw dbError(error)
   if (!data) throw new HttpError(404, 'No such staff member.')
 
   return toStaffProfile(data)

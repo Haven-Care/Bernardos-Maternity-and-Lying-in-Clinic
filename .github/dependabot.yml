@@ -1,0 +1,36 @@
+# Weekly dependency updates. Minor and patch bumps arrive grouped, one pull
+# request per package, so security fixes are not buried under noise. Each
+# package targets its team's integration branch, as CONTRIBUTING.md requires.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /backend
+    target-branch: backend-main
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      backend-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    target-branch: frontend-main
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      frontend-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /
+    target-branch: backend-main
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: backend-main
+    schedule:
+      interval: monthly

@@ -101,18 +101,25 @@ export async function declineRescheduleRequest(req: Request, res: Response) {
 
   // The booking is untouched — it keeps the date and slot it already had,
   // which is the whole reason the proposal lived in a separate row.
-  const row = unwrap(
-    await getSupabaseClient()
-      .from('reschedule_requests')
-      .update({
-        status: 'declined',
-        decided_at: new Date().toISOString(),
-        decided_by: req.staff?.userId ?? null,
-      })
-      .eq('id', id)
-      .select('*, appointments(*)')
-      .single(),
-  )
+  //
+  // Conditional on the request still being pending: another member of staff
+  // may have approved it since openRequest() read it, and that approval has
+  // already moved the booking. Overwriting it with "declined" would record the
+  // opposite of what happened.
+  const { data: row, error } = await getSupabaseClient()
+    .from('reschedule_requests')
+    .update({
+      status: 'declined',
+      decided_at: new Date().toISOString(),
+      decided_by: req.staff?.userId ?? null,
+    })
+    .eq('id', id)
+    .eq('status', 'pending')
+    .select('*, appointments(*)')
+    .maybeSingle()
+
+  if (error) throw dbError(error)
+  if (!row) throw new HttpError(409, 'That request was decided by someone else in the meantime.')
 
   res.json(toRescheduleRequest(row))
 }

@@ -65,11 +65,14 @@ export async function updateMe(req: Request, res: Response) {
     })
 
     if (error) {
+      if (error.status !== 422) {
+        console.error('Staff email update failed', { status: error.status, code: error.code, message: error.message })
+      }
       throw new HttpError(
         error.status === 422 ? 409 : 502,
         error.status === 422
           ? 'Another account already uses that email address.'
-          : `Could not update the email address: ${error.message}`,
+          : 'Could not update the email address. Please try again.',
       )
     }
   }

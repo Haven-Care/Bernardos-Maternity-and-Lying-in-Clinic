@@ -3,6 +3,7 @@ import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
 import { definedOnly, unwrap, unwrapList } from '../lib/db.js'
+import { sniffDocumentType } from '../lib/fileSignature.js'
 import { isoDate, parseBody } from '../lib/validate.js'
 import { HttpError } from '../middleware/errorHandler.js'
 import {
@@ -272,17 +273,27 @@ export async function createUploadUrl(req: Request, res: Response) {
     .storage.from('patient-documents')
     .createSignedUploadUrl(path)
 
-  if (error) throw new HttpError(502, `Could not start the upload: ${error.message}`)
+  if (error) {
+    console.error('Signed upload URL failed', { message: error.message })
+    throw new HttpError(502, 'Could not start the upload. Please try again.')
+  }
 
   res.json({ path: data.path, token: data.token, signedUrl: data.signedUrl })
 }
 
+const MAX_DOCUMENT_BYTES = 10_485_760
+
 const documentSchema = z.object({
   docType: z.enum(DOC_TYPES),
   fileName: text(255).min(1),
-  fileSize: z.number().int().min(1).max(10_485_760),
+  // Still accepted for older clients, but never stored: the size recorded is
+  // the one Storage reports for the object.
+  fileSize: z.number().int().min(1).max(MAX_DOCUMENT_BYTES).optional(),
   storagePath: text(512).min(1),
 })
+
+// Exactly what createUploadUrl issues: `<patient>/<uuid>-<sanitised name>`.
+const DOCUMENT_FILE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-[\w.-]{1,100}$/
 
 /** Step three: record the upload against the patient. */
 export async function createDocument(req: Request, res: Response) {
@@ -290,10 +301,31 @@ export async function createDocument(req: Request, res: Response) {
   const input = parseBody(documentSchema, req.body)
   const staff = req.staff
 
-  // The client supplies the path it was given, so confirm it is still one that
-  // belongs to this patient rather than trusting it to point anywhere.
-  if (!input.storagePath.startsWith(`${patientId}/`)) {
+  // The client supplies the path it was given, so confirm it is one this API
+  // issued for this patient rather than trusting it to point anywhere.
+  const fileName = input.storagePath.slice(patientId.length + 1)
+  if (!input.storagePath.startsWith(`${patientId}/`) || !DOCUMENT_FILE.test(fileName)) {
     throw new HttpError(400, 'That file does not belong to this patient.')
+  }
+
+  // Check what was actually stored, not what the browser said it sent.
+  const bucket = getSupabaseClient().storage.from('patient-documents')
+  const { data: object, error: objectError } = await bucket.info(input.storagePath)
+  if (objectError || !object) throw new HttpError(400, 'Upload the file before saving it.')
+  if (!object.size || object.size > MAX_DOCUMENT_BYTES) {
+    throw new HttpError(400, 'Choose a PDF or image up to 10 MB.')
+  }
+
+  const { data: stored, error: downloadError } = await bucket.download(input.storagePath)
+  if (downloadError || !stored) {
+    throw new HttpError(502, 'Could not check the uploaded file. Please try again.')
+  }
+
+  const sniffed = sniffDocumentType(new Uint8Array(await stored.slice(0, 16).arrayBuffer()))
+  if (!sniffed || sniffed !== object.contentType) {
+    // Not kept: a file that lied about its type has no place next to medical records.
+    await bucket.remove([input.storagePath]).catch(() => undefined)
+    throw new HttpError(400, 'That file is not a PDF, JPG, PNG, WebP or HEIC document.')
   }
 
   const row = unwrap(
@@ -303,7 +335,7 @@ export async function createDocument(req: Request, res: Response) {
         patient_id: patientId,
         doc_type: input.docType,
         file_name: input.fileName,
-        file_size: input.fileSize,
+        file_size: object.size,
         storage_path: input.storagePath,
         uploaded_by: staff?.userId ?? null,
       })
@@ -338,7 +370,10 @@ export async function getDocumentUrl(req: Request, res: Response) {
     .storage.from('patient-documents')
     .createSignedUrl(doc.storage_path, 300)
 
-  if (error) throw new HttpError(502, `Could not create a link: ${error.message}`)
+  if (error) {
+    console.error('Signed document URL failed', { message: error.message })
+    throw new HttpError(502, 'Could not open the document. Please try again.')
+  }
 
   res.json({ url: data.signedUrl })
 }

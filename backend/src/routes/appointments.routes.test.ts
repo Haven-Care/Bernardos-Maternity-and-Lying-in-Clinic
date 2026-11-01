@@ -5,6 +5,8 @@ import { getSupabaseClient } from '../config/supabase.js'
 import {
   ADMIN_EMAIL,
   STAFF_PASSWORD,
+  relaxBookingLimits,
+  removeTestBookings,
   signIn,
   signUpPatient,
   stackIsUp,
@@ -45,12 +47,14 @@ describe.skipIf(!up)('bookings', () => {
   let alice: { token: string; userId: string }
   let bob: { token: string; userId: string }
   let serviceId: string
+  let restoreBookingLimits: (() => Promise<void>) | undefined
 
   const asStaff = () => ({ Authorization: `Bearer ${staff}` })
   const asAlice = () => ({ Authorization: `Bearer ${alice.token}` })
   const asBob = () => ({ Authorization: `Bearer ${bob.token}` })
 
   beforeAll(async () => {
+    restoreBookingLimits = await relaxBookingLimits()
     staff = await signIn(ADMIN_EMAIL, STAFF_PASSWORD)
     alice = await signUpPatient(uniqueEmail('alice'), 'Sup3rSecret!', 'Alice A')
     bob = await signUpPatient(uniqueEmail('bob'), 'Sup3rSecret!', 'Bob B')
@@ -69,8 +73,9 @@ describe.skipIf(!up)('bookings', () => {
    * chosen times already full and fails with 409s that look like real capacity
    * bugs — which is exactly what happened before this existed.
    *
-   * Deleting the appointments cascades their reschedule requests. The accounts
-   * go too, so nothing accumulates in auth.users either.
+   * Deleting the appointments cascades their reschedule requests; their status
+   * history refuses to cascade, so removeTestBookings clears it first. The
+   * accounts go too, so nothing accumulates in auth.users either.
    *
    * Notifications do not cascade — they are clinic-wide and have no foreign key
    * to hang off — so they are cleared by name. Without this each run leaves a
@@ -83,14 +88,15 @@ describe.skipIf(!up)('bookings', () => {
     for (const acct of [alice, bob]) {
       if (!acct) continue
 
-      await db.from('appointments').delete().eq('account_id', acct.userId)
-      await db.from('patients').delete().eq('account_id', acct.userId)
+      await removeTestBookings({ accountId: acct.userId })
       await db.auth.admin.deleteUser(acct.userId)
     }
 
     for (const name of ['Alice A', 'Bob B']) {
       await db.from('notifications').delete().like('message', `${name}%`)
     }
+
+    await restoreBookingLimits?.()
   })
 
   describe('creating', () => {

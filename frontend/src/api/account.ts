@@ -9,7 +9,10 @@ import { RECOVERY_RETURN_KEY, RECOVERY_USER_KEY, recoverySupabase, supabase } fr
 
 export async function logout(): Promise<void> {
   const { error } = await supabase.auth.signOut()
-  if (error) throw new Error(error.message)
+  // The server could not be told (offline, or the call failed), but this
+  // device must forget the session regardless: on a shared clinic computer a
+  // "Could not log out" leaves the next person signed in as this one.
+  if (error) await supabase.auth.signOut({ scope: 'local' })
 }
 
 export async function getProfile(): Promise<StaffProfile> {

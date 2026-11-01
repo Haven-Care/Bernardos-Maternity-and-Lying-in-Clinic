@@ -1,5 +1,15 @@
-import { getAccessToken } from './supabase'
+import { getAccessToken, supabase } from './supabase'
 import { apiBaseUrl } from './apiBase'
+
+/** A request with no answer by then is reported as one, not left spinning. */
+export const REQUEST_TIMEOUT_MS = 15_000
+
+/**
+ * Fired when the API refuses a token this tab sent: it expired, was revoked,
+ * or the account was signed out elsewhere. The signed-in areas listen for it
+ * and send the user to sign in again.
+ */
+export const SESSION_EXPIRED_EVENT = 'havencare:session-expired'
 
 // Vercel previews are protected separately from the backend preview. Route
 // their API calls through this frontend's same-origin proxy to the public API,
@@ -44,16 +54,43 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const token = await getAccessToken()
 
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init?.headers,
-    },
-  })
+  // An AbortController and a timer rather than AbortSignal.timeout/any, which
+  // the older iPhones patients book from do not all have. A caller's own
+  // signal still cancels the request.
+  const controller = new AbortController()
+  let timedOut = false
+  const timer = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, REQUEST_TIMEOUT_MS)
+  const callerSignal = init?.signal
+  const forwardAbort = () => controller.abort(callerSignal?.reason)
+  if (callerSignal?.aborted) forwardAbort()
+  else callerSignal?.addEventListener('abort', forwardAbort, { once: true })
+
+  let res: Response
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...init?.headers,
+      },
+    })
+  } catch (error) {
+    if (!timedOut) throw error
+    const timeout = new Error('The clinic server took too long to respond. Please try again.')
+    timeout.name = 'TimeoutError'
+    throw timeout
+  } finally {
+    clearTimeout(timer)
+    callerSignal?.removeEventListener('abort', forwardAbort)
+  }
 
   if (!res.ok) {
+    if (res.status === 401 && token) await expireSession()
     throw new ApiError(res.status, await errorMessage(res))
   }
 
@@ -64,6 +101,16 @@ export async function apiFetch<T>(
   }
 
   return (await res.json()) as T
+}
+
+/**
+ * The API refused the token this tab holds. Forget it locally, so nothing
+ * keeps sending a dead credential, and tell whichever signed-in area is open.
+ * Local only: there is no live session left on the server to end.
+ */
+async function expireSession() {
+  await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined)
+  window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
 }
 
 /**

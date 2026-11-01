@@ -46,6 +46,7 @@ export type Database = {
       }
       appointment_status_events: {
         Row: {
+          actor_account_id: string | null
           actor_id: string | null
           booking_id: string
           id: string
@@ -54,6 +55,7 @@ export type Database = {
           previous_status: Database["public"]["Enums"]["appointment_status"]
         }
         Insert: {
+          actor_account_id?: string | null
           actor_id?: string | null
           booking_id: string
           id?: string
@@ -62,6 +64,7 @@ export type Database = {
           previous_status: Database["public"]["Enums"]["appointment_status"]
         }
         Update: {
+          actor_account_id?: string | null
           actor_id?: string | null
           booking_id?: string
           id?: string
@@ -70,6 +73,13 @@ export type Database = {
           previous_status?: Database["public"]["Enums"]["appointment_status"]
         }
         Relationships: [
+          {
+            foreignKeyName: "appointment_status_events_actor_account_id_fkey"
+            columns: ["actor_account_id"]
+            isOneToOne: false
+            referencedRelation: "patient_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "appointment_status_events_actor_id_fkey"
             columns: ["actor_id"]
@@ -209,6 +219,8 @@ export type Database = {
         Row: {
           daily_booking_capacity: number | null
           id: number
+          max_active_bookings_per_account: number
+          max_booking_days_ahead: number
           near_expiry_days: number
           reminder_lead_hours: number
           updated_at: string
@@ -216,6 +228,8 @@ export type Database = {
         Insert: {
           daily_booking_capacity?: number | null
           id?: number
+          max_active_bookings_per_account?: number
+          max_booking_days_ahead?: number
           near_expiry_days?: number
           reminder_lead_hours?: number
           updated_at?: string
@@ -223,6 +237,8 @@ export type Database = {
         Update: {
           daily_booking_capacity?: number | null
           id?: number
+          max_active_bookings_per_account?: number
+          max_booking_days_ahead?: number
           near_expiry_days?: number
           reminder_lead_hours?: number
           updated_at?: string
@@ -1125,6 +1141,32 @@ export type Database = {
           p_service_id: string
           p_slot_time: unknown
         }
+        Returns: {
+          account_id: string | null
+          contact_number: string
+          email: string
+          id: string
+          patient_id: string | null
+          patient_name: string
+          reason_for_visit: string
+          reference_no: string
+          scheduled_date: string
+          service_id: string
+          service_name: string
+          slot_time: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          submitted_at: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "appointments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      cancel_own_appointment: {
+        Args: { p_account_id: string; p_booking_id: string }
         Returns: {
           account_id: string | null
           contact_number: string

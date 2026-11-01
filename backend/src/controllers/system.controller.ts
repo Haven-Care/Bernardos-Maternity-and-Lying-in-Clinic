@@ -2,8 +2,10 @@ import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { parseBody } from '../lib/validate.js'
 import {
+  countActiveAdministrators,
   createStaffAccount,
   createStaffSchema,
+  findStaff,
   listStaff,
   setStaffStatus,
 } from '../services/staff.js'
@@ -47,6 +49,16 @@ export async function patchStaffStatus(req: Request, res: Response) {
   if (id === req.staff?.userId && status === 'inactive') {
     res.status(400).json({ error: 'You cannot deactivate your own account.' })
     return
+  }
+
+  // The self-check above does not stop two administrators deactivating each
+  // other, which leaves the clinic with nobody who can create accounts.
+  if (status === 'inactive') {
+    const target = await findStaff(id)
+    if (target?.role === 'administrator' && target.status === 'active' && (await countActiveAdministrators()) <= 1) {
+      res.status(409).json({ error: 'At least one active administrator must remain.' })
+      return
+    }
   }
 
   res.json(await setStaffStatus(id, status))

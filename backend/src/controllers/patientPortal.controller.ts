@@ -10,7 +10,6 @@ import {
   toPatientAccount,
   toRescheduleRequest,
 } from '../mappers/appointment.js'
-import { declineOpenRescheduleRequest } from './appointments.controller.js'
 
 /**
  * The patient's own view of their bookings.
@@ -191,23 +190,16 @@ export async function cancelMyBooking(req: Request, res: Response) {
     return
   }
 
-  // Conditional on the status still being cancellable, for the same reason as
-  // setStatus: staff completing the visit at the same moment must not be
-  // overwritten by this write.
-  const { data: row, error } = await getSupabaseClient()
-    .from('appointments')
-    .update({ status: 'cancelled' })
-    .eq('id', id)
-    .in('status', ['pending', 'confirmed', 'rescheduled'])
-    .select('*')
-    .maybeSingle()
+  // One locked transaction: it re-checks ownership and status under the row
+  // lock, so staff completing the visit at the same moment cannot be
+  // overwritten, closes any open reschedule request, and records the change
+  // as the patient's in the visit history.
+  const { data: row, error } = await getSupabaseClient().rpc('cancel_own_appointment', {
+    p_booking_id: id,
+    p_account_id: account(req).userId,
+  })
 
   if (error) throw dbError(error)
-  if (!row) {
-    throw new HttpError(409, 'That appointment changed while you were cancelling it.')
-  }
-
-  await declineOpenRescheduleRequest(id)
   res.json(toBooking(row))
 }
 

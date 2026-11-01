@@ -2,6 +2,14 @@ import type { PostgrestError } from '@supabase/supabase-js'
 import { HttpError } from '../middleware/errorHandler.js'
 
 /**
+ * A Supabase error minus `details`, which for constraint failures quotes the
+ * whole failing row: a patient's record, in the logs.
+ */
+export function loggableDbError(error: { code?: string; message?: string; hint?: string | null }) {
+  return { code: error.code, message: error.message, hint: error.hint ?? undefined }
+}
+
+/**
  * Turns a Supabase error into the right HTTP status.
  *
  * The plpgsql functions raise custom SQLSTATEs for rules a user can break, so
@@ -40,7 +48,7 @@ export function dbError(error: PostgrestError, fallback = 500): HttpError {
   // Anything unmapped is ours, not the caller's. Postgres messages name tables,
   // columns and constraints, so they are logged here and never sent back.
   if (fallback >= 500) {
-    console.error('Database error', error)
+    console.error('Database error', loggableDbError(error))
     return new HttpError(fallback, 'Something went wrong. Please try again.')
   }
 

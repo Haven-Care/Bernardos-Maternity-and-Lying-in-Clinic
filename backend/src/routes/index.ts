@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { getSupabaseClient } from '../config/supabase.js'
+import { loggableError } from '../middleware/errorHandler.js'
 import { accountRouter } from './account.routes.js'
 import { systemRouter } from './system.routes.js'
 import {
@@ -43,10 +44,10 @@ apiRouter.get('/health/db', async (_req, res) => {
     if (error) throw error
     res.json({ status: 'ok' })
   } catch (err) {
-    res.status(503).json({
-      status: 'error',
-      message: err instanceof Error ? err.message : 'Supabase connection failed',
-    })
+    // Public route: the reason (a hostname, a revoked-key message) is for the
+    // logs, never for whoever is probing it.
+    console.error('Readiness check failed', loggableError(err))
+    res.status(503).json({ status: 'error', message: 'Database unavailable.' })
   }
 })
 

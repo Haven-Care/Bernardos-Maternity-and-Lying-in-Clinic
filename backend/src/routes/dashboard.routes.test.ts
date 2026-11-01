@@ -6,6 +6,8 @@ import { DASHBOARD_RANGES, type DashboardPreset } from '../contract/dashboard.js
 import {
   ADMIN_EMAIL,
   STAFF_PASSWORD,
+  relaxBookingLimits,
+  removeTestBookings,
   signIn,
   signUpPatient,
   stackIsUp,
@@ -40,18 +42,20 @@ describe.skipIf(!up)('dashboard', () => {
   const patientName = `Dash ${Date.now()}`
 
   const asStaff = () => ({ Authorization: `Bearer ${staff}` })
+  let restoreBookingLimits: (() => Promise<void>) | undefined
 
   beforeAll(async () => {
+    restoreBookingLimits = await relaxBookingLimits()
     staff = await signIn(ADMIN_EMAIL, STAFF_PASSWORD)
     patient = await signUpPatient(uniqueEmail('dash'), 'Sup3rSecret!', patientName)
   })
 
   afterAll(async () => {
+    await restoreBookingLimits?.()
     if (!patient) return
 
     const db = getSupabaseClient()
-    await db.from('appointments').delete().eq('account_id', patient.userId)
-    await db.from('patients').delete().eq('account_id', patient.userId)
+    await removeTestBookings({ accountId: patient.userId })
     await db.from('notifications').delete().like('message', `${patientName}%`)
     await db.auth.admin.deleteUser(patient.userId)
   })
@@ -458,8 +462,6 @@ describe.skipIf(!up)('dashboard', () => {
      * it appears *and* disappears.
      */
     it('raises a reschedule alert that clears when the queue is worked', async () => {
-      const db = getSupabaseClient()
-
       /**
        * How many open requests the alert is currently reporting.
        *
@@ -572,7 +574,7 @@ describe.skipIf(!up)('dashboard', () => {
 
       expect(await openCount()).toBe(baseline)
 
-      await db.from('appointments').delete().eq('id', booking.body.id)
+      await removeTestBookings({ bookingId: booking.body.id })
     })
 
     it('is derived, not stored — dispensing stock moves the count', async () => {

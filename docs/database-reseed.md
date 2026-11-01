@@ -10,6 +10,8 @@ npm run db:backup:project -- private-backups/UNIQUE_DIRECTORY
 
 The reseed tool uses that checked snapshot, the configured Supabase project, an explicit matching project ref, and a private credential file containing `SEED_ADMIN_PASSWORD` and `SEED_CLIENT_PASSWORD`. Passwords have no source-code defaults. Its only account targets are the two administrators and five `client01`–`client05` demo addresses in the plan. Those accounts must already exist in the correct realm. Other Auth users, staff profiles, and patient account profiles are retained.
 
+The database refuses to truncate clinical tables unless it is marked as a demonstration (`private.deployment.environment = 'demo'`, migration 26). Mark the staging project once, deliberately, in its SQL editor. See `PRODUCTION_CONFIG.md`.
+
 Three guards run before any write:
 
 - The project ref must be listed in `DEMO_PROJECT_REFS` in `scripts/demo-seed-plan.mjs`. Every other project is refused before the backup is even read. Adding a ref is a reviewed code change. The clinic's production project must never be listed.
