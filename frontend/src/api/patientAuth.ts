@@ -4,6 +4,7 @@ import type {
   PatientSignupInput,
 } from '../types/patientAccount'
 import { apiFetch } from './client'
+import { PRIVACY_NOTICE_VERSION } from '../types/privacy'
 import { ApiError } from '../lib/api'
 import { textInputError } from '../lib/inputValidation'
 import { meetsPasswordRules } from '../lib/password'
@@ -30,7 +31,10 @@ import { requestPasswordReset as sendPasswordReset } from './account'
  * In local development the confirmation mail lands in the catcher on :54324
  * rather than a real inbox.
  */
-export async function signUp(input: PatientSignupInput): Promise<void> {
+export async function signUp(input: PatientSignupInput & { acceptedPrivacyNotice: boolean }): Promise<void> {
+  // The notice is agreed to before any personal data is sent: RA 10173 asks
+  // for consent at collection, and this form is where collection starts.
+  if (!input.acceptedPrivacyNotice) throw new Error('Please read and accept the Privacy Notice to create an account.')
   const issue = textInputError(input.fullName, { label: 'Full name', required: true, rule: 'name' })
     ?? textInputError(input.email, { label: 'Email', required: true, rule: 'email', maxLength: 254 })
     ?? textInputError(input.contactNumber, { label: 'Mobile number', required: true, rule: 'mobile', maxLength: 30 })
@@ -46,6 +50,8 @@ export async function signUp(input: PatientSignupInput): Promise<void> {
       data: {
         full_name: input.fullName.trim(),
         contact_number: input.contactNumber.trim(),
+        // Recorded as the patient's consent at their first sign-in.
+        privacy_notice_version: PRIVACY_NOTICE_VERSION,
       },
     },
   })

@@ -30,6 +30,12 @@ export interface PatientContext {
   email: string
   fullName: string
   contactNumber: string
+  /**
+   * The privacy notice version ticked on the sign-up form, carried in
+   * user_metadata. The patient's own statement, so their own metadata is the
+   * right source; it becomes a consent record at first sign-in.
+   */
+  signupConsentVersion: string | null
 }
 
 declare module 'express-serve-static-core' {
@@ -270,11 +276,13 @@ export async function requirePatient(
       account = repaired
     }
 
+    const ticked = user.user_metadata?.privacy_notice_version
     req.patient = {
       userId: account.id,
       email: account.email,
       fullName: account.full_name,
       contactNumber: account.contact_number,
+      signupConsentVersion: typeof ticked === 'string' ? ticked.slice(0, 64) : null,
     }
 
     next()

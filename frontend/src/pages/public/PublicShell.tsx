@@ -69,6 +69,8 @@ export function PublicShell({ children, narrow = false }: { children: ReactNode;
 
           <p className="mt-5 text-xs text-gray-400">
             © {new Date().getFullYear()} Bernardo’s Maternity &amp; Lying-in Clinic. All rights reserved.
+            {' · '}
+            <Link to="/privacy" className="hover:underline">Privacy Notice</Link>
           </p>
         </div>
       </footer>

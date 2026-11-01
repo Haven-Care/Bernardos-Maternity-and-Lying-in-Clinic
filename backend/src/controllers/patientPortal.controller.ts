@@ -10,6 +10,7 @@ import {
   toPatientAccount,
   toRescheduleRequest,
 } from '../mappers/appointment.js'
+import { requireCurrentConsent } from './privacy.controller.js'
 
 /**
  * The patient's own view of their bookings.
@@ -146,6 +147,10 @@ const createBookingSchema = z.object({
 export async function createMyBooking(req: Request, res: Response) {
   const me = account(req)
   const input = parseBody(createBookingSchema, req.body)
+
+  // A booking collects health information (the reason for the visit), so the
+  // patient must have agreed to the notice in force first.
+  await requireCurrentConsent(req)
 
   const { data, error } = await getSupabaseClient().rpc('book_appointment', {
     p_account_id: me.userId,

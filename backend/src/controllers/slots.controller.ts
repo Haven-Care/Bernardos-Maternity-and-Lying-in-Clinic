@@ -2,6 +2,7 @@ import { wholeNumber } from '../lib/inputValidation.js'
 import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
+import { audit } from '../lib/audit.js'
 import { unwrap, unwrapList } from '../lib/db.js'
 import { isoDate, parseBody, parseQuery } from '../lib/validate.js'
 import { toSlot, toSlotAvailability } from '../mappers/clinic.js'
@@ -123,7 +124,9 @@ export async function createSlot(req: Request, res: Response) {
     return
   }
 
-  res.status(201).json(toSlot(unwrap(result)))
+  const slot = toSlot(unwrap(result))
+  await audit(req, 'slot.create', { entityId: slot.id })
+  res.status(201).json(slot)
 }
 
 /**
@@ -153,5 +156,6 @@ export async function updateSlot(req: Request, res: Response) {
     'No such slot.',
   )
 
+  await audit(req, 'slot.update', { entityId: row.id })
   res.json(toSlot(row))
 }

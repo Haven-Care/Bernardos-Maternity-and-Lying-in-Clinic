@@ -9,6 +9,7 @@ import { Inventory } from './pages/portal/inventory/Inventory.tsx'
 import { PatientRecords } from './pages/portal/patients/PatientRecords.tsx'
 import { Administration } from './pages/portal/administration/Administration.tsx'
 import { BookingPage } from './pages/public/BookingPage.tsx'
+import { PrivacyNotice } from './pages/public/PrivacyNotice.tsx'
 import { RecoveryCallback } from './pages/auth/RecoveryCallback'
 import { OAuthCallback } from './pages/auth/OAuthCallback'
 import { Login } from './pages/auth/Login.tsx'
@@ -46,6 +47,9 @@ export const router = createBrowserRouter([{ element: <UnsavedChangesGuard />, e
   { path: '/patient/verify-code', element: <VerifyCode /> },
   { path: '/patient/reset-password', element: <ResetPassword /> },
   { path: '/patient/reset-success', element: <ResetSuccess /> },
+
+  // Public, so it can be read before signing up and linked from anywhere.
+  { path: '/privacy', element: <PrivacyNotice /> },
 
   {
     element: <RequirePatient />,

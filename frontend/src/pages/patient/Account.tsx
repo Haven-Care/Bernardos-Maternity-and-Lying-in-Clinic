@@ -12,6 +12,7 @@ import { Toggle } from '../../components/ui/Toggle'
 import { useToast } from '../../components/ui/toast-context'
 import { isPhMobile } from '../../lib/validate'
 import { PublicShell } from '../public/PublicShell'
+import { PrivacySettings } from './PrivacySettings'
 
 export function Account() {
   const account = useAsync(() => api.patientAuth.getAccount())
@@ -148,6 +149,10 @@ function AccountContent({ account }: { account: PatientAccount }) {
           {notificationError && <p role="alert" className="mt-3 text-sm text-danger-700">{notificationError}</p>}
           <Button type="submit" loading={savingNotifications} disabled={!notificationDirty} className="mt-4 w-full justify-center">Save notification settings</Button>
         </ValidatedForm>
+      </ProfilePanel>
+
+      <ProfilePanel title="Your Privacy" description="Your consent and requests about your data">
+        <PrivacySettings />
       </ProfilePanel>
 
       <ProfilePanel title="Contact Us" description="Get in touch with the clinic">

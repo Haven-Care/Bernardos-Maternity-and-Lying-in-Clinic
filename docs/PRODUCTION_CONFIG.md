@@ -45,6 +45,7 @@ Repository guard-rails that enforce part of this:
 | `npm --prefix backend run create:admin` | Requires `--project-ref` to match `SUPABASE_URL`, and a private password of 12 or more characters |
 | Clinical tables (migration 26) | `TRUNCATE` on patients, clinical records, documents, appointments and their status history is refused unless `private.deployment.environment = 'demo'`. Deleting a patient or booking that has records or history is refused |
 | Browser keys (migration 26) | `anon` and `authenticated` hold no table privileges; `assert_rls_posture()` checks this on every migration |
+| Privacy records (migration 27) | Consents and the audit log cannot be edited or deleted; the audit log refuses `TRUNCATE` outside a demo database |
 
 **After migration 26 reaches staging**, mark staging as a demonstration database once, in its SQL editor, before the next demo reset:
 
@@ -140,6 +141,8 @@ Docker only.
 
 ## Before the first real patient
 
+- [ ] Privacy notice approved by the clinic and its legal adviser, DPO named in it, and `PRIVACY_NOTICE_VERSION` changed from the draft.
+- [ ] Breach procedure in `RUNBOOK.md` confirmed by the DPO, contacts filled in.
 - [ ] Production project created as above, migrations verified, advisors reviewed.
 - [ ] Supabase organization on Pro; daily backups visible in Database → Backups.
 - [ ] Vercel team on Pro; Preview points at staging; production keys appear nowhere else.

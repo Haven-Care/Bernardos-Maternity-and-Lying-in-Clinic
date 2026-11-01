@@ -104,3 +104,11 @@ export async function getDocumentUrl(documentId: string): Promise<string> {
   const { url } = await apiFetch<{ url: string }>(`/documents/${documentId}/url`)
   return url
 }
+
+/**
+ * Everything held about one patient, for answering an access request. The
+ * server records the export in the activity log.
+ */
+export async function exportRecord(id: string): Promise<unknown> {
+  return apiFetch<unknown>(`/patients/${id}/export`)
+}

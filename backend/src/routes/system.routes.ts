@@ -5,6 +5,11 @@ import {
   patchStaffStatus,
   postStaff,
 } from '../controllers/system.controller.js'
+import {
+  listAuditLog,
+  listPrivacyRequests,
+  resolvePrivacyRequest,
+} from '../controllers/privacy.controller.js'
 
 export const systemRouter = Router()
 
@@ -15,3 +20,9 @@ systemRouter.use(requireStaff, requireRole('administrator'))
 systemRouter.get('/staff', getStaff)
 systemRouter.post('/staff', postStaff)
 systemRouter.patch('/staff/:id/status', patchStaffStatus)
+
+// The clinic's Data Privacy Act duties: who accessed what, and answering
+// patients' requests about their data. Administrators act for the clinic's DPO.
+systemRouter.get('/audit-log', listAuditLog)
+systemRouter.get('/privacy-requests', listPrivacyRequests)
+systemRouter.post('/privacy-requests/:id/resolve', resolvePrivacyRequest)

@@ -1,5 +1,6 @@
 import { env } from '../config/env.js'
 import { getSupabaseClient } from '../config/supabase.js'
+import { PRIVACY_NOTICE_VERSION } from '../contract/privacy.js'
 import { DEV_STAFF_PASSWORD, isLocalSupabaseUrl } from '../lib/supabaseTarget.js'
 
 /**
@@ -80,7 +81,13 @@ export async function signIn(email: string, password: string): Promise<string> {
   return body.access_token
 }
 
-/** Registers a patient and returns their JWT. Email confirmation is on. */
+/**
+ * Registers a patient and returns their JWT. Email confirmation is on.
+ *
+ * Ticks the privacy-notice box, as the sign-up form requires, so the account
+ * can book. Pass `{ privacy_notice_version: null }` in `extra` to sign up
+ * without it.
+ */
 export async function signUpPatient(
   email: string,
   password: string,
@@ -98,7 +105,7 @@ export async function signUpPatient(
     body: JSON.stringify({
       email,
       password,
-      data: { full_name: fullName, ...extra },
+      data: { full_name: fullName, privacy_notice_version: PRIVACY_NOTICE_VERSION, ...extra },
     }),
   })
 

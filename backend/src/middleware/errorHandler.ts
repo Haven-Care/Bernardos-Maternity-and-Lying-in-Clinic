@@ -63,6 +63,6 @@ export function errorHandler(err: unknown, req: Request, res: Response, next: Ne
   // Anything that is not an HttpError was not written for the caller — a raw
   // Supabase error, a TypeError. Its message can name tables and columns, so it
   // is logged here and replaced.
-  console.error('Unhandled error', { method: req.method, path: req.path, ...loggableError(err) })
+  console.error('Unhandled error', { requestId: req.requestId, method: req.method, path: req.path, ...loggableError(err) })
   res.status(500).json({ error: 'Something went wrong. Please try again.' })
 }

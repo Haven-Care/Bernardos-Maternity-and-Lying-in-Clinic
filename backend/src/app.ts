@@ -3,6 +3,7 @@ import express from 'express'
 import helmet from 'helmet'
 import { env } from './config/env.js'
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js'
+import { requestId } from './middleware/requestId.js'
 import { apiRouter } from './routes/index.js'
 
 export function createApp() {
@@ -13,6 +14,7 @@ export function createApp() {
   // immediate proxy so rate limits use that IP instead of the proxy address.
   if (process.env.VERCEL === '1') app.set('trust proxy', 1)
 
+  app.use(requestId)
   app.use(helmet())
   app.use(cors({ origin: env.corsOrigins }))
   // Express's default, stated: no request body this API accepts comes near it,

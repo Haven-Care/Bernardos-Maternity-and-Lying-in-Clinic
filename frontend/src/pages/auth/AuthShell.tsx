@@ -63,6 +63,8 @@ export function AuthShell({
 
         <p className="mt-6 text-center text-xs text-gray-400">
           © {new Date().getFullYear()} Bernardo’s Maternity &amp; Lying-in Clinic. All rights reserved.
+          {' · '}
+          <Link to="/privacy" className="hover:underline">Privacy Notice</Link>
         </p>
       </div>
     </div>

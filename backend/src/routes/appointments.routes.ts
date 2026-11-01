@@ -25,6 +25,12 @@ import {
   declineRescheduleRequest,
   listRescheduleRequests,
 } from '../controllers/rescheduleRequests.controller.js'
+import {
+  createMyPrivacyRequest,
+  getMyConsent,
+  listMyPrivacyRequests,
+  recordMyConsent,
+} from '../controllers/privacy.controller.js'
 
 /**
  * Bookings.
@@ -72,6 +78,12 @@ meRouter.get('/bookings', listMyBookings)
 meRouter.delete('/bookings/:id', cancelMyBooking)
 meRouter.post('/bookings/:id/reschedule-request', requestReschedule)
 meRouter.get('/reschedule-requests', listMyRescheduleRequests)
+
+// RA 10173: the notice the patient agreed to, and requests about their data.
+meRouter.get('/consent', getMyConsent)
+meRouter.post('/consent', recordMyConsent)
+meRouter.get('/privacy-requests', listMyPrivacyRequests)
+meRouter.post('/privacy-requests', publicWriteLimiter, createMyPrivacyRequest)
 
 /** The staff approval queue for patient-initiated reschedules. */
 export const rescheduleRequestsRouter = Router()

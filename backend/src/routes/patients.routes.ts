@@ -6,6 +6,7 @@ import {
   createDocument,
   createPatient,
   createUploadUrl,
+  exportPatient,
   getDocumentUrl,
   getPatient,
   listDocuments,
@@ -29,6 +30,7 @@ patientsRouter.get('/', listPatients)
 patientsRouter.post('/', createPatient)
 patientsRouter.get('/:id', getPatient)
 patientsRouter.patch('/:id', updatePatient)
+patientsRouter.get('/:id/export', exportPatient)
 
 patientsRouter.get('/:id/clinical-history', listClinicalHistory)
 patientsRouter.post('/:id/clinical-history', createClinicalRecord)

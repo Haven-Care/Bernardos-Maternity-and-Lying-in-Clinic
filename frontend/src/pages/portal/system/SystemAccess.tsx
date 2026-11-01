@@ -9,8 +9,18 @@ import { PasswordField, SelectField, TextField } from '../../../components/ui/fi
 import { Table, type Column } from '../../../components/ui/Table'
 import { AsyncBoundary, EmptyState } from '../../../components/ui/states'
 import { useToast } from '../../../components/ui/toast-context'
+import { Tabs, type Tab } from '../../../components/ui/Tabs'
+import { useActiveTab } from '../../../hooks/useActiveTab'
 import { formatDate } from '../../../lib/format'
 import type { CreateStaffInput, StaffProfile } from '../../../types/account'
+import { ActivityLog } from './ActivityLog'
+import { PrivacyRequests } from './PrivacyRequests'
+
+const TABS: Tab[] = [
+  { id: 'staff', label: 'Staff Accounts' },
+  { id: 'activity', label: 'Activity Log' },
+  { id: 'privacy', label: 'Privacy Requests' },
+]
 
 /**
  * Staff provisioning — `/admin/system`.
@@ -23,8 +33,12 @@ import type { CreateStaffInput, StaffProfile } from '../../../types/account'
  * Unlisted is not a permission. Every endpoint behind this is
  * administrator-only in Express, and a staff member who types the URL is
  * redirected by the route guard before it renders.
+ *
+ * Also where administrators meet the clinic's Data Privacy Act duties: the
+ * activity log of who accessed patient data, and patients' privacy requests.
  */
 export function SystemAccess() {
+  const active = useActiveTab(TABS)
   const staff = useAsync(() => api.system.listStaff())
   const me = useAsync(() => api.account.getProfile())
   const toast = useToast()
@@ -127,7 +141,12 @@ export function SystemAccess() {
         </p>
       </div>
 
-      <Card>
+      <Tabs tabs={TABS} />
+
+      {active === 'activity' && <ActivityLog />}
+      {active === 'privacy' && <PrivacyRequests />}
+
+      {active === 'staff' && <Card>
         <div className="flex items-center justify-between gap-3 border-b border-border p-4">
           <p className="text-xs text-gray-500">
             Deactivating an account blocks sign-in immediately. Records of what
@@ -146,7 +165,7 @@ export function SystemAccess() {
             <Table columns={columns} rows={rows} rowKey={(s) => s.id} />
           )}
         </AsyncBoundary>
-      </Card>
+      </Card>}
 
       {adding && (
         <AddStaffModal

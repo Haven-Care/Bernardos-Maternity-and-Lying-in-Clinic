@@ -43,6 +43,17 @@ describe('response headers', () => {
     expect(res.headers['cache-control']).toBe('no-store')
   })
 
+  it('tags every response with a request id, reusing a well-formed Vercel id', async () => {
+    const own = await request(createApp()).get('/api/health')
+    expect(own.headers['x-request-id']).toMatch(/^[0-9a-f-]{36}$/)
+
+    const vercel = await request(createApp()).get('/api/health').set('x-vercel-id', 'sin1::abcd1-1730000000000-0123456789ab')
+    expect(vercel.headers['x-request-id']).toBe('sin1::abcd1-1730000000000-0123456789ab')
+
+    const forged = await request(createApp()).get('/api/health').set('x-vercel-id', '<script>alert(1)</script>')
+    expect(forged.headers['x-request-id']).toMatch(/^[0-9a-f-]{36}$/)
+  })
+
   it('does not reflect the requested path in a 404', async () => {
     const res = await request(createApp()).get('/api/<script>alert(1)</script>')
 

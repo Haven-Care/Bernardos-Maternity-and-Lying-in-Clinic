@@ -110,6 +110,31 @@ export function PatientModal({
     values.fullName.trim() !== '' &&
     values.contactNumber.trim() !== ''
 
+  const [exporting, setExporting] = useState(false)
+
+  /**
+   * Downloads everything held about this patient, to answer a request for a
+   * copy under the Data Privacy Act. The server records who exported it.
+   */
+  async function exportRecord() {
+    if (!patientId) return
+    setExporting(true)
+    try {
+      const data = await api.patients.exportRecord(patientId)
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `patient-${existing.data?.patientCode ?? patientId}.json`
+      link.click()
+      URL.revokeObjectURL(url)
+      toast.success('Record Exported', 'Send it only to the patient, or to someone they have authorised in writing.')
+    } catch (err) {
+      toast.error('Could not export the record', err instanceof Error ? err.message : 'Please try again.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   async function save() {
     if (!values || !canSave || !dirty || inFlight.current) return
     inFlight.current = true
@@ -166,6 +191,13 @@ export function PatientModal({
         editing && existing.data
           ? `${existing.data.patientCode} · added ${formatTimestamp(existing.data.createdAt)}`
           : 'Personal, maternity, and supporting documents.'
+      }
+      headerAction={
+        editing ? (
+          <Button size="sm" variant="secondary" onClick={() => void exportRecord()} loading={exporting} disabled={saving}>
+            Export record
+          </Button>
+        ) : undefined
       }
       footer={
         <Button onClick={() => void save()} loading={saving} disabled={!dirty || !canSave}>

@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express'
 import { z } from 'zod'
+import { audit } from '../lib/audit.js'
 import { parseBody } from '../lib/validate.js'
 import {
   countActiveAdministrators,
@@ -28,7 +29,9 @@ export async function getStaff(_req: Request, res: Response) {
 
 export async function postStaff(req: Request, res: Response) {
   const input = parseBody(createStaffSchema, req.body)
-  res.status(201).json(await createStaffAccount(input))
+  const profile = await createStaffAccount(input)
+  await audit(req, 'staff.create', { entityId: profile.id, details: { role: profile.role } })
+  res.status(201).json(profile)
 }
 
 const statusSchema = z.object({
@@ -61,5 +64,7 @@ export async function patchStaffStatus(req: Request, res: Response) {
     }
   }
 
-  res.json(await setStaffStatus(id, status))
+  const profile = await setStaffStatus(id, status)
+  await audit(req, 'staff.status', { entityId: id, details: { status } })
+  res.json(profile)
 }

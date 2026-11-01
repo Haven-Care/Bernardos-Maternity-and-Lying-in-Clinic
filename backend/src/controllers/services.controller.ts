@@ -2,6 +2,7 @@ import { text, money } from '../lib/inputValidation.js'
 import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
+import { audit } from '../lib/audit.js'
 import { unwrap, unwrapList } from '../lib/db.js'
 import { parseBody } from '../lib/validate.js'
 import { toService } from '../mappers/clinic.js'
@@ -65,6 +66,7 @@ export async function createService(req: Request, res: Response) {
       .single(),
   )
 
+  await audit(req, 'service.create', { entityId: row.id })
   res.status(201).json(toService(row))
 }
 
@@ -82,5 +84,6 @@ export async function updateService(req: Request, res: Response) {
     'No such service.',
   )
 
+  await audit(req, 'service.update', { entityId: row.id })
   res.json(toService(row))
 }

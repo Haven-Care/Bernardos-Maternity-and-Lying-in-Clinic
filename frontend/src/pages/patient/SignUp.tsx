@@ -66,6 +66,8 @@ export function SignUp() {
     confirmPassword: '',
   })
   const [errors, setErrors] = useState<Errors>({})
+  const [acceptedNotice, setAcceptedNotice] = useState(false)
+  const [noticeError, setNoticeError] = useState<string>()
   const [error, setError] = useState<string>()
   const [submitting, setSubmitting] = useState(false)
 
@@ -81,13 +83,14 @@ export function SignUp() {
 
     const found = validate(form)
     setErrors(found)
-    if (Object.keys(found).length > 0 || !passwordOk) return
+    setNoticeError(acceptedNotice ? undefined : 'Please read and accept the Privacy Notice to create an account.')
+    if (Object.keys(found).length > 0 || !passwordOk || !acceptedNotice) return
 
     setSubmitting(true)
     setError(undefined)
 
     try {
-      await api.patientAuth.signUp(form)
+      await api.patientAuth.signUp({ ...form, acceptedPrivacyNotice: acceptedNotice })
       // No session yet — confirmation is required before the account can book.
       // The address is carried forward only so the next screen can name it.
       navigate('/patient/check-email', {
@@ -175,6 +178,35 @@ export function SignUp() {
           autoComplete="new-password"
           error={errors.confirmPassword}
         />
+
+        {/* Unticked by default: consent under RA 10173 has to be given, not assumed. */}
+        <div>
+          <label className="flex cursor-pointer items-start gap-3 rounded-card border border-brand-200 bg-brand-50/50 p-3 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={acceptedNotice}
+              onChange={(event) => {
+                setAcceptedNotice(event.target.checked)
+                if (event.target.checked) setNoticeError(undefined)
+              }}
+              aria-invalid={noticeError ? true : undefined}
+              aria-describedby={noticeError ? 'signup-notice-error' : undefined}
+              className="mt-0.5 size-5 shrink-0 accent-brand-600"
+            />
+            <span>
+              I have read the{' '}
+              <Link to="/privacy" target="_blank" rel="noopener" className="font-semibold text-brand-600 hover:underline">
+                Privacy Notice
+              </Link>{' '}
+              and agree to the clinic processing my personal and health information as it describes.
+            </span>
+          </label>
+          {noticeError && (
+            <p id="signup-notice-error" role="alert" className="mt-1 text-xs text-danger-700">
+              {noticeError}
+            </p>
+          )}
+        </div>
 
         {error && (
           <p role="alert" className="text-sm text-danger-700">

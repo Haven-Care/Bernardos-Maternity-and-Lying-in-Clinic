@@ -14,12 +14,17 @@ change the value where the table says and record the decision here.
 | Staff idle sign-out | 20 minutes | `VITE_STAFF_IDLE_MINUTES` in the frontend's Vercel environment | Set the variable and redeploy |
 | Service prices | The unconfirmed values in `supabase/CONFLICTS.md` | Services & Pricing screen | An administrator edits them in the portal |
 | Password minimum | 8 characters plus upper case, digit and symbol | `frontend/src/lib/password.ts` and the hosted Auth setting | Change both together (see `PRODUCTION_CONFIG.md`) |
+| How long staff notifications are kept | 365 days (minimum 30) | `clinic_settings.notification_retention_days` | SQL editor: `update clinic_settings set notification_retention_days = 180 where id = 1;` |
+| Privacy notice text | Team draft, version `2026-11-draft-1` | `frontend/src/pages/public/PrivacyNotice.tsx` and `PRIVACY_NOTICE_VERSION` in `frontend/src/types/privacy.ts` | Edit the page, bump the version in the same change; every patient is asked again |
+| Who answers privacy requests | Administrators, on behalf of the clinic's DPO | `systemRouter` (administrator-only) | Unchanged unless the clinic names a separate DPO account |
 
-There is no portal screen yet for the three `clinic_settings` limits. An operator
-changes them in the Supabase SQL editor of the right project. The booking
-function reads them on every booking, so a change applies immediately.
+There is no portal screen yet for the `clinic_settings` values above. An operator
+changes them in the Supabase SQL editor of the right project. The database reads
+them each time they are used, so a change applies immediately.
 
 ## Not yet decided, not yet built
 
 - **Staff two-step sign-in (MFA).** Supabase supports authenticator apps for free. Enforcing it for staff is planned: an enrol screen, a challenge screen, and an administrator reset.
-- **Retention periods.** How long the system keeps notifications and guest-booking contact copies, and the medical-record retention the clinic follows under DOH rules.
+- **Medical-record retention.** The period the clinic follows under DOH rules; the privacy notice shows it as "[to be confirmed]". Nothing deletes medical records automatically.
+- **The Data Protection Officer.** Named by the clinic. Fill in the notice, `RUNBOOK.md`, and the clinic's NPC registration if it applies.
+- **Privacy notice approval.** The clinic and its legal adviser approve the text; then change the version so it no longer says `draft`.

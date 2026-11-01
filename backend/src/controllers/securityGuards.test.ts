@@ -1,12 +1,14 @@
 import type { Request, Response } from 'express'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { getClient, staff } = vi.hoisted(() => ({
+const { getClient, staff, audit } = vi.hoisted(() => ({
   getClient: vi.fn(),
+  audit: vi.fn(),
   staff: { findStaff: vi.fn(), countActiveAdministrators: vi.fn(), setStaffStatus: vi.fn() },
 }))
 vi.mock('../config/supabase.js', () => ({ getSupabaseClient: getClient }))
 vi.mock('../services/staff.js', async (original) => ({ ...(await original()), ...staff }))
+vi.mock('../lib/audit.js', () => ({ audit }))
 
 import { createDocument } from './patients.controller.js'
 import { declineRescheduleRequest } from './rescheduleRequests.controller.js'
@@ -38,6 +40,7 @@ function query(...results: unknown[]) {
 
 beforeEach(() => {
   getClient.mockReset()
+  audit.mockReset().mockResolvedValue(undefined)
   Object.values(staff).forEach((fn) => fn.mockReset())
 })
 
@@ -68,6 +71,7 @@ describe('patient document uploads', () => {
     await expect(createDocument(request(issuedPath), response())).rejects.toThrow('not a PDF')
     expect(s.bucket.remove).toHaveBeenCalledWith([issuedPath])
     expect(s.insert.insert).not.toHaveBeenCalled()
+    expect(audit).not.toHaveBeenCalled()
   })
 
   it('records the stored size, not the size the browser claimed', async () => {
@@ -76,6 +80,7 @@ describe('patient document uploads', () => {
     await createDocument(request(issuedPath, 9_999_999), res)
     expect(s.insert.insert).toHaveBeenCalledWith(expect.objectContaining({ file_size: 4096, storage_path: issuedPath }))
     expect(res.status).toHaveBeenCalledWith(201)
+    expect(audit).toHaveBeenCalledWith(expect.anything(), 'document.upload', expect.objectContaining({ patientId }))
   })
 
   it('refuses objects over the bucket limit', async () => {
@@ -120,6 +125,7 @@ describe('deactivating staff', () => {
     await patchStaffStatus(req(ids.admin), response())
 
     expect(staff.setStaffStatus).toHaveBeenCalledWith(ids.admin, 'inactive')
+    expect(audit).toHaveBeenCalledWith(expect.anything(), 'staff.status', { entityId: ids.admin, details: { status: 'inactive' } })
   })
 })
 

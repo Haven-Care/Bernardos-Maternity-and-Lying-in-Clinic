@@ -2,6 +2,7 @@ import { text, phoneNumber, mobileNumber, emailAddress, website, wholeNumber } f
 import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
+import { audit } from '../lib/audit.js'
 import { unwrap, unwrapList } from '../lib/db.js'
 import { parseBody } from '../lib/validate.js'
 import {
@@ -133,6 +134,7 @@ export async function updateClinicInfo(req: Request, res: Response) {
     'Clinic details have not been set up yet.',
   )
 
+  await audit(req, 'clinic.update')
   res.json(toClinicInfo(row))
 }
 
@@ -170,6 +172,7 @@ export async function replaceOperatingHours(req: Request, res: Response) {
     }),
   )
 
+  await audit(req, 'hours.update')
   res.json(saved.map(toOperatingHours))
 }
 
@@ -209,5 +212,6 @@ export async function updateSettings(req: Request, res: Response) {
     'Clinic settings have not been set up yet.',
   )
 
+  await audit(req, 'settings.update')
   res.json(toClinicSettings(row))
 }

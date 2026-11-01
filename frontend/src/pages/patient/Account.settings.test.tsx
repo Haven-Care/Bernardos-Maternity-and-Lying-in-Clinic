@@ -3,7 +3,7 @@ import { act, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-const { updateAccount, requestPasswordReset, confirmLeave, cancelLeave } = vi.hoisted(() => ({ updateAccount: vi.fn(), requestPasswordReset: vi.fn(), confirmLeave: vi.fn(), cancelLeave: vi.fn() }))
+const { updateAccount, requestPasswordReset, confirmLeave, cancelLeave, submitRequest } = vi.hoisted(() => ({ updateAccount: vi.fn(), requestPasswordReset: vi.fn(), confirmLeave: vi.fn(), cancelLeave: vi.fn(), submitRequest: vi.fn() }))
 vi.mock('../../api', () => ({
   patientAuth: {
     getAccount: async () => ({ fullName: 'Test Patient', email: 'patient@example.test', contactNumber: '09171234567', emailNotifications: true }),
@@ -11,6 +11,11 @@ vi.mock('../../api', () => ({
     requestPasswordReset,
   },
   clinic: { getClinicInfo: async () => ({ name: 'Test Clinic', address: 'Clinic address', mobile: '09171234567', landline: '', email: 'clinic@example.test' }) },
+  privacy: {
+    getConsent: async () => ({ noticeVersion: 'v1', consentedVersion: 'v1', consentedAt: '2026-11-02T01:00:00Z', required: false }),
+    listMyRequests: async () => [],
+    submitRequest,
+  },
 }))
 vi.mock('../public/PublicShell', () => ({ PublicShell: ({ children }: { children: ReactNode }) => <main>{children}</main> }))
 vi.mock('../../hooks/useUnsavedChanges', () => ({ useUnsavedChanges: () => {}, useConfirmLeave: () => ({ confirmLeave, cancelLeave }) }))
@@ -37,9 +42,9 @@ function resetButton() { return [...container.querySelectorAll<HTMLButtonElement
 async function render() { await act(async () => { root.render(<MemoryRouter initialEntries={['/patient/account']}><Account /><LocationProbe /></MemoryRouter>); await Promise.resolve() }) }
 
 describe('patient mobile settings', () => {
-  it('shows all five sections and expands each mobile panel independently', async () => {
+  it('shows all six sections and expands each mobile panel independently', async () => {
     await render()
-    const titles = ['Personal Information', 'Password Management', 'Notification Settings', 'Contact Us', 'Help & FAQs']
+    const titles = ['Personal Information', 'Password Management', 'Notification Settings', 'Your Privacy', 'Contact Us', 'Help & FAQs']
     for (const title of titles) expect(panel(title)).toBeDefined()
     expect(panel('Personal Information').getAttribute('aria-expanded')).toBe('false')
     for (const title of titles.slice(1)) expect(panel(title).getAttribute('aria-expanded')).toBe('false')

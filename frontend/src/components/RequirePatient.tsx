@@ -5,6 +5,7 @@ import { isSessionError } from '../lib/api'
 import { ErrorState } from './ui/states'
 import { AuthLoadingScreen } from './ui/AuthLoadingScreen'
 import { SessionExpiryRedirect } from './SessionGuards'
+import { ConsentGate } from './ConsentGate'
 export function RequirePatient() {
   const location = useLocation()
   const identity = useAsync(() => api.session.getIdentity())
@@ -15,7 +16,9 @@ export function RequirePatient() {
   return (
     <>
       <SessionExpiryRedirect />
-      <Outlet />
+      <ConsentGate>
+        <Outlet />
+      </ConsentGate>
     </>
   )
 }

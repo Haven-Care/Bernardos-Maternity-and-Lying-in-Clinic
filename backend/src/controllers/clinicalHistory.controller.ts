@@ -6,6 +6,7 @@ import { unwrap, unwrapList } from '../lib/db.js'
 import { parseBody, parseQuery } from '../lib/validate.js'
 import { HttpError } from '../middleware/errorHandler.js'
 import { sampleCopy } from '../lib/sampleCopy.js'
+import { audit } from '../lib/audit.js'
 
 const idSchema = z.string().uuid('Not a valid patient id.')
 const recordSchema = z.object({
@@ -56,6 +57,7 @@ export async function listClinicalHistory(req: Request, res: Response) {
       .order('id', { ascending: false })
       .range(offset, offset + limit - 1),
   )
+  await audit(req, 'clinical_record.view', { patientId, details: { count: rows.length } })
   res.json(rows.map(toRecord))
 }
 
@@ -75,5 +77,6 @@ export async function createClinicalRecord(req: Request, res: Response) {
       created_by: req.staff.userId,
     }).select('id, patient_id, occurred_at, title, findings, provider').single(),
   )
+  await audit(req, 'clinical_record.create', { entityId: row.id, patientId })
   res.status(201).json(toRecord(row))
 }

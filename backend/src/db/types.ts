@@ -179,6 +179,42 @@ export type Database = {
           },
         ]
       }
+      audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_role: string
+          details: Json
+          entity_id: string | null
+          id: number
+          occurred_at: string
+          patient_id: string | null
+          request_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_role: string
+          details?: Json
+          entity_id?: string | null
+          id?: number
+          occurred_at?: string
+          patient_id?: string | null
+          request_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_role?: string
+          details?: Json
+          entity_id?: string | null
+          id?: number
+          occurred_at?: string
+          patient_id?: string | null
+          request_id?: string | null
+        }
+        Relationships: []
+      }
       clinic_info: {
         Row: {
           address: string
@@ -222,6 +258,7 @@ export type Database = {
           max_active_bookings_per_account: number
           max_booking_days_ahead: number
           near_expiry_days: number
+          notification_retention_days: number
           reminder_lead_hours: number
           updated_at: string
         }
@@ -231,6 +268,7 @@ export type Database = {
           max_active_bookings_per_account?: number
           max_booking_days_ahead?: number
           near_expiry_days?: number
+          notification_retention_days?: number
           reminder_lead_hours?: number
           updated_at?: string
         }
@@ -240,6 +278,7 @@ export type Database = {
           max_active_bookings_per_account?: number
           max_booking_days_ahead?: number
           near_expiry_days?: number
+          notification_retention_days?: number
           reminder_lead_hours?: number
           updated_at?: string
         }
@@ -622,6 +661,38 @@ export type Database = {
         }
         Relationships: []
       }
+      patient_consents: {
+        Row: {
+          account_id: string | null
+          channel: string
+          consented_at: string
+          id: string
+          notice_version: string
+        }
+        Insert: {
+          account_id?: string | null
+          channel: string
+          consented_at?: string
+          id?: string
+          notice_version: string
+        }
+        Update: {
+          account_id?: string | null
+          channel?: string
+          consented_at?: string
+          id?: string
+          notice_version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_consents_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "patient_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_documents: {
         Row: {
           doc_type: Database["public"]["Enums"]["patient_document_type"]
@@ -765,6 +836,54 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: true
             referencedRelation: "patient_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      privacy_requests: {
+        Row: {
+          account_id: string | null
+          details: string
+          id: string
+          kind: string
+          resolution_note: string
+          resolved_at: string | null
+          resolved_by: string | null
+          submitted_at: string
+        }
+        Insert: {
+          account_id?: string | null
+          details?: string
+          id?: string
+          kind: string
+          resolution_note?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          submitted_at?: string
+        }
+        Update: {
+          account_id?: string | null
+          details?: string
+          id?: string
+          kind?: string
+          resolution_note?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "privacy_requests_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "patient_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "privacy_requests_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1248,6 +1367,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      purge_expired_notifications: { Args: never; Returns: number }
       receive_inventory_stock: {
         Args: {
           p_actor: string
