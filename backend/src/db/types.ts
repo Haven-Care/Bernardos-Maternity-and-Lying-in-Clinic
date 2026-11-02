@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.18"
-  }
   public: {
     Tables: {
       appointment_slots: {
@@ -197,7 +192,7 @@ export type Database = {
           actor_role: string
           details?: Json
           entity_id?: string | null
-          id?: number
+          id?: never
           occurred_at?: string
           patient_id?: string | null
           request_id?: string | null
@@ -208,7 +203,7 @@ export type Database = {
           actor_role?: string
           details?: Json
           entity_id?: string | null
-          id?: number
+          id?: never
           occurred_at?: string
           patient_id?: string | null
           request_id?: string | null
@@ -1792,3 +1787,4 @@ export const Constants = {
     },
   },
 } as const
+

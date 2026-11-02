@@ -84,22 +84,25 @@ jobs:
         working-directory: backend
         run: npm test
 
-      # backend/src/db/types.ts must be what `npm run db:types` writes for the
-      # migrated schema, so a hand edit or a forgotten regeneration fails here.
-      # Runs whenever the stack started, even if the suites failed. The
-      # PostgREST version line is ignored: it names the stack's PostgREST
-      # build, not the schema. The diff goes into an annotation, which the
-      # public API shows without signing in, and into the job summary.
+      # backend/src/db/types.ts must be exactly what `npm run db:types` writes
+      # for the migrated schema, so a hand edit or a forgotten regeneration
+      # fails here. Types generated from a hosted project differ (they add an
+      # __InternalSupabase block), so regenerate locally. Runs whenever the
+      # stack started, even if the suites failed. The diff goes into an
+      # annotation, which the public API shows without signing in, and into
+      # the job summary.
       - name: Check generated database types
         if: ${{ !cancelled() && steps.stack.outcome == 'success' }}
         run: |
           npx supabase gen types typescript --local --schema public > "$RUNNER_TEMP/types.ts"
-          if diff -u -I 'PostgrestVersion' backend/src/db/types.ts "$RUNNER_TEMP/types.ts" > "$RUNNER_TEMP/types.diff"; then
+          if diff -u backend/src/db/types.ts "$RUNNER_TEMP/types.ts" > "$RUNNER_TEMP/types.diff"; then
             echo 'backend/src/db/types.ts matches the migrated schema.'
             exit 0
           fi
           {
             echo '### backend/src/db/types.ts differs from the migrated schema'
+            echo
+            echo 'Run `npm run db:types` against a local stack, or apply this diff, and commit the result.'
             echo
             echo '```diff'
             cat "$RUNNER_TEMP/types.diff"
