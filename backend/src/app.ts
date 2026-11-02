@@ -1,6 +1,7 @@
 import cors from 'cors'
 import express from 'express'
 import { env } from './config/env.js'
+import { accessLog } from './middleware/accessLog.js'
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js'
 import { requestId } from './middleware/requestId.js'
 import { securityHeaders } from './middleware/securityHeaders.js'
@@ -15,6 +16,7 @@ export function createApp() {
   if (process.env.VERCEL === '1') app.set('trust proxy', 1)
 
   app.use(requestId)
+  if (env.nodeEnv !== 'test') app.use(accessLog)
   app.use(securityHeaders)
   app.use(cors({ origin: env.corsOrigins }))
   // Express's default, stated: no request body this API accepts comes near it,

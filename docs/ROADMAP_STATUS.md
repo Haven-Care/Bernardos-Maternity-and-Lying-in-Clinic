@@ -2,7 +2,7 @@
 
 Where the production-readiness work stands: what is done, what is still open, and what was written but never verified. **Update this file whenever a phase lands or an item here is closed.**
 
-Last updated: 2 November 2026.
+Last updated: 2 November 2026 (Phase 5 started).
 
 All of this work branches from and targets `deployment/prep`. Nothing merges into `main` until the team decides to.
 
@@ -15,7 +15,7 @@ All of this work branches from and targets `deployment/prep`. Nothing merges int
 | 2 | Security hardening | Core done (11a7e53, migration 26). Open items below |
 | 3 | Data Privacy Act: consent, audit log, privacy requests | Done (eb7baa7, migration 27). Notice text and DPO await the clinic |
 | 4 | Reliability: paging, shared rate limits, timeouts, load test | Code landed (e493798). Unverified items below |
-| 5 | Operations: monitoring, backups, CI integration job, releases | Not started |
+| 5 | Operations: monitoring, backups, CI integration job, releases | In progress. Structured access log and CI integration workflow written, unverified; see below |
 
 ## Check first
 
@@ -89,9 +89,18 @@ All of this work branches from and targets `deployment/prep`. Nothing merges int
 - [ ] Password minimum of 12 characters, in the UI and the hosted Auth setting together. `backend/src/services/staff.ts` still accepts 8.
 - [ ] Smaller database items from the Phase 2 plan.
 
-## Phase 5: not started
+## Phase 5: in progress
 
-Sentry error tracking, structured logs, uptime monitoring, encrypted off-site backups with a restore drill, a scheduled purge job, a CI job that runs the database suites, and a documented release process.
+**Written, not verified**
+- [ ] `.github/workflows/db-integration.yml` starts a local Supabase stack and runs the backend suites with `REQUIRE_DB=1`. It has never run: no Docker here and `gh` is not signed in. Watch its first run on GitHub (the `supabase status -o env` parsing and the `-x` exclude list are the likely failure points), then make it a required check.
+- [ ] `backend/src/middleware/accessLog.ts` logs one JSON line per request (route pattern, status, duration, request id; no paths values, query or body). Unit-tested, off under `NODE_ENV=test`. Not yet seen in Vercel's logs.
+
+**Still to do (most need an account or the clinic)**
+- Sentry error tracking (needs a Sentry account and DSN).
+- Uptime monitoring on `/api/health` and `/api/health/db`.
+- Encrypted off-site backups and a restore drill (needs a storage account and decision on where).
+- A scheduled purge job (needs the clinic's retention period; see Phase 3 items).
+- A documented release process in `RUNBOOK.md`.
 
 ## Notes for whoever picks this up
 

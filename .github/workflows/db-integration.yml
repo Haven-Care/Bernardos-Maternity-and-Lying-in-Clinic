@@ -1,0 +1,67 @@
+name: Database integration
+
+# Runs the backend suites that need a real Supabase stack (116 tests that skip
+# on a machine without Docker). REQUIRE_DB=1 turns a skip into a failure, so a
+# stack that did not start cannot pass as green.
+#
+# Not part of backend-ci.yml on purpose: starting the stack takes minutes, and
+# the lint/build/test check is the required one. Make this required once it has
+# been seen green on GitHub; it has never run there.
+on:
+  pull_request:
+    branches:
+      - main
+      - deployment/prep
+  push:
+    branches:
+      - main
+      - deployment/prep
+
+jobs:
+  db-integration:
+    name: Backend suites against local Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            package-lock.json
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local Supabase
+        run: supabase start -x studio,imgproxy,vector,logflare,edge-runtime
+
+      - name: Export stack settings
+        run: |
+          supabase status -o env > "$RUNNER_TEMP/stack.env"
+          {
+            echo "SUPABASE_URL=$(grep '^API_URL=' "$RUNNER_TEMP/stack.env" | cut -d= -f2- | tr -d '"')"
+            echo "SUPABASE_ANON_KEY=$(grep '^ANON_KEY=' "$RUNNER_TEMP/stack.env" | cut -d= -f2- | tr -d '"')"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$(grep '^SERVICE_ROLE_KEY=' "$RUNNER_TEMP/stack.env" | cut -d= -f2- | tr -d '"')"
+            echo "REQUIRE_DB=1"
+          } >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Seed staff accounts
+        working-directory: backend
+        run: npm run seed:staff
+
+      - name: Run suites
+        working-directory: backend
+        run: npm test
+
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop --no-backup
