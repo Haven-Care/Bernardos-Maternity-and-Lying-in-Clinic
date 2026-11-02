@@ -6,9 +6,13 @@ describe('meetsPasswordRules', () => {
     expect(meetsPasswordRules('HavenCare!2026')).toBe(true)
   })
 
+  it('accepts exactly 12 characters', () => {
+    expect(meetsPasswordRules('HavenCare!12')).toBe(true)
+  })
+
   it('refuses one that misses any single rule', () => {
     for (const value of [
-      'Hc!2026', // 7 characters
+      'HavenCare!1', // 11 characters
       'havencare!2026', // no uppercase
       'HavenCare!care', // no number
       'HavenCare2026', // no special character

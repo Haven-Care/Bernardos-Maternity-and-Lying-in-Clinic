@@ -13,7 +13,7 @@ change the value where the table says and record the decision here.
 | Day-wide booking ceiling | None (only per-slot capacity applies) | `clinic_settings.daily_booking_capacity` | SQL editor; `null` means no ceiling |
 | Staff idle sign-out | 20 minutes | `VITE_STAFF_IDLE_MINUTES` in the frontend's Vercel environment | Set the variable and redeploy |
 | Service prices | The unconfirmed values in `supabase/CONFLICTS.md` | Services & Pricing screen | An administrator edits them in the portal |
-| Password minimum | 8 characters plus upper case, digit and symbol | `frontend/src/lib/password.ts` and the hosted Auth setting | Change both together (see `PRODUCTION_CONFIG.md`) |
+| Password minimum | 12 characters plus upper case, digit and symbol | `PASSWORD_MIN_LENGTH` in `frontend/src/lib/password.ts`, `createStaffSchema` in `backend/src/services/staff.ts`, `minimum_password_length` in `supabase/config.toml`, and the hosted Auth setting | Change all four together (see `PRODUCTION_CONFIG.md`) |
 | How long staff notifications are kept | 365 days (minimum 30) | `clinic_settings.notification_retention_days` | SQL editor: `update clinic_settings set notification_retention_days = 180 where id = 1;` |
 | Privacy notice text | Team draft, version `2026-11-draft-1` | `frontend/src/pages/public/PrivacyNotice.tsx` and `PRIVACY_NOTICE_VERSION` in `frontend/src/types/privacy.ts` | Edit the page, bump the version in the same change; every patient is asked again |
 | Who answers privacy requests | Administrators, on behalf of the clinic's DPO | `systemRouter` (administrator-only) | Unchanged unless the clinic names a separate DPO account |

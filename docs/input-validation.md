@@ -28,7 +28,7 @@ The API repeats persistent-data validation. Existing database rules continue to 
 | Booking | Reason for Visit | 5–2,000 characters after trimming | Provide enough context for the clinic |
 | Rescheduling | New Date, New Time | Required real date from today onward; time must be an available dropdown option | Prevent incomplete schedules; the database still rechecks availability |
 | Appointment slots | Time, Capacity | Required valid time and positive whole-number capacity | Prevent malformed schedules and fractional or zero capacity |
-| Passwords | Password, Temporary Password, New Password, confirmations | Bounded lengths; temporary/new passwords have an eight-character minimum; existing new-password complexity and matching checks retained; new-password maximum 128 | Prevent oversized values and preserve the existing password policy without trimming password contents |
+| Passwords | Password, Temporary Password, New Password, confirmations | Bounded lengths; temporary/new passwords have a twelve-character minimum; existing new-password complexity and matching checks retained; new-password maximum 128 | Prevent oversized values and preserve the existing password policy without trimming password contents |
 | Search / filters | Shared search boxes, dropdowns | Search limited to 200 characters; selected values must be offered options | Keep searches flexible while preventing excessive input or stale selections |
 | Patient documents | File picker and upload metadata | JPG/PNG/WebP/HEIC/PDF, nonempty, at most 10 MB, filename 1–255 characters; visible upload errors | Match existing storage limits before uploading |
 

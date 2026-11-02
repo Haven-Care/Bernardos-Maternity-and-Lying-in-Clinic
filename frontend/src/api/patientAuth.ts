@@ -7,7 +7,7 @@ import { apiFetch } from './client'
 import { PRIVACY_NOTICE_VERSION } from '../types/privacy'
 import { ApiError } from '../lib/api'
 import { textInputError } from '../lib/inputValidation'
-import { meetsPasswordRules } from '../lib/password'
+import { PASSWORD_MIN_LENGTH, meetsPasswordRules } from '../lib/password'
 import { RECOVERY_RETURN_KEY, supabase } from '../lib/supabase'
 import { requestPasswordReset as sendPasswordReset } from './account'
 
@@ -39,7 +39,7 @@ export async function signUp(input: PatientSignupInput & { acceptedPrivacyNotice
     ?? textInputError(input.email, { label: 'Email', required: true, rule: 'email', maxLength: 254 })
     ?? textInputError(input.contactNumber, { label: 'Mobile number', required: true, rule: 'mobile', maxLength: 30 })
   if (issue) throw new Error(issue)
-  if (!meetsPasswordRules(input.password) || input.password.length > 128) throw new Error('Use 8–128 characters with an uppercase letter, a number, and a special character.')
+  if (!meetsPasswordRules(input.password) || input.password.length > 128) throw new Error(`Use ${PASSWORD_MIN_LENGTH}–128 characters with an uppercase letter, a number, and a special character.`)
   const { error } = await supabase.auth.signUp({
     email: input.email.trim().toLowerCase(),
     password: input.password,

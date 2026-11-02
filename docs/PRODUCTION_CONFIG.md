@@ -90,7 +90,7 @@ Docker only.
 |---|---|---|---|
 | Site URL | Authentication → URL Configuration | Staging frontend URL | Clinic domain (the current production URL until one is bought) |
 | Redirect URLs | Same page | `<staging origin>/auth/callback` and `/auth/recovery`. A preview pattern scoped to this team, e.g. `https://havencare-frontend-*-havencare.vercel.app/auth/**`, is acceptable on staging only | Exact `<origin>/auth/callback` and `<origin>/auth/recovery`. **No wildcards** |
-| Minimum password length | Authentication → Providers → Email | Match `frontend/src/lib/password.ts` (8 today) | Same. Raise both to 12 together (Phase 2) |
+| Minimum password length | Authentication → Providers → Email | 12, to match `frontend/src/lib/password.ts`. Accounts with shorter passwords still sign in; the minimum applies when a password is set | Same |
 | Required characters | Same | Leave off until the UI rules include a lowercase rule, then set lowercase, uppercase, digits and symbols | Same |
 | Secure password change | Same | On | On |
 | Email OTP expiry | Same | 900 s | 900 s. Keep OTP length at 6 to match the recovery form |

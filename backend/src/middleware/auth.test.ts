@@ -149,7 +149,7 @@ describe.skipIf(!up)('authorization', () => {
         .send({ email: uniqueEmail('weak'), password: 'abc', fullName: 'X' })
 
       expect(res.status).toBe(400)
-      expect(res.body.error).toMatch(/8 characters/)
+      expect(res.body.error).toMatch(/12 characters/)
     })
   })
 

@@ -2,7 +2,7 @@
 
 Where the production-readiness work stands: what is done, what is still open, and what was written but never verified. **Update this file whenever a phase lands or an item here is closed.**
 
-Last updated: 2 November 2026 (Phase 5: CI hardening, nightly notification purge, release process).
+Last updated: 2 November 2026 (Phase 5: first green CI on 02ec77b, generated-types check, stricter purge-job test, Node 24 action pins. Phase 2: 12-character password minimum).
 
 All of this work branches from and targets `deployment/prep`. Nothing merges into `main` until the team decides to.
 
@@ -15,7 +15,7 @@ All of this work branches from and targets `deployment/prep`. Nothing merges int
 | 2 | Security hardening | Core done (11a7e53, migration 26). Open items below |
 | 3 | Data Privacy Act: consent, audit log, privacy requests | Done (eb7baa7, migration 27). Notice text and DPO await the clinic |
 | 4 | Reliability: paging, shared rate limits, timeouts, load test | Code landed (e493798). Unverified items below |
-| 5 | Operations: monitoring, backups, CI integration job, releases | In progress. Access log, CI hardening and integration job, nightly notification purge, app error boundary and release process written; most unverified, see below |
+| 5 | Operations: monitoring, backups, CI integration job, releases | In progress. CI integration job and CI hardening green on GitHub; access log, nightly notification purge, error boundary and release process written. Monitoring and backups need accounts, see below |
 
 ## Check first
 
@@ -26,7 +26,7 @@ All of this work branches from and targets `deployment/prep`. Nothing merges int
 
 **Couldn't run or see on the development machine**
 - [ ] Migrations 26 and 27 have only run in PGlite (`npm run db:check`), with stub `auth` and `storage` schemas. A read-only check of staging found nothing that should stop them: the same seven unpinned functions, all owned by `postgres`; no storage policies; both views `security_invoker`. They have still never been applied to a real Supabase database. After applying them to staging, run the Supabase advisors and `select assert_rls_posture();`.
-- [ ] `backend/src/db/types.ts` was edited by hand for migrations 26 and 27. Regenerate it with `npm run db:types` from a local stack and check that the diff is empty.
+- [ ] `backend/src/db/types.ts` was edited by hand for migrations 26 and 27. The integration job now regenerates it from the migrated stack and fails on any difference other than the PostgREST version line. It has not run yet. If it fails, the diff is in the job's annotation, which `api.github.com/repos/<owner>/<repo>/check-runs/<id>/annotations` returns without signing in.
 - [ ] Screens that need a signed-in user were checked only by unit tests:
   - the consent screen, and Profile → Your Privacy
   - System Access → Activity Log and Privacy Requests
@@ -36,12 +36,13 @@ All of this work branches from and targets `deployment/prep`. Nothing merges int
 
   Click through them on staging.
 - [ ] The CSP was checked against a local build with Google sign-in switched off. Check Google sign-in under the CSP on staging before setting `VITE_GOOGLE_LOGIN_ENABLED=true`.
-- [ ] Nobody has looked at CI results for `deployment/prep`: `gh` is not signed in on the development machine. Confirm both workflows are green on GitHub.
+- [x] CI on `deployment/prep`: Backend CI, Frontend CI and Database integration were all green on 02ec77b (2 Nov 2026). Read through the public GitHub API; `gh` is not signed in on the development machine, and job logs need a signed-in account.
 - [ ] `npm run sync:types:check` fails on Windows checkouts because of line endings. It passes on Linux CI, and the committed copies match. This is not contract drift; fix it only if it gets in someone's way.
 
 **Needs a dashboard, an account, or the clinic**
 - [ ] None of the hosted Auth settings in `PRODUCTION_CONFIG.md` are applied anywhere yet:
   - leaked-password protection is still off; Supabase's advisor flags it
+  - the minimum password length has not been raised to 12 to match the app
   - no custom SMTP
   - OTP expiry and email rate are unchanged
   - redirect URLs are not narrowed
@@ -66,7 +67,7 @@ All of this work branches from and targets `deployment/prep`. Nothing merges int
 ## Phase 4: not verified, or still to do
 
 **Couldn't run on the development machine**
-- [ ] The database integration suites (116 tests) have not run against the Phase 2, 3 or 4 changes. That includes the test-helper changes for booking limits, ordered clean-up and the consent tick in `signUpPatient`. They need a local Supabase stack, which needs Docker. Run them on a machine with Docker, or in the Phase 5 CI integration job.
+- [x] The database integration suites ran green against the Phase 2–4 changes in the CI integration job on 02ec77b, with `REQUIRE_DB=1`, so none of them skipped. That covers the test-helper changes for booking limits, ordered clean-up and the consent tick in `signUpPatient`. The test count is in the job log, which needs a signed-in account.
 - [ ] Paging has not been checked in a browser. It needs the new backend and a database.
 - [ ] The k6 load test (`scripts/load/booking-load.js`) has only been syntax-checked. Install k6 and follow `LOAD_TESTING.md`.
 
@@ -86,16 +87,16 @@ All of this work branches from and targets `deployment/prep`. Nothing merges int
 - [ ] Staff TOTP MFA, enforced in the API (`aal2`), plus an administrator reset.
 - [ ] The current password required before a staff member changes their email.
 - [ ] Turnstile CAPTCHA on sign-up, login and password reset.
-- [ ] Password minimum of 12 characters, in the UI and the hosted Auth setting together. `backend/src/services/staff.ts` still accepts 8.
+- [x] Password minimum of 12 characters: `PASSWORD_MIN_LENGTH` in `frontend/src/lib/password.ts` (sign-up, reset, change, and the staff form in System Access), `createStaffSchema` in `backend/src/services/staff.ts`, and `minimum_password_length` in `supabase/config.toml` for local stacks. Existing accounts with shorter passwords still sign in. The hosted Auth setting is part of the hosted Auth item under Phases 1–3.
 - [ ] Smaller database items from the Phase 2 plan.
 
 ## Phase 5: in progress
 
 **Written, not verified**
-- [ ] `.github/workflows/db-integration.yml` starts a local Supabase stack and runs `supabase/tests/*.sql`, `assert_rls_posture()` and the backend suites with `REQUIRE_DB=1`. It uses the Supabase CLI from the root `package-lock.json` (2.117.0), not `latest`, which is now a new major version (3.0.0). The `status -o env` names it reads (`API_URL`, `ANON_KEY`, `SERVICE_ROLE_KEY`) were checked against that CLI version's source. It has never run: no Docker here, and nothing since bbb263a has been pushed. Watch its first run on GitHub, then make it a required check.
+- [x] `.github/workflows/db-integration.yml` starts a local Supabase stack and runs `supabase/tests/*.sql`, `assert_rls_posture()` and the backend suites with `REQUIRE_DB=1`. It uses the Supabase CLI from the root `package-lock.json` (2.117.0), not `latest`, which is now a new major version (3.0.0). First run green on 02ec77b: about 3 minutes, 72 s of it starting the stack. Making it a required check needs a repository admin (see Still to do).
 - [ ] `backend/src/middleware/accessLog.ts` logs one JSON line per request (route pattern, status, duration, request id; no paths values, query or body). Unit-tested, off under `NODE_ENV=test`. Not yet seen in Vercel's logs.
-- [ ] CI hardening: every workflow has `permissions: contents: read` and pins its actions to commit SHAs (the commits `v4` pointed to on 2 Nov 2026), the stale `feat/backend-clinic-workflows` triggers are gone, and Backend CI and Frontend CI run `npm audit --omit=dev --audit-level=high`. Both audits were clean locally. Not yet run on GitHub.
-- [ ] Migration 28 schedules `purge_expired_notifications()` nightly with pg_cron (19:00 UTC, 03:00 Manila). PGlite has no pg_cron, so `npm run db:check` exercised only the branch that skips scheduling; `supabase/tests/notification_purge.sql` checks the job on a real stack. After applying it to staging, check `cron.job` and, the next day, `cron.job_run_details`. The query is in `RUNBOOK.md`.
+- [x] CI hardening: every workflow has `permissions: contents: read` and pins its actions to commit SHAs, the stale `feat/backend-clinic-workflows` triggers are gone, and Backend CI and Frontend CI run `npm audit --omit=dev --audit-level=high`. Green on GitHub on 02ec77b, both audit steps included. That run warned that the v4 actions target the deprecated Node.js 20, so the pins have since moved to `actions/checkout` v7.0.1 and `actions/setup-node` v7.1.0, which run on Node.js 24. Their breaking changes since v4 do not touch these workflows: no `pull_request_target`, no git push from CI, npm caching already explicit. The new pins have not run yet.
+- [ ] Migration 28 schedules `purge_expired_notifications()` nightly with pg_cron (19:00 UTC, 03:00 Manila). PGlite has no pg_cron, so `npm run db:check` exercises only the branch that skips scheduling. `supabase/tests/notification_purge.sql` now skips only where pg_cron is unavailable, as the migration does, so on a Supabase stack a missing job fails. The 02ec77b run still had the older test, which skipped whenever the `cron` schema was missing, so the next integration run is the first that proves the job is created. After applying it to staging, check `cron.job` and, the next day, `cron.job_run_details`. The query is in `RUNBOOK.md`.
 - [x] `frontend/src/components/AppErrorBoundary.tsx` wraps the app, so an error outside the router shows a recovery screen instead of a blank page. Unit-tested, and checked in the local preview with a forced crash.
 
 **Still to do (most need an account or the clinic)**
@@ -104,7 +105,9 @@ All of this work branches from and targets `deployment/prep`. Nothing merges int
 - Encrypted off-site backups and a restore drill (needs a storage account and decision on where). Fix or retire `scripts/backup-supabase.mjs` at the same time: it writes unencrypted files and takes its table list from `backend/src/db/types.ts`, so a table missing there is silently left out.
 - Purging medical records waits for the clinic's retention period (see the Phase 3 items). Notifications are purged nightly by migration 28.
 - The release process is in `RUNBOOK.md` → Releases. Once the production project exists, consider running `supabase db push` from a GitHub Environment `production` with required approval instead of an operator's computer.
-- Confirm secret scanning and push protection are on (repository Settings → Code security; needs a repository admin).
+- Needs a repository admin:
+  - Make **Database integration** a required check for `deployment/prep` and `main` (Settings → Branches), next to Backend CI and Frontend CI.
+  - Confirm secret scanning and push protection are on (Settings → Code security).
 
 ## Notes for whoever picks this up
 

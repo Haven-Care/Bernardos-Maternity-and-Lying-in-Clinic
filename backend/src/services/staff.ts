@@ -17,9 +17,10 @@ import type { StaffProfile } from '../contract/account.js'
 
 export const createStaffSchema = z.object({
   email: emailAddress().toLowerCase(),
-  // GoTrue's own floor is 6. Eight is not meaningful security on its own, but
-  // these accounts hold every medical record in the clinic.
-  password: z.string().min(8, 'Password must be at least 8 characters.').max(128, 'Password cannot exceed 128 characters.'),
+  // The same 12 as every other account (frontend/src/lib/password.ts). GoTrue's
+  // own floor is looser, and these accounts hold every medical record in the
+  // clinic.
+  password: z.string().min(12, 'Password must be at least 12 characters.').max(128, 'Password cannot exceed 128 characters.'),
   fullName: personName(),
   contactNumber: phoneNumber().default(''),
   role: z.enum(['administrator', 'staff']).default('staff'),

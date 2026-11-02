@@ -5,8 +5,8 @@ name: Database integration
 # stack that did not start cannot pass as green.
 #
 # Not part of backend-ci.yml on purpose: starting the stack takes minutes, and
-# the lint/build/test check is the required one. Make this required once it has
-# been seen green on GitHub; it has never run there.
+# the lint/build/test check is the required one. It first ran green on 02ec77b;
+# a repository admin can now make it a required check.
 on:
   pull_request:
     branches:
@@ -27,9 +27,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: 'npm'
@@ -45,6 +45,7 @@ jobs:
         run: npm ci
 
       - name: Start local Supabase
+        id: stack
         run: npx supabase start -x studio,imgproxy,vector,logflare,edge-runtime
 
       - name: Export stack settings
@@ -82,6 +83,34 @@ jobs:
       - name: Run suites
         working-directory: backend
         run: npm test
+
+      # backend/src/db/types.ts must be what `npm run db:types` writes for the
+      # migrated schema, so a hand edit or a forgotten regeneration fails here.
+      # Runs whenever the stack started, even if the suites failed. The
+      # PostgREST version line is ignored: it names the stack's PostgREST
+      # build, not the schema. The diff goes into an annotation, which the
+      # public API shows without signing in, and into the job summary.
+      - name: Check generated database types
+        if: ${{ !cancelled() && steps.stack.outcome == 'success' }}
+        run: |
+          npx supabase gen types typescript --local --schema public > "$RUNNER_TEMP/types.ts"
+          if diff -u -I 'PostgrestVersion' backend/src/db/types.ts "$RUNNER_TEMP/types.ts" > "$RUNNER_TEMP/types.diff"; then
+            echo 'backend/src/db/types.ts matches the migrated schema.'
+            exit 0
+          fi
+          {
+            echo '### backend/src/db/types.ts differs from the migrated schema'
+            echo
+            echo '```diff'
+            cat "$RUNNER_TEMP/types.diff"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          message="$(head -n 300 "$RUNNER_TEMP/types.diff")"
+          message="${message//'%'/'%25'}"
+          message="${message//$'\r'/'%0D'}"
+          message="${message//$'\n'/'%0A'}"
+          echo "::error file=backend/src/db/types.ts,title=Generated types differ::$message"
+          exit 1
 
       - name: Stop Supabase
         if: always()

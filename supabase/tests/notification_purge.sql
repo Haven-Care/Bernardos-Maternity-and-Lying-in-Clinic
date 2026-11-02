@@ -1,14 +1,18 @@
 -- Run only against a disposable migrated/seeded development database.
--- Checks the nightly purge job where pg_cron is installed (a local stack, and
--- the CI integration job). Without it, as in PGlite, there is no job to check.
+-- Checks the nightly purge job. It skips only where pg_cron cannot be installed
+-- at all, as in PGlite, which is the same test migration 28 uses. On a Supabase
+-- stack (local, CI or hosted) a missing or changed job fails.
 begin;
 
 do $$
 begin
-  if to_regnamespace('cron') is null then
-    raise notice 'pg_cron is not installed; skipping the purge schedule check.';
+  if not exists (select 1 from pg_available_extensions where name = 'pg_cron') then
+    raise notice 'pg_cron is not available; skipping the purge schedule check.';
     return;
   end if;
+
+  assert to_regnamespace('cron') is not null,
+    'pg_cron is available, so migration 28 installed it';
 
   assert (select count(*) from cron.job
           where jobname = 'purge-expired-notifications'

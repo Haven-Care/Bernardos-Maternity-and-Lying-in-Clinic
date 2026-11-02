@@ -12,6 +12,7 @@ import { useToast } from '../../../components/ui/toast-context'
 import { Tabs, type Tab } from '../../../components/ui/Tabs'
 import { useActiveTab } from '../../../hooks/useActiveTab'
 import { formatDate } from '../../../lib/format'
+import { PASSWORD_MIN_LENGTH } from '../../../lib/password'
 import type { CreateStaffInput, StaffProfile } from '../../../types/account'
 import { ActivityLog } from './ActivityLog'
 import { PrivacyRequests } from './PrivacyRequests'
@@ -215,7 +216,7 @@ function AddStaffModal({
   const dirty = JSON.stringify(form) !== JSON.stringify(EMPTY)
   const canSave =
     form.email.includes('@') &&
-    form.password.length >= 8 &&
+    form.password.length >= PASSWORD_MIN_LENGTH &&
     form.fullName.trim() !== ''
 
   async function save() {
@@ -288,12 +289,12 @@ function AddStaffModal({
             { value: 'administrator', label: 'Administrator' },
           ]}
         />
-        <PasswordField minLength={8}
+        <PasswordField minLength={PASSWORD_MIN_LENGTH}
           label="Initial Password"
           required
           value={form.password}
           onChange={(v) => set('password', v)}
-          placeholder="At least 8 characters"
+          placeholder={`At least ${PASSWORD_MIN_LENGTH} characters`}
         />
 
         <p className="text-xs text-gray-500">

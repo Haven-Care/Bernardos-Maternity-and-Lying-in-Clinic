@@ -10,8 +10,13 @@ export interface PasswordRule {
  * is never refused on another. Enforced here, in the browser only: GoTrue's own
  * minimum is looser, so these are the effective rules.
  */
+export const PASSWORD_MIN_LENGTH = 12
+
 export const PASSWORD_RULES: PasswordRule[] = [
-  { label: 'Use 8–128 characters', test: (v) => v.length >= 8 && v.length <= 128 },
+  {
+    label: `Use ${PASSWORD_MIN_LENGTH}–128 characters`,
+    test: (v) => v.length >= PASSWORD_MIN_LENGTH && v.length <= 128,
+  },
   {
     label: 'Contains at least one uppercase letter (A–Z)',
     test: (v) => /[A-Z]/.test(v),
