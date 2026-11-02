@@ -109,4 +109,53 @@ Write every reply in the resolution note. The patient reads it in their profile.
 
 ## Routine jobs
 
-- **Notification retention:** `select purge_expired_notifications();` deletes notifications older than `clinic_settings.notification_retention_days` (365 by default). Run it monthly until Phase 5 schedules it.
+- **Notification retention:** `purge_expired_notifications()` deletes notifications older than `clinic_settings.notification_retention_days` (365 by default). Migration 28 schedules it with pg_cron every night at 03:00 Manila time (19:00 UTC). To see its last runs:
+
+  ```sql
+  select start_time, status, return_message
+  from cron.job_run_details
+  where jobid = (select jobid from cron.job where jobname = 'purge-expired-notifications')
+  order by start_time desc
+  limit 5;
+  ```
+
+  On a project that does not have migration 28 yet, run `select purge_expired_notifications();` by hand once a month.
+
+## Releases
+
+Both Vercel projects, `havencare-frontend` and `havencare-backend`, build Production from every push to `main`, from the same commit. Every other branch builds a Preview. Production-readiness work collects on `deployment/prep` and reaches `main` only when the team decides.
+
+Until the clinic's production project exists, "production" below means the Supabase project that serves the production URL today (`camqzzctawwqlwmqqpop`). See `PRODUCTION_CONFIG.md`.
+
+### Before merging into `main`
+
+1. **CI is green on the pull request:** Backend CI, Frontend CI and Database integration.
+2. **Every new migration works with the code already live.** The database changes first (step 1 below), so the old code runs against the new schema for a few minutes, and again after any rollback. Add tables and columns in one release; drop or rename them in a later one, once no deployed code reads them.
+3. **The branch's Preview has been clicked through** for the screens the change touches.
+
+### Release
+
+1. **Apply migrations to production first,** from a trusted computer, with the production keys in that terminal session only:
+
+   ```bash
+   npx supabase link --project-ref <prod-ref>
+   npx supabase migration list --linked
+   npx supabase db push
+   ```
+
+   `migration list` shows what `db push` will apply. Never run `db reset --linked`.
+2. **Merge the pull request into `main`.** Both projects deploy the merge commit.
+3. **Check production:**
+   - both deployments are Ready in Vercel
+   - `/api/health` and `/api/health/db` return 200
+   - a staff sign-in reaches the Dashboard
+   - if the release had migrations, `select assert_rls_posture();` succeeds in the SQL editor
+4. **Tag the merge commit** `release-YYYY-MM-DD` and push the tag, so the previous release is easy to find.
+
+### Roll back
+
+- **Code:** in Vercel, open each project's Deployments, choose the previous production deployment, then **Instant Rollback**. Roll back both projects when the release changed both, so they stay on one commit.
+  - The Hobby plan allows only the deployment immediately before the current one.
+  - After a rollback, Vercel stops making new `main` deployments live. Promote the fixed deployment (**Promote** in the dashboard, or `vercel promote <url>`) to turn that back on.
+- **Database:** migrations only move forward. Do not undo one by hand on production; write a new migration that reverses it and release it as above. Because each migration works with the previous code (step 2 of "Before merging"), a code rollback never needs the database rolled back with it.
+- **Damaged data:** restore from Supabase's daily backups (Database → Backups, Pro plan). The restore drill is not written yet.

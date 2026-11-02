@@ -1,12 +1,15 @@
 import { RouterProvider } from 'react-router-dom'
+import { AppErrorBoundary } from './components/AppErrorBoundary.tsx'
 import { ToastProvider } from './components/ui/Toast.tsx'
 import { router } from './router.tsx'
 
 function App() {
   return (
-    <ToastProvider>
-      <RouterProvider router={router} />
-    </ToastProvider>
+    <AppErrorBoundary>
+      <ToastProvider>
+        <RouterProvider router={router} />
+      </ToastProvider>
+    </AppErrorBoundary>
   )
 }
 

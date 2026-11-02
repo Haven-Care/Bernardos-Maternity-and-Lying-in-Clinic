@@ -17,15 +17,19 @@ on:
       - main
       - deployment/prep
 
+# Read-only token: the job starts a throwaway stack and pushes nothing.
+permissions:
+  contents: read
+
 jobs:
   db-integration:
     name: Backend suites against local Supabase
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: 'npm'
@@ -33,22 +37,39 @@ jobs:
             backend/package-lock.json
             package-lock.json
 
-      - uses: supabase/setup-cli@v1
-        with:
-          version: latest
+      # The Supabase CLI comes from the root package-lock.json, the same version
+      # developers run, instead of a setup action tracking `latest`: a new CLI
+      # major can change `supabase status` output under this job. Install
+      # scripts stay on here, because they download the CLI binary.
+      - name: Install root tooling
+        run: npm ci
 
       - name: Start local Supabase
-        run: supabase start -x studio,imgproxy,vector,logflare,edge-runtime
+        run: npx supabase start -x studio,imgproxy,vector,logflare,edge-runtime
 
       - name: Export stack settings
         run: |
-          supabase status -o env > "$RUNNER_TEMP/stack.env"
+          npx supabase status -o env > "$RUNNER_TEMP/stack.env"
           {
             echo "SUPABASE_URL=$(grep '^API_URL=' "$RUNNER_TEMP/stack.env" | cut -d= -f2- | tr -d '"')"
             echo "SUPABASE_ANON_KEY=$(grep '^ANON_KEY=' "$RUNNER_TEMP/stack.env" | cut -d= -f2- | tr -d '"')"
             echo "SUPABASE_SERVICE_ROLE_KEY=$(grep '^SERVICE_ROLE_KEY=' "$RUNNER_TEMP/stack.env" | cut -d= -f2- | tr -d '"')"
             echo "REQUIRE_DB=1"
           } >> "$GITHUB_ENV"
+
+      # The same files `npm run db:check` runs in PGlite, this time against the
+      # stack's real auth, storage and roles. Each file rolls itself back, so
+      # the suites below still start from the seeded database. The posture
+      # check runs once more on its own, outside any test's transaction.
+      - name: Run SQL tests
+        run: |
+          db="$(docker ps -qf name=supabase_db)"
+          for file in supabase/tests/*.sql; do
+            echo "::group::$file"
+            docker exec -i "$db" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q < "$file"
+            echo "::endgroup::"
+          done
+          docker exec "$db" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'select assert_rls_posture();'
 
       - name: Install dependencies
         working-directory: backend
@@ -64,4 +85,4 @@ jobs:
 
       - name: Stop Supabase
         if: always()
-        run: supabase stop --no-backup
+        run: npx supabase stop --no-backup

@@ -2,7 +2,7 @@
 
 Where the production-readiness work stands: what is done, what is still open, and what was written but never verified. **Update this file whenever a phase lands or an item here is closed.**
 
-Last updated: 2 November 2026 (Phase 5 started).
+Last updated: 2 November 2026 (Phase 5: CI hardening, nightly notification purge, release process).
 
 All of this work branches from and targets `deployment/prep`. Nothing merges into `main` until the team decides to.
 
@@ -15,12 +15,12 @@ All of this work branches from and targets `deployment/prep`. Nothing merges int
 | 2 | Security hardening | Core done (11a7e53, migration 26). Open items below |
 | 3 | Data Privacy Act: consent, audit log, privacy requests | Done (eb7baa7, migration 27). Notice text and DPO await the clinic |
 | 4 | Reliability: paging, shared rate limits, timeouts, load test | Code landed (e493798). Unverified items below |
-| 5 | Operations: monitoring, backups, CI integration job, releases | In progress. Structured access log and CI integration workflow written, unverified; see below |
+| 5 | Operations: monitoring, backups, CI integration job, releases | In progress. Access log, CI hardening and integration job, nightly notification purge, app error boundary and release process written; most unverified, see below |
 
 ## Check first
 
 - **Backend deploys failed from 11a7e53 to eb7baa7.** Vercel's build type-check resolved helmet's CommonJS typings, where `helmet()` is not callable, so Phases 2 and 3 never reached a backend deployment. Fixed in 0e6ff3f (`backend/src/middleware/securityHeaders.ts`); the e493798 Preview built and deployed on 2 Nov 2026. Its responses have not been checked, because Previews sit behind Vercel Authentication. Signed in to Vercel, open `/api/health` and `/api/health/db` on the latest `havencare-backend` Preview. This is the first time the Phase 2 start-up checks run on Vercel. For example, `CORS_ORIGIN` is required when `NODE_ENV=production`.
-- **Migrations 26 and 27 are not applied to any hosted project.** After applying them to staging, mark it as a demo database; see "After migration 26 reaches staging" in `PRODUCTION_CONFIG.md`.
+- **Migrations 26, 27 and 28 are not applied to any hosted project.** After applying them to staging, mark it as a demo database; see "After migration 26 reaches staging" in `PRODUCTION_CONFIG.md`.
 
 ## Phases 1–3: not verified, or waiting on someone else
 
@@ -92,15 +92,19 @@ All of this work branches from and targets `deployment/prep`. Nothing merges int
 ## Phase 5: in progress
 
 **Written, not verified**
-- [ ] `.github/workflows/db-integration.yml` starts a local Supabase stack and runs the backend suites with `REQUIRE_DB=1`. It has never run: no Docker here and `gh` is not signed in. Watch its first run on GitHub (the `supabase status -o env` parsing and the `-x` exclude list are the likely failure points), then make it a required check.
+- [ ] `.github/workflows/db-integration.yml` starts a local Supabase stack and runs `supabase/tests/*.sql`, `assert_rls_posture()` and the backend suites with `REQUIRE_DB=1`. It uses the Supabase CLI from the root `package-lock.json` (2.117.0), not `latest`, which is now a new major version (3.0.0). The `status -o env` names it reads (`API_URL`, `ANON_KEY`, `SERVICE_ROLE_KEY`) were checked against that CLI version's source. It has never run: no Docker here, and nothing since bbb263a has been pushed. Watch its first run on GitHub, then make it a required check.
 - [ ] `backend/src/middleware/accessLog.ts` logs one JSON line per request (route pattern, status, duration, request id; no paths values, query or body). Unit-tested, off under `NODE_ENV=test`. Not yet seen in Vercel's logs.
+- [ ] CI hardening: every workflow has `permissions: contents: read` and pins its actions to commit SHAs (the commits `v4` pointed to on 2 Nov 2026), the stale `feat/backend-clinic-workflows` triggers are gone, and Backend CI and Frontend CI run `npm audit --omit=dev --audit-level=high`. Both audits were clean locally. Not yet run on GitHub.
+- [ ] Migration 28 schedules `purge_expired_notifications()` nightly with pg_cron (19:00 UTC, 03:00 Manila). PGlite has no pg_cron, so `npm run db:check` exercised only the branch that skips scheduling; `supabase/tests/notification_purge.sql` checks the job on a real stack. After applying it to staging, check `cron.job` and, the next day, `cron.job_run_details`. The query is in `RUNBOOK.md`.
+- [x] `frontend/src/components/AppErrorBoundary.tsx` wraps the app, so an error outside the router shows a recovery screen instead of a blank page. Unit-tested, and checked in the local preview with a forced crash.
 
 **Still to do (most need an account or the clinic)**
-- Sentry error tracking (needs a Sentry account and DSN).
+- Sentry error tracking (needs a Sentry account and DSN). React 19 and React Router 7 already log caught render errors to the console, which is why `RouteError` does not log them again. Report them from `createRoot`'s `onCaughtError` and `onUncaughtError` (`frontend/src/main.tsx`), and add the Sentry ingest origin to `connect-src` in `frontend/vercel.json`.
 - Uptime monitoring on `/api/health` and `/api/health/db`.
-- Encrypted off-site backups and a restore drill (needs a storage account and decision on where).
-- A scheduled purge job (needs the clinic's retention period; see Phase 3 items).
-- A documented release process in `RUNBOOK.md`.
+- Encrypted off-site backups and a restore drill (needs a storage account and decision on where). Fix or retire `scripts/backup-supabase.mjs` at the same time: it writes unencrypted files and takes its table list from `backend/src/db/types.ts`, so a table missing there is silently left out.
+- Purging medical records waits for the clinic's retention period (see the Phase 3 items). Notifications are purged nightly by migration 28.
+- The release process is in `RUNBOOK.md` → Releases. Once the production project exists, consider running `supabase db push` from a GitHub Environment `production` with required approval instead of an operator's computer.
+- Confirm secret scanning and push protection are on (repository Settings → Code security; needs a repository admin).
 
 ## Notes for whoever picks this up
 
