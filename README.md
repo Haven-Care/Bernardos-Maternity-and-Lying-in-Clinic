@@ -111,6 +111,7 @@ On Windows, use `npm.cmd` if PowerShell blocks `npm.ps1`.
 | `npm run sync:types:check` | Check frontend/backend API contracts match |
 | `npm run sync:types` | Copy frontend contract types to the backend |
 | `npm run db:types` | Regenerate database types from local PostgreSQL |
+| `npm run db:check` | Apply migrations, seed and SQL tests to in-memory Postgres (no Docker); install with `npm ci --ignore-scripts` first |
 
 Load [the local environment](docs/LOCAL_TESTING.md#4-load-local-credentials)
 before seeding, starting either server, or running backend integration tests.

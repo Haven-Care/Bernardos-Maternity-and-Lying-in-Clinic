@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "HavenCare \u2014 tooling root. Not a workspace: frontend/ and backend/ keep their own package.json and their own CI job.",
+  "description": "HavenCare — tooling root. Not a workspace: frontend/ and backend/ keep their own package.json and their own CI job.",
   "engines": {
     "node": "24.x"
   },
@@ -15,12 +15,14 @@
     "db:seed": "docker exec -i $(docker ps -qf name=supabase_db) psql -U postgres -d postgres -v ON_ERROR_STOP=1 < supabase/seed.sql",
     "db:psql": "docker exec -it $(docker ps -qf name=supabase_db) psql -U postgres -d postgres",
     "db:types": "supabase gen types typescript --local --schema public > backend/src/db/types.ts",
+    "db:check": "node scripts/check-migrations.mjs",
     "sync:types": "node scripts/sync-types.mjs",
     "sync:types:check": "node scripts/sync-types.mjs --check",
     "db:backup:project": "node scripts/backup-supabase.mjs",
     "db:reseed:demo": "node scripts/reseed-demo.mjs"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.3.16",
     "supabase": "^2.22.6"
   }
 }
