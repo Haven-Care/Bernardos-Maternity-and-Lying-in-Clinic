@@ -2,8 +2,8 @@ import { text, wholeNumber, money, MAX_INTEGER } from '../lib/inputValidation.js
 import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
-import { dbError, definedOnly, unwrap, unwrapList } from '../lib/db.js'
-import { isoDate, parseBody, parseQuery } from '../lib/validate.js'
+import { dbError, definedOnly, readAll, unwrap, unwrapList } from '../lib/db.js'
+import { isoDate, pageQuery, parseBody, parseQuery } from '../lib/validate.js'
 import { afterClinicDay, datedListQuery } from '../lib/dateRange.js'
 import { batchNumberSchema } from '../lib/batchNumber.js'
 import { HttpError } from '../middleware/errorHandler.js'
@@ -111,10 +111,15 @@ async function nearExpiryDays(): Promise<number> {
 // arithmetic done here. One definition of "on hand", shared by every tab.
 // ---------------------------------------------------------------------------
 
+const medicineListQuery = pageQuery.extend({
+  includeArchived: z.enum(['true', 'false']).optional(),
+})
+
 export async function listMedicines(req: Request, res: Response) {
-  let query = getSupabaseClient().from('medicine_stock').select('*').order('generic_name')
-  if (req.query.includeArchived !== 'true') query = query.eq('active', true)
-  const rows = unwrapList(await query)
+  const { includeArchived, offset, limit } = parseQuery(medicineListQuery, req.query)
+  let query = getSupabaseClient().from('medicine_stock').select('*').order('generic_name').order('id')
+  if (includeArchived !== 'true') query = query.eq('active', true)
+  const rows = unwrapList(await query.range(offset, offset + limit - 1))
 
   res.json(rows.map(toMedicineListRow))
 }
@@ -175,12 +180,16 @@ export async function listMovements(req: Request, res: Response) {
 }
 
 export async function listLowStock(_req: Request, res: Response) {
-  const rows = unwrapList(
-    await getSupabaseClient()
+  // Read in full: "low" compares two columns, which PostgREST cannot filter on,
+  // so the cut happens here and must see every medicine.
+  const rows = await readAll((from, to) =>
+    getSupabaseClient()
       .from('medicine_stock')
       .select('*')
       .eq('active', true)
-      .order('generic_name'),
+      .order('generic_name')
+      .order('id')
+      .range(from, to),
   )
 
   res.json(
@@ -214,13 +223,15 @@ export async function listExpiring(_req: Request, res: Response) {
   cutoff.setUTCDate(cutoff.getUTCDate() + window)
   const cutoffDate = cutoff.toISOString().slice(0, 10)
 
-  const rows = unwrapList(
-    await getSupabaseClient()
+  const rows = await readAll((from, to) =>
+    getSupabaseClient()
       .from('medicine_batches')
       .select('*, medicines(generic_name, unit)')
       .gt('quantity', 0)
       .lte('expires_at', cutoffDate)
-      .order('expires_at'),
+      .order('expires_at')
+      .order('id')
+      .range(from, to),
   )
 
   res.json(rows.map((row) => toExpiringRow(row, today)))
@@ -230,13 +241,13 @@ export async function getInventoryStats(_req: Request, res: Response) {
   const db = getSupabaseClient()
   const [today, window] = await Promise.all([clinicToday(), nearExpiryDays()])
 
-  const medicines = unwrapList(
-    await db.from('medicine_stock').select('*').eq('active', true),
-  ).map(toMedicineListRow)
-
-  const batches = unwrapList(
-    await db.from('medicine_batches').select('expires_at').gt('quantity', 0),
-  )
+  // Totals over every row, so each list is read to the end; a capped select
+  // would undercount once the catalogue or the batch history passed it.
+  const [medicines, batches] = await Promise.all([
+    readAll((from, to) => db.from('medicine_stock').select('*').eq('active', true).order('id').range(from, to))
+      .then((rows) => rows.map(toMedicineListRow)),
+    readAll((from, to) => db.from('medicine_batches').select('id, expires_at').gt('quantity', 0).order('id').range(from, to)),
+  ])
 
   const days = batches.map((b) => daysBetween(today, b.expires_at))
 

@@ -100,3 +100,29 @@ export function unwrapList<T>(result: {
   if (result.error) throw dbError(result.error)
   return result.data ?? []
 }
+
+/**
+ * Rows per request in `readAll`. Under PostgREST's `max_rows`, which is 1000
+ * on hosted Supabase: a page the server trims looks exactly like the last page,
+ * so the page must never be the thing that gets trimmed.
+ */
+export const READ_ALL_PAGE = 500
+
+/**
+ * Every row of a query, read a page at a time.
+ *
+ * A plain select stops at `max_rows` without an error, so a total or a filter
+ * computed in Express over "all" the rows is silently wrong once a table
+ * passes it. `page` builds the query for one range and must order by a unique
+ * key, or rows can repeat or go missing between pages.
+ */
+export async function readAll<T>(
+  page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: PostgrestError | null }>,
+): Promise<T[]> {
+  const rows: T[] = []
+  for (;;) {
+    const batch = unwrapList(await page(rows.length, rows.length + READ_ALL_PAGE - 1))
+    rows.push(...batch)
+    if (batch.length < READ_ALL_PAGE) return rows
+  }
+}

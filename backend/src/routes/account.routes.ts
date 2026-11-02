@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { getSessionIdentity, requireStaff } from '../middleware/auth.js'
+import { sessionLimiter } from '../middleware/rateLimit.js'
 import {
   getMe,
   getNotificationPrefs,
@@ -11,7 +12,7 @@ export const accountRouter = Router()
 
 // Every route here is about the caller's own account, so the guard is the whole
 // authorization story — there is no id in any path to get wrong.
-accountRouter.get('/session', getSessionIdentity)
+accountRouter.get('/session', sessionLimiter, getSessionIdentity)
 accountRouter.use(requireStaff)
 
 accountRouter.get('/me', getMe)

@@ -1,3 +1,4 @@
+import { isAuthRetryableFetchError } from '@supabase/supabase-js'
 import type { NextFunction, Request, Response } from 'express'
 import { getSupabaseClient } from '../config/supabase.js'
 import { HttpError } from './errorHandler.js'
@@ -69,6 +70,13 @@ function bearerToken(req: Request): string {
 async function verify(req: Request) {
   const token = bearerToken(req)
   const { data, error } = await getSupabaseClient().auth.getUser(token)
+
+  // GoTrue being unreachable, overloaded or past the client timeout says
+  // nothing about the token. A 401 here would make the browser sign the user
+  // out over a network blip, so it is a 503 they can retry.
+  if (isAuthRetryableFetchError(error)) {
+    throw new HttpError(503, 'Sign-in could not be checked just now. Please try again.')
+  }
 
   if (error || !data.user) {
     throw new HttpError(401, 'Your session has expired. Please sign in again.')

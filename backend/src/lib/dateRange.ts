@@ -1,10 +1,9 @@
 import { z } from 'zod'
+import { pageQuery } from './validate.js'
 
-export const datedListQuery = z.object({
+export const datedListQuery = pageQuery.extend({
   from: z.string().date().optional(),
   to: z.string().date().optional(),
-  offset: z.coerce.number().int().min(0).default(0),
-  limit: z.coerce.number().int().min(1).max(500).default(500),
 }).refine((value) => !value.from || !value.to || value.from <= value.to, 'Start date must be on or before end date.')
 
 export function afterClinicDay(day: string): string {

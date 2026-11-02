@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { getSupabaseClient } from '../config/supabase.js'
 import { loggableError } from '../middleware/errorHandler.js'
+import { healthLimiter } from '../middleware/rateLimit.js'
 import { accountRouter } from './account.routes.js'
 import { systemRouter } from './system.routes.js'
 import {
@@ -34,7 +35,7 @@ apiRouter.get('/health', (_req, res) => {
  *
  * A trivial select actually crosses the wire and touches a table.
  */
-apiRouter.get('/health/db', async (_req, res) => {
+apiRouter.get('/health/db', healthLimiter, async (_req, res) => {
   try {
     const { error } = await getSupabaseClient()
       .from('services')

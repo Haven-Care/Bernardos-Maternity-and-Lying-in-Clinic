@@ -2,7 +2,7 @@ import { text, personName, mobileNumber } from '../lib/inputValidation.js'
 import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
-import { dbError, unwrap, unwrapList } from '../lib/db.js'
+import { dbError, readAll, unwrap } from '../lib/db.js'
 import { isoDate, parseBody } from '../lib/validate.js'
 import { HttpError } from '../middleware/errorHandler.js'
 import {
@@ -108,12 +108,14 @@ export async function updateMyAccount(req: Request, res: Response) {
 export async function listMyBookings(req: Request, res: Response) {
   const me = account(req)
 
-  const rows = unwrapList(
-    await getSupabaseClient()
+  const rows = await readAll((from, to) =>
+    getSupabaseClient()
       .from('appointments')
       .select('*')
       .eq('account_id', me.userId)
-      .order('scheduled_date', { ascending: false }),
+      .order('scheduled_date', { ascending: false })
+      .order('id')
+      .range(from, to),
   )
 
   res.json(rows.map(toBooking))
@@ -306,12 +308,14 @@ export async function requestReschedule(req: Request, res: Response) {
 export async function listMyRescheduleRequests(req: Request, res: Response) {
   const me = account(req)
 
-  const rows = unwrapList(
-    await getSupabaseClient()
+  const rows = await readAll((from, to) =>
+    getSupabaseClient()
       .from('reschedule_requests')
       .select('*, appointments!inner(*)')
       .eq('appointments.account_id', me.userId)
-      .order('requested_at', { ascending: false }),
+      .order('requested_at', { ascending: false })
+      .order('id')
+      .range(from, to),
   )
 
   res.json(rows.map(toRescheduleRequest))

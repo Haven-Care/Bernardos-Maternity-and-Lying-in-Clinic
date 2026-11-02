@@ -43,3 +43,13 @@ export function parseBody<T>(schema: ZodType<T>, body: unknown): T {
 export function parseQuery<T>(schema: ZodType<T>, query: unknown): T {
   return parseBody(schema, query)
 }
+
+/**
+ * `?offset=&limit=` for a list endpoint. The browser asks again from the next
+ * offset until a page comes back short (`frontend/src/api/pagination.ts`), so
+ * no response is ever cut off at PostgREST's row cap.
+ */
+export const pageQuery = z.object({
+  offset: z.coerce.number().int().min(0).default(0),
+  limit: z.coerce.number().int().min(1).max(500).default(500),
+})

@@ -45,7 +45,7 @@ export async function uploadMedicinePhoto(id: string, file: File): Promise<void>
 // --- Reads ------------------------------------------------------------------
 
 export async function listMedicines(includeArchived = false): Promise<MedicineListRow[]> {
-  return apiFetch<MedicineListRow[]>(`/inventory/medicines${includeArchived ? '?includeArchived=true' : ''}`)
+  return datedList<MedicineListRow>(`/inventory/medicines${includeArchived ? '?includeArchived=true' : ''}`)
 }
 
 export async function getMedicine(id: string): Promise<MedicineListRow> {

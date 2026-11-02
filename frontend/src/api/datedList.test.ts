@@ -13,7 +13,7 @@ describe('date-filtered history pagination', () => {
   })
   it('fails visibly rather than looping or silently truncating when an old API ignores pagination', async () => {
     fetchPage.mockResolvedValue(Array.from({ length: 500 }, (_, index) => ({ id: String(index) })))
-    await expect(datedList('/bookings')).rejects.toThrow('full history')
+    await expect(datedList('/bookings')).rejects.toThrow('full list')
     expect(fetchPage).toHaveBeenCalledTimes(2)
   })
 })

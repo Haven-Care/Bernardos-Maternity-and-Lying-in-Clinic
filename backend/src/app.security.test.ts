@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import request from 'supertest'
 import { createApp } from './app.js'
-import { parseCorsOrigins } from './config/env.js'
+import { parseCorsOrigins, parseRateLimitStore } from './config/env.js'
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -111,5 +111,20 @@ describe('parseCorsOrigins', () => {
     expect(() => parseCorsOrigins('*', 'development')).toThrow('"*" is not allowed')
     expect(() => parseCorsOrigins('https://clinic.example/app', 'development')).toThrow('must be an origin')
     expect(() => parseCorsOrigins('clinic.example', 'development')).toThrow('is not a URL')
+  })
+})
+
+describe('parseRateLimitStore', () => {
+  it('is off when neither value is set, so local and test runs count in memory', () => {
+    expect(parseRateLimitStore(undefined, undefined)).toBeNull()
+    expect(parseRateLimitStore(' ', '')).toBeNull()
+  })
+
+  it('needs both values, over https', () => {
+    expect(parseRateLimitStore(' https://example.upstash.io/ ', ' token ')).toEqual({ url: 'https://example.upstash.io', token: 'token' })
+    expect(() => parseRateLimitStore('https://example.upstash.io', undefined)).toThrow('or neither')
+    expect(() => parseRateLimitStore(undefined, 'token')).toThrow('or neither')
+    expect(() => parseRateLimitStore('http://example.upstash.io', 'token')).toThrow('must use https')
+    expect(() => parseRateLimitStore('example.upstash.io', 'token')).toThrow('is not a URL')
   })
 })

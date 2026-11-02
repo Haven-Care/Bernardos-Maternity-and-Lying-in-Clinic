@@ -2,10 +2,10 @@ import { text, personName, emailAddress, phoneNumber, wholeNumber, recordedDate 
 import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
-import { definedOnly, unwrap, unwrapList } from '../lib/db.js'
+import { definedOnly, readAll, unwrap, unwrapList } from '../lib/db.js'
 import { audit } from '../lib/audit.js'
 import { sniffDocumentType } from '../lib/fileSignature.js'
-import { isoDate, parseBody } from '../lib/validate.js'
+import { isoDate, pageQuery, parseBody, parseQuery } from '../lib/validate.js'
 import { HttpError } from '../middleware/errorHandler.js'
 import {
   toPatient,
@@ -140,14 +140,17 @@ async function lastVisitOf(id: string): Promise<string | null> {
 }
 
 export async function listPatients(req: Request, res: Response) {
+  const { offset, limit } = parseQuery(pageQuery, req.query)
   const rows = unwrapList(
     await getSupabaseClient()
       .from('patient_list')
       .select('id, patient_code, full_name, contact_number, last_visit')
-      .order('patient_code'),
+      .order('patient_code')
+      .order('id')
+      .range(offset, offset + limit - 1),
   )
 
-  await audit(req, 'patient.list', { details: { count: rows.length } })
+  await audit(req, 'patient.list', { details: { offset, count: rows.length } })
   res.json(rows.map(toPatientListRow))
 }
 
@@ -228,12 +231,14 @@ const DOC_TYPES = [
 export async function listDocuments(req: Request, res: Response) {
   const patientId = parseBody(idSchema, req.params.id)
 
-  const rows = unwrapList(
-    await getSupabaseClient()
+  const rows = await readAll((from, to) =>
+    getSupabaseClient()
       .from('patient_documents')
       .select('*, profiles(full_name)')
       .eq('patient_id', patientId)
-      .order('uploaded_at', { ascending: false }),
+      .order('uploaded_at', { ascending: false })
+      .order('id')
+      .range(from, to),
   )
 
   await audit(req, 'document.list', { patientId, details: { count: rows.length } })
@@ -407,19 +412,24 @@ export async function exportPatient(req: Request, res: Response) {
 
   const patient = unwrap(await db.from('patients').select('*').eq('id', id).maybeSingle(), 'No such patient.')
 
+  // An export that stopped at the row cap would answer an access request with
+  // part of the record, so every list is read to the end.
+  const accountId = patient.account_id
   const [appointments, records, documents, consents] = await Promise.all([
-    db.from('appointments').select('*').eq('patient_id', id).order('scheduled_date').order('slot_time'),
-    db.from('clinical_records')
+    readAll((from, to) => db.from('appointments').select('*').eq('patient_id', id)
+      .order('scheduled_date').order('slot_time').order('id').range(from, to)),
+    readAll((from, to) => db.from('clinical_records')
       .select('id, occurred_at, title, findings, provider, created_at')
       .eq('patient_id', id)
-      .order('occurred_at'),
-    db.from('patient_documents')
+      .order('occurred_at').order('id').range(from, to)),
+    readAll((from, to) => db.from('patient_documents')
       .select('id, doc_type, file_name, file_size, uploaded_at')
       .eq('patient_id', id)
-      .order('uploaded_at'),
-    patient.account_id
-      ? db.from('patient_consents').select('notice_version, channel, consented_at').eq('account_id', patient.account_id).order('consented_at')
-      : Promise.resolve({ data: [], error: null }),
+      .order('uploaded_at').order('id').range(from, to)),
+    accountId
+      ? readAll((from, to) => db.from('patient_consents').select('id, notice_version, channel, consented_at')
+        .eq('account_id', accountId).order('consented_at').order('id').range(from, to))
+      : Promise.resolve([]),
   ])
 
   await audit(req, 'patient.export', { entityId: id, patientId: id })
@@ -429,8 +439,8 @@ export async function exportPatient(req: Request, res: Response) {
     format: 'havencare-patient-export-v1',
     exportedAt: new Date().toISOString(),
     patient: toPatient(patient, await lastVisitOf(id)),
-    appointments: unwrapList(appointments).map(toBooking),
-    clinicalRecords: unwrapList(records).map((row) => ({
+    appointments: appointments.map(toBooking),
+    clinicalRecords: records.map((row) => ({
       id: row.id,
       occurredAt: row.occurred_at,
       title: row.title,
@@ -438,14 +448,14 @@ export async function exportPatient(req: Request, res: Response) {
       provider: row.provider,
       recordedAt: row.created_at,
     })),
-    documents: unwrapList(documents).map((row) => ({
+    documents: documents.map((row) => ({
       id: row.id,
       docType: row.doc_type,
       fileName: row.file_name,
       fileSize: Number(row.file_size),
       uploadedAt: row.uploaded_at,
     })),
-    consents: unwrapList(consents).map((row) => ({
+    consents: consents.map((row) => ({
       noticeVersion: row.notice_version,
       channel: row.channel,
       consentedAt: row.consented_at,

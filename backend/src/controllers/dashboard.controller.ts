@@ -3,7 +3,7 @@ import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
 import { afterClinicDay } from '../lib/dateRange.js'
-import { dbError, unwrapList } from '../lib/db.js'
+import { dbError, readAll, unwrapList } from '../lib/db.js'
 import { parseQuery } from '../lib/validate.js'
 import { HttpError } from '../middleware/errorHandler.js'
 import { APPOINTMENT_STATUSES } from '../contract/appointment.js'
@@ -173,17 +173,21 @@ export async function getUrgentAlerts(_req: Request, res: Response) {
   const cutoffDate = cutoff.toISOString().slice(0, 10)
 
   const [medicines, batches, reschedules] = await Promise.all([
-    db
+    readAll((from, to) => db
       .from('medicine_stock')
       .select('*')
       .eq('active', true)
-      .order('generic_name'),
-    db
+      .order('generic_name')
+      .order('id')
+      .range(from, to)),
+    readAll((from, to) => db
       .from('medicine_batches')
       .select('*, medicines(generic_name)')
       .gt('quantity', 0)
       .lte('expires_at', cutoffDate)
-      .order('expires_at'),
+      .order('expires_at')
+      .order('id')
+      .range(from, to)),
     // Open reschedule requests — note this is `reschedule_request_status`, a
     // different enum from the appointment one. This `pending` is still real.
     db
@@ -196,7 +200,7 @@ export async function getUrgentAlerts(_req: Request, res: Response) {
 
   const alerts: UrgentAlert[] = []
 
-  for (const medicine of unwrapList(medicines)
+  for (const medicine of medicines
     .map(toMedicineListRow)
     .filter((m) => m.qtyOnHand <= m.reorderLevel)) {
     // "Critically low" is a harder signal than "below reorder level" — the
@@ -218,7 +222,7 @@ export async function getUrgentAlerts(_req: Request, res: Response) {
     })
   }
 
-  for (const batch of unwrapList(batches)) {
+  for (const batch of batches) {
     const daysLeft = daysBetween(today, batch.expires_at)
 
     alerts.push({

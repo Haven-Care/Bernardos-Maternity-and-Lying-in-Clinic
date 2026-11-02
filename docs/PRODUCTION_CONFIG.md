@@ -114,6 +114,16 @@ Docker only.
 | `NODE_ENV` | backend | `production` | `production` |
 | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | frontend | Staging project | Production project |
 | `VITE_API_URL` | frontend | Staging backend | `/api` (same-origin rewrite) |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | backend | Staging database (free tier) | A separate production database |
+
+**Rate limits:** without the two Upstash variables the backend counts requests in memory, per serverless instance, and logs a warning at start-up in production. Set both or neither; one without the other stops the deploy. If Upstash is unreachable, requests go through uncounted rather than failing.
+
+**Check on staging once the Upstash variables are set:**
+
+- Send the same public request (for example `GET /api/slots/availability?date=…`) through the frontend's `/api` rewrite from two different networks, such as office Wi-Fi and a phone hotspot. The `RateLimit` response header should show separate `remaining` counts. If both count down together, the backend is seeing Vercel's proxy address instead of the visitor's, and the public limits are shared by everyone.
+- Patient writes count per account, so this check matters only for the public pages, `/api/account/session` and `/api/health/db`.
+
+**Function duration:** `backend/vercel.json` sets no `maxDuration`, so the plan default applies. Every Supabase call times out after 10 s (`backend/src/config/supabase.ts`), which bounds a hung request. To cap it lower, add `"functions": { "src/app.ts": { "maxDuration": 30 } }` and confirm on a Preview build that Vercel accepts that path before relying on it.
 
 **Code change required before splitting Preview from Production:**
 

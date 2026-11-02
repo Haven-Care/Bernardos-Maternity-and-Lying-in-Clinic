@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { requirePatient, requireStaff } from '../middleware/auth.js'
-import { publicWriteLimiter } from '../middleware/rateLimit.js'
+import { accountWriteLimiter } from '../middleware/rateLimit.js'
 import {
   cancelBooking,
   completeBooking,
@@ -45,9 +45,10 @@ export const bookingsRouter = Router()
  *
  * Rate-limited even though it needs an account: sign-up is open, so "has an
  * account" is not a meaningful cost to an attacker, and every booking submitted
- * occupies a real slot in a real clinic's day.
+ * occupies a real slot in a real clinic's day. The limit counts per account,
+ * so it sits after the guard that says whose account it is.
  */
-bookingsRouter.post('/', publicWriteLimiter, requirePatient, createMyBooking)
+bookingsRouter.post('/', requirePatient, accountWriteLimiter, createMyBooking)
 
 // Everything else on /bookings is the staff queue.
 bookingsRouter.get('/', requireStaff, listBookings)
@@ -71,19 +72,20 @@ export const meRouter = Router()
 
 meRouter.use(requirePatient)
 
+// Writes share one per-account limit with booking; reads are not limited.
 meRouter.get('/account', getMyAccount)
-meRouter.patch('/account', updateMyAccount)
+meRouter.patch('/account', accountWriteLimiter, updateMyAccount)
 
 meRouter.get('/bookings', listMyBookings)
-meRouter.delete('/bookings/:id', cancelMyBooking)
-meRouter.post('/bookings/:id/reschedule-request', requestReschedule)
+meRouter.delete('/bookings/:id', accountWriteLimiter, cancelMyBooking)
+meRouter.post('/bookings/:id/reschedule-request', accountWriteLimiter, requestReschedule)
 meRouter.get('/reschedule-requests', listMyRescheduleRequests)
 
 // RA 10173: the notice the patient agreed to, and requests about their data.
 meRouter.get('/consent', getMyConsent)
-meRouter.post('/consent', recordMyConsent)
+meRouter.post('/consent', accountWriteLimiter, recordMyConsent)
 meRouter.get('/privacy-requests', listMyPrivacyRequests)
-meRouter.post('/privacy-requests', publicWriteLimiter, createMyPrivacyRequest)
+meRouter.post('/privacy-requests', accountWriteLimiter, createMyPrivacyRequest)
 
 /** The staff approval queue for patient-initiated reschedules. */
 export const rescheduleRequestsRouter = Router()

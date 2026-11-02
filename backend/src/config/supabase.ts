@@ -18,6 +18,20 @@ export type Db = SupabaseClient<Database>
 
 let client: Db | undefined
 
+/**
+ * How long any one call to Supabase may take.
+ *
+ * Without a bound, a hung connection holds the serverless function open until
+ * Vercel kills it, and the browser waits all that time for an error it could
+ * have had at once. Ten seconds is far beyond any query this API makes.
+ */
+export const SUPABASE_TIMEOUT_MS = 10_000
+
+export function fetchWithTimeout(input: Parameters<typeof fetch>[0], init?: RequestInit) {
+  const timeout = AbortSignal.timeout(SUPABASE_TIMEOUT_MS)
+  return fetch(input, { ...init, signal: init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout })
+}
+
 export function getSupabaseClient(): Db {
   client ??= createClient<Database>(
     env.supabaseUrl,
@@ -30,6 +44,7 @@ export function getSupabaseClient(): Db {
         persistSession: false,
         autoRefreshToken: false,
       },
+      global: { fetch: fetchWithTimeout },
     },
   )
 

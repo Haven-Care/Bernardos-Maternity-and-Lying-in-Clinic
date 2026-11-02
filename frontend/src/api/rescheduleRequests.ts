@@ -3,6 +3,7 @@ import type {
   RescheduleRequestStatus,
 } from '../types/appointment'
 import { apiFetch } from './client'
+import { datedList } from './pagination'
 
 /**
  * The staff queue for patient-initiated reschedules.
@@ -15,9 +16,7 @@ import { apiFetch } from './client'
 export async function listRescheduleRequests(
   status: RescheduleRequestStatus = 'pending',
 ): Promise<RescheduleRequest[]> {
-  return apiFetch<RescheduleRequest[]>(
-    `/reschedule-requests?status=${status}`,
-  )
+  return datedList<RescheduleRequest>(`/reschedule-requests?status=${status}`)
 }
 
 /**

@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { list as listAccounts } from './patientAccounts'
 import { list as listHistory } from './clinicalHistory'
+import { listPatients } from './patients'
+import { listMedicines } from './inventory'
+import { listRescheduleRequests } from './rescheduleRequests'
 import { apiFetch } from './client'
 
 vi.mock('./client', () => ({ apiFetch: vi.fn() }))
@@ -26,6 +29,21 @@ describe('paginated lists', () => {
 
     expect(await listHistory('patient-id')).toHaveLength(201)
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/patients/patient-id/clinical-history?offset=200&limit=200')
+  })
+
+  it('loads every patient, medicine and reschedule request past the first 500', async () => {
+    const full = (prefix: string) => Array.from({ length: 500 }, (_, i) => ({ id: `${prefix}-${i}` }))
+    fetchMock
+      .mockResolvedValueOnce(full('patient')).mockResolvedValueOnce([{ id: 'patient-500' }])
+      .mockResolvedValueOnce(full('medicine')).mockResolvedValueOnce([])
+      .mockResolvedValueOnce(full('request')).mockResolvedValueOnce([{ id: 'request-500' }])
+
+    expect(await listPatients()).toHaveLength(501)
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/patients?offset=500&limit=500')
+    expect(await listMedicines(true)).toHaveLength(500)
+    expect(fetchMock).toHaveBeenNthCalledWith(4, '/inventory/medicines?includeArchived=true&offset=500&limit=500')
+    expect(await listRescheduleRequests('approved')).toHaveLength(501)
+    expect(fetchMock).toHaveBeenNthCalledWith(6, '/reschedule-requests?status=approved&offset=500&limit=500')
   })
 
   it('stops if an older backend ignores the page parameters', async () => {

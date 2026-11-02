@@ -15,6 +15,8 @@ const startupSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(6101),
   NODE_ENV: z.string().min(1).default('development'),
   CORS_ORIGIN: z.string().optional(),
+  UPSTASH_REDIS_REST_URL: z.string().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
 })
 
 /**
@@ -48,6 +50,36 @@ export function parseCorsOrigins(raw: string | undefined, nodeEnv: string): stri
   })
 }
 
+export interface RateLimitStoreConfig {
+  url: string
+  token: string
+}
+
+/**
+ * Upstash Redis, which holds rate-limit counters when it is configured.
+ *
+ * Both values or neither. A URL without its token would fail on every request,
+ * and because the limiter lets traffic through when its store errors, that
+ * would quietly switch every limit off instead of failing the deploy.
+ */
+export function parseRateLimitStore(rawUrl: string | undefined, rawToken: string | undefined): RateLimitStoreConfig | null {
+  const url = rawUrl?.trim()
+  const token = rawToken?.trim()
+  if (!url && !token) return null
+  if (!url || !token) {
+    throw new Error('Set both UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN, or neither.')
+  }
+
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    throw new Error('UPSTASH_REDIS_REST_URL is not a URL.')
+  }
+  if (parsed.protocol !== 'https:') throw new Error('UPSTASH_REDIS_REST_URL must use https.')
+  return { url: parsed.origin, token }
+}
+
 // Validated once, when the module loads, so a misconfigured deployment fails
 // on its first request instead of answering /health as if it were fine. The
 // Supabase values stay lazy below: tests and the liveness route run without
@@ -58,6 +90,7 @@ export const env = {
   port: startup.PORT,
   nodeEnv: startup.NODE_ENV,
   corsOrigins: parseCorsOrigins(startup.CORS_ORIGIN, startup.NODE_ENV),
+  rateLimitStore: parseRateLimitStore(startup.UPSTASH_REDIS_REST_URL, startup.UPSTASH_REDIS_REST_TOKEN),
   get supabaseUrl() {
     return requireEnv('SUPABASE_URL')
   },

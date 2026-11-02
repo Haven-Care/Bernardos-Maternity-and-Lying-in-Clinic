@@ -7,9 +7,10 @@ import type {
   PatientListRow,
 } from '../types/patient'
 import { apiFetch } from './client'
+import { datedList } from './pagination'
 
 export async function listPatients(): Promise<PatientListRow[]> {
-  return apiFetch<PatientListRow[]>('/patients')
+  return datedList<PatientListRow>('/patients')
 }
 
 export async function getPatient(id: string): Promise<Patient> {

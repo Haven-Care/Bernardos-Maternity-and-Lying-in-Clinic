@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express'
+import { AuthApiError, AuthRetryableFetchError } from '@supabase/supabase-js'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getSessionIdentity } from './auth.js'
 const { getClient } = vi.hoisted(() => ({ getClient: vi.fn() }))
@@ -43,5 +44,25 @@ describe('server-verified login role', () => {
     await getSessionIdentity(req, res, next)
     expect(json).not.toHaveBeenCalled()
     expect(next.mock.calls[0][0]).toMatchObject({ status: 403 })
+  })
+})
+
+describe('when GoTrue cannot answer', () => {
+  function failing(error: Error) {
+    getClient.mockReturnValue({ auth: { getUser: vi.fn(async () => ({ data: { user: null }, error })) } })
+    const next = vi.fn()
+    return { req: { get: () => 'Bearer valid' } as unknown as Request, res: { json: vi.fn() } as unknown as Response, next }
+  }
+
+  it('answers 503, not 401, so the browser keeps the session and retries', async () => {
+    const { req, res, next } = failing(new AuthRetryableFetchError('The operation was aborted due to timeout', 0))
+    await getSessionIdentity(req, res, next)
+    expect(next.mock.calls[0][0]).toMatchObject({ status: 503 })
+  })
+
+  it('still answers 401 for a token GoTrue rejects', async () => {
+    const { req, res, next } = failing(new AuthApiError('invalid JWT', 401, 'bad_jwt'))
+    await getSessionIdentity(req, res, next)
+    expect(next.mock.calls[0][0]).toMatchObject({ status: 401 })
   })
 })

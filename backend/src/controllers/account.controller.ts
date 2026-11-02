@@ -28,10 +28,10 @@ export async function getMe(req: Request, res: Response) {
   const profile = await findStaff(staff.userId)
   if (!profile) throw new HttpError(404, 'No staff profile for this account.')
 
-  // Fire-and-forget: a failed bookkeeping write must not fail the sign-in that
-  // triggered it. "Last login" showing a stale time is a cosmetic problem;
-  // being unable to log in is not.
-  void touchLastLogin(staff.userId)
+  // Awaited, because Vercel may freeze the function once the response is sent,
+  // and a write still in flight then never lands. It cannot fail the sign-in:
+  // touchLastLogin logs a failure instead of throwing it.
+  await touchLastLogin(staff.userId)
 
   res.json(profile)
 }

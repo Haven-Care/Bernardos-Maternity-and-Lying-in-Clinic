@@ -2,7 +2,7 @@ import type { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSupabaseClient } from '../config/supabase.js'
 import { dbError, unwrap, unwrapList } from '../lib/db.js'
-import { parseBody } from '../lib/validate.js'
+import { pageQuery, parseBody, parseQuery } from '../lib/validate.js'
 import { HttpError } from '../middleware/errorHandler.js'
 import { toRescheduleRequest } from '../mappers/appointment.js'
 
@@ -16,23 +16,24 @@ import { toRescheduleRequest } from '../mappers/appointment.js'
 
 const idSchema = z.string().uuid('Not a valid request id.')
 
-const statusQuerySchema = z.object({
+const statusQuerySchema = pageQuery.extend({
   status: z.enum(['pending', 'approved', 'declined']).optional(),
 })
 
 export async function listRescheduleRequests(req: Request, res: Response) {
-  const { status } = parseBody(statusQuerySchema, req.query)
+  const { status, offset, limit } = parseQuery(statusQuerySchema, req.query)
 
   let query = getSupabaseClient()
     .from('reschedule_requests')
     .select('*, appointments(*)')
     .order('requested_at', { ascending: false })
+    .order('id')
 
   // Defaults to the open queue, which is what the badge counts and what staff
   // actually need to act on.
   query = query.eq('status', status ?? 'pending')
 
-  res.json(unwrapList(await query).map(toRescheduleRequest))
+  res.json(unwrapList(await query.range(offset, offset + limit - 1)).map(toRescheduleRequest))
 }
 
 async function openRequest(id: string) {
