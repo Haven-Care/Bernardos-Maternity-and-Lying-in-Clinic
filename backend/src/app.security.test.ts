@@ -43,6 +43,22 @@ describe('response headers', () => {
     expect(res.headers['cache-control']).toBe('no-store')
   })
 
+  it('sends every header helmet() would, not only the two checked above', async () => {
+    const res = await request(createApp()).get('/api/health')
+
+    expect(res.headers['content-security-policy']).toContain("default-src 'self'")
+    expect(res.headers['content-security-policy']).toContain("frame-ancestors 'self'")
+    expect(res.headers['cross-origin-opener-policy']).toBe('same-origin')
+    expect(res.headers['cross-origin-resource-policy']).toBe('same-origin')
+    expect(res.headers['origin-agent-cluster']).toBe('?1')
+    expect(res.headers['referrer-policy']).toBe('no-referrer')
+    expect(res.headers['x-dns-prefetch-control']).toBe('off')
+    expect(res.headers['x-download-options']).toBe('noopen')
+    expect(res.headers['x-frame-options']).toBe('SAMEORIGIN')
+    expect(res.headers['x-permitted-cross-domain-policies']).toBe('none')
+    expect(res.headers['x-xss-protection']).toBe('0')
+  })
+
   it('tags every response with a request id, reusing a well-formed Vercel id', async () => {
     const own = await request(createApp()).get('/api/health')
     expect(own.headers['x-request-id']).toMatch(/^[0-9a-f-]{36}$/)
