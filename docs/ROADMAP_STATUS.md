@@ -2,9 +2,11 @@
 
 Where the production-readiness work stands: what is done, what is still open, and what was written but never verified. **Update this file whenever a phase lands or an item here is closed.**
 
-Last updated: 2 November 2026 (Phase 5: first green CI on 02ec77b, generated-types check, stricter purge-job test, Node 24 action pins. Phase 2: 12-character password minimum).
+Last updated: 3 November 2026 (backend Preview health and access log seen on Vercel; four-role model decided; the clinic owner acts for the clinic).
 
-All of this work branches from and targets `deployment/prep`. Nothing merges into `main` until the team decides to.
+Since 3 Nov 2026 this work lands on `dev`, the development branch. `dev` took over from `deployment/prep`, which is left in place at ac564d6 and no longer used. Nothing merges into `main` until the team decides to; the flow is in `CONTRIBUTING.md`.
+
+Steps that need a person (dashboard settings, accounts, decisions and questions for the clinic) are collected, by service, in `OPERATOR_TODO.md`.
 
 ## Phases
 
@@ -19,13 +21,13 @@ All of this work branches from and targets `deployment/prep`. Nothing merges int
 
 ## Check first
 
-- **Backend deploys failed from 11a7e53 to eb7baa7.** Vercel's build type-check resolved helmet's CommonJS typings, where `helmet()` is not callable, so Phases 2 and 3 never reached a backend deployment. Fixed in 0e6ff3f (`backend/src/middleware/securityHeaders.ts`); the e493798 Preview built and deployed on 2 Nov 2026. Its responses have not been checked, because Previews sit behind Vercel Authentication. Signed in to Vercel, open `/api/health` and `/api/health/db` on the latest `havencare-backend` Preview. This is the first time the Phase 2 start-up checks run on Vercel. For example, `CORS_ORIGIN` is required when `NODE_ENV=production`.
+- **Resolved:** backend deploys failed from 11a7e53 to eb7baa7, so Phases 2 and 3 never reached a backend deployment. Vercel's build type-check resolved helmet's CommonJS typings, where `helmet()` is not callable. Fixed in 0e6ff3f (`backend/src/middleware/securityHeaders.ts`). On 2 Nov 2026, `/api/health` and `/api/health/db` both returned 200 on the 020fa8f `havencare-backend` Preview, so the Phase 2 start-up checks pass on Vercel.
 - **Migrations 26, 27 and 28 are not applied to any hosted project.** After applying them to staging, mark it as a demo database; see "After migration 26 reaches staging" in `PRODUCTION_CONFIG.md`.
 
 ## Phases 1–3: not verified, or waiting on someone else
 
 **Couldn't run or see on the development machine**
-- [ ] Migrations 26 and 27 have only run in PGlite (`npm run db:check`), with stub `auth` and `storage` schemas. A read-only check of staging found nothing that should stop them: the same seven unpinned functions, all owned by `postgres`; no storage policies; both views `security_invoker`. They have still never been applied to a real Supabase database. After applying them to staging, run the Supabase advisors and `select assert_rls_posture();`.
+- [ ] Migrations 26–28 run on every push in the CI integration job, against a local Supabase stack with real `auth`, `storage` and roles (green since 02ec77b). They have never been applied to a hosted project. A read-only check of staging found nothing that should stop them: the same seven unpinned functions, all owned by `postgres`; no storage policies; both views `security_invoker`. Staging also serves the production URL, which runs `main`. Decided 3 Nov 2026: leave staging alone until the production project exists and staging no longer serves the live site. After applying them, run the Supabase advisors and `select assert_rls_posture();`.
 - [x] `backend/src/db/types.ts` was edited by hand for migrations 26 and 27. The integration job now regenerates it from the migrated stack and fails on any difference. Its first run (020fa8f) caught one hand-edit mistake: `audit_log.id` is `generated always`, so it is `never` on insert and update, not `number`. It also caught two generator differences: no `__InternalSupabase` block from a local stack, and a final blank line. The file is now byte-for-byte what CI generated. If the check fails again, the diff is in the job's annotation, which `api.github.com/repos/<owner>/<repo>/check-runs/<id>/annotations` returns without signing in.
 - [ ] Screens that need a signed-in user were checked only by unit tests:
   - the consent screen, and Profile → Your Privacy
@@ -35,7 +37,7 @@ All of this work branches from and targets `deployment/prep`. Nothing merges int
   - idle sign-out after 20 minutes, and the redirect when a session expires
 
   Click through them on staging.
-- [ ] The CSP was checked against a local build with Google sign-in switched off. Check Google sign-in under the CSP on staging before setting `VITE_GOOGLE_LOGIN_ENABLED=true`.
+- [ ] The CSP was checked against a local build with Google sign-in switched off. Decided 3 Nov 2026: Google sign-in ships at launch, with a clinic-owned Google client (`OPERATOR_TODO.md` → Google sign-in). Check it under the CSP before setting `VITE_GOOGLE_LOGIN_ENABLED=true`.
 - [x] CI on `deployment/prep`: Backend CI, Frontend CI and Database integration were all green on 02ec77b (2 Nov 2026). Read through the public GitHub API; `gh` is not signed in on the development machine, and job logs need a signed-in account.
 - [ ] `npm run sync:types:check` fails on Windows checkouts because of line endings. It passes on Linux CI, and the committed copies match. This is not contract drift; fix it only if it gets in someone's way.
 
@@ -54,8 +56,8 @@ All of this work branches from and targets `deployment/prep`. Nothing merges int
 - [ ] `frontend/vercel.json` allows any `https://*.supabase.co` origin in its CSP. Narrow it to the real project origins once production exists.
 - [ ] Dependabot does nothing until `.github/dependabot.yml` is on the default branch (`main`).
 - [ ] The clinic has to:
-  - approve the privacy notice with its legal adviser
-  - name its DPO
+  - approve the privacy notice. The clinic has no legal adviser or DPO, so the owner decides and is the team's contact
+  - name its DPO, someone already at the clinic
   - set its medical-record retention period under DOH rules
   - check whether it must register with the National Privacy Commission
   - confirm the draft breach procedure in `RUNBOOK.md`
@@ -84,17 +86,28 @@ All of this work branches from and targets `deployment/prep`. Nothing merges int
 
 ## Phase 2: still open
 
-- [ ] Staff TOTP MFA, enforced in the API (`aal2`), plus an administrator reset.
+- [ ] TOTP two-factor sign-in, enforced in the API (`aal2`) for administrators and the super administrator (decided 3 Nov 2026; staff and the owner are not required), plus a reset by the super administrator. Build it with the roles below.
 - [ ] The current password required before a staff member changes their email.
 - [ ] Turnstile CAPTCHA on sign-up, login and password reset.
 - [x] Password minimum of 12 characters: `PASSWORD_MIN_LENGTH` in `frontend/src/lib/password.ts` (sign-up, reset, change, and the staff form in System Access), `createStaffSchema` in `backend/src/services/staff.ts`, and `minimum_password_length` in `supabase/config.toml` for local stacks. Existing accounts with shorter passwords still sign in. The hosted Auth setting is part of the hosted Auth item under Phases 1–3.
-- [ ] Smaller database items from the Phase 2 plan.
+- [ ] Smaller database items left from the Phase 2 plan; migration 26 covers the rest:
+  - archive a patient (`patients.archived_at`) instead of deleting the row
+  - CHECK constraints: date of birth not in the future, and length caps on free text
+  - refusing bookings on clinic holidays needs a calendar of holiday dates first; today `operating_hours` has a `holidays` row for hours only
+- [ ] Roles, decided 3 Nov 2026; not built yet. Today an administrator sees everything a staff member sees, patient records included.
+  - **Patient:** unchanged.
+  - **Staff (the clinic):** all of the clinic's work: appointments, patient records and documents, dashboard and notifications, inventory, prices, hours, slots, clinic details, and answering privacy requests.
+  - **Owner:** exactly one account, assigned by the super administrator. Everything staff do, plus the activity log and creating and deactivating staff accounts.
+  - **Administrator (the HavenCare team):** edits prices, hours, slots and clinic details. No patient data, no inventory, no staff accounts.
+  - **Super administrator:** everything; one named operator. An app role, so every record opened is in the activity log. Creates administrator and staff accounts and assigns the one owner. Itself set up directly in the database, never from the app.
+  - **Two-factor sign-in** is required for administrators and the super administrator; not for staff or the owner.
+  - When this lands, update the containment step in `RUNBOOK.md`: the owner or the super administrator deactivates a compromised staff account, because administrators no longer can.
 
 ## Phase 5: in progress
 
 **Written, not verified**
 - [x] `.github/workflows/db-integration.yml` starts a local Supabase stack and runs `supabase/tests/*.sql`, `assert_rls_posture()` and the backend suites with `REQUIRE_DB=1`. It uses the Supabase CLI from the root `package-lock.json` (2.117.0), not `latest`, which is now a new major version (3.0.0). First run green on 02ec77b: about 3 minutes, 72 s of it starting the stack. Making it a required check needs a repository admin (see Still to do).
-- [ ] `backend/src/middleware/accessLog.ts` logs one JSON line per request (route pattern, status, duration, request id; no paths values, query or body). Unit-tested, off under `NODE_ENV=test`. Not yet seen in Vercel's logs.
+- [x] `backend/src/middleware/accessLog.ts` logs one JSON line per request (route pattern, status, duration, request id; no path values, query or body). Seen in Vercel's runtime logs on the 020fa8f Preview on 2 Nov 2026, next to the start-up warning that Upstash is not set. The Hobby plan keeps runtime logs for one hour only.
 - [x] CI hardening: every workflow has `permissions: contents: read` and pins its actions to commit SHAs, the stale `feat/backend-clinic-workflows` triggers are gone, and Backend CI and Frontend CI run `npm audit --omit=dev --audit-level=high`. Green on GitHub on 02ec77b, both audit steps included. That run warned that the v4 actions target the deprecated Node.js 20, so the pins moved to `actions/checkout` v7.0.1 and `actions/setup-node` v7.1.0, which run on Node.js 24. All three workflows passed those steps on 020fa8f.
 - [ ] Migration 28 schedules `purge_expired_notifications()` nightly with pg_cron (19:00 UTC, 03:00 Manila). PGlite has no pg_cron, so `npm run db:check` exercises only the branch that skips scheduling. `supabase/tests/notification_purge.sql` now skips only where pg_cron is unavailable, as the migration does, so on a Supabase stack a missing job fails. The SQL tests passed on 020fa8f with the stricter test. Supabase's Postgres image ships pg_cron, so the test checked the job instead of skipping; the job log, which needs a signed-in account, would show a skip notice otherwise. After applying it to staging, check `cron.job` and, the next day, `cron.job_run_details`. The query is in `RUNBOOK.md`.
 - [x] `frontend/src/components/AppErrorBoundary.tsx` wraps the app, so an error outside the router shows a recovery screen instead of a blank page. Unit-tested, and checked in the local preview with a forced crash.
@@ -106,7 +119,7 @@ All of this work branches from and targets `deployment/prep`. Nothing merges int
 - Purging medical records waits for the clinic's retention period (see the Phase 3 items). Notifications are purged nightly by migration 28.
 - The release process is in `RUNBOOK.md` → Releases. Once the production project exists, consider running `supabase db push` from a GitHub Environment `production` with required approval instead of an operator's computer.
 - Needs a repository admin:
-  - Make **Database integration** a required check for `deployment/prep` and `main` (Settings → Branches), next to Backend CI and Frontend CI.
+  - Protect `main` with a ruleset: pull request required, plus Backend CI, Frontend CI and Database integration as required checks. Steps in `OPERATOR_TODO.md` → GitHub. `dev` stays unprotected (decided 3 Nov 2026).
   - Confirm secret scanning and push protection are on (Settings → Code security).
 
 ## Notes for whoever picks this up

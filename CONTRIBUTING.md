@@ -5,15 +5,17 @@ This document defines how we branch, commit, and merge code in this repo. Read i
 ## Branch structure
 
 ```
-main                              # production — PM + QA approval required
-├── frontend-main                 # frontend integration branch
-│   └── frontend-main/feat/...    # frontend feature branches
-└── backend-main                  # backend integration branch
-    └── backend-main/feat/...     # backend feature branches
+main                                  # live site — PM + QA approval required
+└── dev                               # development: everything is tested together here
+    ├── frontend-main                 # frontend integration branch
+    │   └── frontend-main/feat/...    # frontend feature branches
+    └── backend-main                  # backend integration branch
+        └── backend-main/feat/...     # backend feature branches
 ```
 
-- **`main`** — always deployable. Nobody pushes here directly; only merges via PR from a team-main branch.
-- **`frontend-main` / `backend-main`** — each team's integration branch. Feature branches merge here first.
+- **`main`** — the live site: Vercel deploys Production from it. Always deployable. Nobody pushes here directly; it only takes PRs from `dev`. GitHub enforces this once the ruleset in `docs/OPERATOR_TODO.md` → GitHub is on.
+- **`dev`** — the development branch. Both teams' work meets here and is checked together; Vercel builds a Preview from every push, with demonstration data only.
+- **`frontend-main` / `backend-main`** — each team's integration branch. Feature branches merge here first, then into `dev`.
 - **Feature branches** — where actual work happens. Always branched off the relevant team-main branch, never off `main`.
 
 ## Branch naming convention
@@ -63,11 +65,14 @@ chore: bump dependency versions
 3. **Open a PR into your team-main branch** (e.g. `frontend-main/feat/homepage` → `frontend-main`).
    - Requires **1 teammate approval**
    - Requires CI checks to pass
-4. **Once merged into team-main**, and when your team-main branch is ready for release, open a PR from **team-main into `main`**.
-   - Requires **2 approvals** — any two reviewers, not specific people
+4. **Once merged into team-main**, open a PR from **team-main into `dev`**.
    - Requires CI checks to pass
+   - Keep team-main up to date with `dev` first, so the two teams' changes meet before review
+5. **To release**, open a PR from **`dev` into `main`**, following `docs/RUNBOOK.md` → Releases.
+   - Requires **2 approvals** — any two reviewers, not specific people
+   - Requires CI checks to pass, including Database integration
    - Requires all review conversations resolved
-5. **QA tests before approving** the merge into `main`. Don't approve your own team's PR into main.
+6. **QA tests before approving** the merge into `main`, on the `dev` Preview. Don't approve your own team's changes into main.
 
 ## Pull request checklist
 

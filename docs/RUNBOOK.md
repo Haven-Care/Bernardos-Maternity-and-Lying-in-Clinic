@@ -8,8 +8,8 @@ are added here in Phase 5.
 
 ## Personal data breach
 
-> Draft procedure. The clinic's Data Protection Officer (DPO) and legal adviser
-> must confirm it, including the current National Privacy Commission (NPC)
+> Draft procedure. The clinic's owner, and its Data Protection Officer (DPO)
+> once named, must confirm it, including the current National Privacy Commission (NPC)
 > rules and deadlines, before go-live.
 
 A breach is any unauthorised access to, disclosure of, change to, or loss of
@@ -123,7 +123,7 @@ Write every reply in the resolution note. The patient reads it in their profile.
 
 ## Releases
 
-Both Vercel projects, `havencare-frontend` and `havencare-backend`, build Production from every push to `main`, from the same commit. Every other branch builds a Preview. Production-readiness work collects on `deployment/prep` and reaches `main` only when the team decides.
+Both Vercel projects, `havencare-frontend` and `havencare-backend`, build Production from every push to `main`, from the same commit. Every other branch builds a Preview. Work collects on `dev`, the development branch, and reaches `main` only through a pull request from `dev`, when the team decides to release (`CONTRIBUTING.md`).
 
 Until the clinic's production project exists, "production" below means the Supabase project that serves the production URL today (`camqzzctawwqlwmqqpop`). See `PRODUCTION_CONFIG.md`.
 

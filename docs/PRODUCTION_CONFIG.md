@@ -137,6 +137,26 @@ Docker only.
 
 **Before commercial use:** upgrade the Vercel team to **Pro**. The Hobby plan does not permit commercial use.
 
+## Service plans and business use
+
+Checked on 3 Nov 2026 against each provider's terms, pricing and help pages. This is a reading of the text, not legal advice. Check again before quoting the clinic, because providers change these pages.
+
+| Service | Used for | Free plan allowed for paid client work? | Catches | Plan to use |
+|---|---|---|---|---|
+| Vercel | Hosting | **No.** Hobby is for personal, non-commercial use, and Vercel's fair-use guidelines count being paid to build or host a site as commercial | None; the plan itself is the problem | **Pro**, from when the clinic pays for the work |
+| Supabase | Database, sign-in, files | Yes. The terms have no personal-use clause | Free: no automatic backups, pauses after a week idle, 2 active projects, no SLA. The terms bar HIPAA "protected health information" without a US business associate agreement; HIPAA is US law, so confirm in writing with Supabase that a Philippine clinic's records are outside it. The data processing addendum requires explicit consent for health data, which the consent screen collects | Demo: Free. Production: **Pro**, in an organisation the clinic owns |
+| GitHub | Code and CI | Yes | Actions minutes are free because the repository is public; a private repository gets 2,000 minutes a month | Free |
+| Upstash | Shared rate-limit counters | Yes. The terms have no personal-use clause | One free account per person or company, one free database per account. A free database with no requests for a week may be deleted; the backend then stops counting rather than failing. No sensitive personal data or health information (counters hold only addresses and account ids) | Free |
+| UptimeRobot | Uptime alerts | Yes. Its terms and help centre both say business use is allowed | One account per person; alerts and status pages may not be resold | Free |
+| Better Stack | Uptime alerts | Not clearly. The free tier is labelled for personal projects | None | Do not use the free tier |
+| Sentry | Error tracking | Not barred | One user, no shared logins. Free products can be ended at any time. The terms bar sensitive personal information, so error reports must carry no patient data | Optional; one named account, with personal data scrubbed |
+| Cloudflare Turnstile | CAPTCHA | Yes. Cloudflare's plan page aims Free at businesses and production sites | Caps on widgets and hostnames | Free |
+| Cloudflare R2 | Off-site backups | Yes. Billed by usage, with 10 GB-month of storage free | None found | Free allowance |
+| Brevo | Auth email | Yes, according to Brevo's product pages; its terms were not read | 300 emails a day | Free to start |
+| k6 | Load test | Open source, run on our own computer | None | Free |
+
+Only two services must be paid: **Vercel Pro**, because the work is commercial, and **Supabase Pro** for production, because the free tier has no backups and pauses when idle.
+
 ## Keys and access
 
 - **Rotate the staging secret key.** It was shared on lab and shared computers. Rotate it in Project Settings → API Keys, then update the Vercel Preview variables and each developer's `backend/.env`.
@@ -151,7 +171,7 @@ Docker only.
 
 ## Before the first real patient
 
-- [ ] Privacy notice approved by the clinic and its legal adviser, DPO named in it, and `PRIVACY_NOTICE_VERSION` changed from the draft.
+- [ ] Privacy notice approved by the clinic owner, DPO named in it, and `PRIVACY_NOTICE_VERSION` changed from the draft.
 - [ ] Breach procedure in `RUNBOOK.md` confirmed by the DPO, contacts filled in.
 - [ ] Production project created as above, migrations verified, advisors reviewed.
 - [ ] Supabase organization on Pro; daily backups visible in Database → Backups.

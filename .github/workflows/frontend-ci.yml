@@ -12,19 +12,19 @@ name: Frontend CI
 # the merge button: a PR that was green against an older base can still break
 # the branch it lands on.
 #
-# deployment/prep is the integration branch for production-readiness work
-# until it is merged to main, so it is checked like the others.
+# dev is the development branch: frontend-main and backend-main merge into it,
+# and it merges into main to release, so it is checked like the others.
 on:
   pull_request:
     branches:
       - main
-      - deployment/prep
+      - dev
       - frontend-main
       - backend-main
   push:
     branches:
       - main
-      - deployment/prep
+      - dev
       - frontend-main
       - backend-main
 
